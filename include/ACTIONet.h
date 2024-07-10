@@ -11,7 +11,6 @@
 
 // #include <Rinterface.h>
 // #include <RcppArmadillo.h>
-// #include <arma/armadillo>
 #include <armadillo>
 #include <my_cblas.h>
 
