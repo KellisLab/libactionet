@@ -19,3 +19,4 @@ pybind11/
 .vscode/
 *.code-workspace
 .lintr
+build_test/
