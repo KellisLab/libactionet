@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 
 # set(CMAKE_C_COMPILER /opt/homebrew/Cellar/gcc/14.1.0_1/bin/gcc-14)
 # set(CMAKE_CXX_COMPILER /opt/homebrew/Cellar/gcc/14.1.0_1/bin/g++-14)
@@ -30,35 +30,35 @@ ENDMACRO()
 # add_compile_options(-O3)
 
 # ########### Third-party dependencies
-# find_package(HDF5 REQUIRED)
-# include_directories(${HDF5_INCLUDE_DIRS})
-
-# Check for BLAS/LAPACK
+## Check for BLAS/LAPACK
 find_package(BLAS REQUIRED)
 message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
-add_definitions("-DEIGEN_USE_BLAS") # is adding  ${BLAS_COMPILER_FLAGS} necessary?
+add_definitions("-DEIGEN_USE_BLAS") # Keep for future Eigen use
 list(APPEND EXTERNAL_LIBS "${BLAS_LIBRARIES}")
 
-# Check for CHOLMOD
+## Check for CHOLMOD
 find_package(SuiteSparse REQUIRED)
 # find_package(SuiteSparse_config REQUIRED NO_MODULE)
 # include_directories(${SUITESPARSE_INCLUDE_DIRS})
 
-# ########### Compile
+## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES *.cpp *.cc *.c)
-add_library(libactionet_core STATIC ${SOURCES})
+add_library(actionet STATIC ${SOURCES})
 
-# ########### Headers
+## [Dirty] Add all header files in the directory for testing
 HEADER_DIRECTORIES(header_list)
 include_directories(${header_list})
 
+## Add include headers
+# set(HEADER_ROOT "${libactionet_SOURCE_DIR}/include")
+
 # file(GLOB HEADER_DIRS ${libactionet_SOURCE_DIR}/include)
 # include_directories(${HEADER_DIRS} )
-# target_include_directories(libactionet_core PUBLIC ${libactionet_SOURCE_DIR}/include ${libactionet_SOURCE_DIR}/include/math/aarand )
+# target_include_directories(libactionet PUBLIC ${libactionet_SOURCE_DIR}/include ${libactionet_SOURCE_DIR}/include/math/aarand )
 
 
 target_link_libraries(
-    libactionet_core PUBLIC
+    actionet PRIVATE
     ${BLAS_LIBRARIES}
     SuiteSparse::CHOLMOD
     # ${SUITESPARSE_LIBRARIES}
