@@ -1,17 +1,16 @@
 cmake_minimum_required(VERSION 3.12)
 
-## Mac arm64 compilers
-set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
+## Specify macos arm64 compilers
+# set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
 
-## Mac x86 Rosetta2 compilers
+## Specify macos x86 Rosetta2 compilers
 set(USE_GCC "/usr/local/Cellar/gcc/14.1.0_1/bin/")
+string(APPEND CMAKE_CXX_FLAGS_RELEASE " -arch x86_64")
+string(APPEND CMAKE_CC_FLAGS_RELEASE " -arch x86_64")
 
+## Set compiler
 set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
 set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
-
-# set(CMAKE_C_COMPILER /opt/homebrew/Cellar/gcc/14.1.0_1/bin/gcc-14)
-# set(CMAKE_CXX_COMPILER /opt/homebrew/Cellar/gcc/14.1.0_1/bin/g++-14)
-
 
 project(libactionet)
 list(APPEND CMAKE_MODULE_PATH "${libactionet_SOURCE_DIR}/cmake")
