@@ -9,8 +9,6 @@
 #undef ARMA_BLAS_CAPITALS
 #define ARMA_BLAS_UNDERSCORE
 
-// #include <Rinterface.h>
-// #include <RcppArmadillo.h>
 #include <armadillo>
 #include <my_cblas.h>
 

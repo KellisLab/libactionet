@@ -1,5 +1,8 @@
 #include "ACTIONet.h"
 #include <cholmod.h>
+
+using namespace arma;
+
 sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
                        cholmod_common *chol_c);
 

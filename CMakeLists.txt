@@ -4,13 +4,13 @@ cmake_minimum_required(VERSION 3.12)
 # set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
 
 ## Specify macos x86 Rosetta2 compilers
-set(USE_GCC "/usr/local/Cellar/gcc/14.1.0_1/bin/")
-string(APPEND CMAKE_CXX_FLAGS_RELEASE " -arch x86_64")
-string(APPEND CMAKE_CC_FLAGS_RELEASE " -arch x86_64")
+# set(USE_GCC "/usr/local/Cellar/gcc/14.1.0_1/bin/")
+# string(APPEND CMAKE_CXX_FLAGS_RELEASE " -arch x86_64")
+# string(APPEND CMAKE_CC_FLAGS_RELEASE " -arch x86_64")
 
 ## Set compiler
-set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
-set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
+# set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
+# set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
 
 project(libactionet)
 list(APPEND CMAKE_MODULE_PATH "${libactionet_SOURCE_DIR}/cmake")
@@ -35,15 +35,20 @@ MACRO(HEADER_DIRECTORIES return_list)
     SET(${return_list} ${dir_list})
 ENDMACRO()
 
-# add_compile_options(-w)
+add_compile_options(-w)
 # add_compile_options(-O3)
 
 # ########### Third-party dependencies
 ## Check for BLAS/LAPACK
 find_package(BLAS REQUIRED)
-message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
+# message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
 add_definitions("-DEIGEN_USE_BLAS") # Keep for future Eigen use
-list(APPEND EXTERNAL_LIBS "${BLAS_LIBRARIES}")
+# list(APPEND EXTERNAL_LIBS "${BLAS_LIBRARIES}")
+
+find_package(LAPACK REQUIRED)
+# message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
+# list(APPEND EXTERNAL_LIBS "${LAPACK_LIBRARIES}")
+
 
 ## Check for CHOLMOD
 find_package(SuiteSparse REQUIRED)
@@ -56,6 +61,7 @@ add_library(actionet STATIC ${SOURCES})
 
 ## [Dirty] Add all header files in the directory for testing
 HEADER_DIRECTORIES(header_list)
+include_directories("${libactionet_SOURCE_DIR}/../../inst/include")
 include_directories(${header_list})
 
 ## Add include headers
@@ -65,11 +71,12 @@ include_directories(${header_list})
 # include_directories(${HEADER_DIRS} )
 # target_include_directories(libactionet PUBLIC ${libactionet_SOURCE_DIR}/include ${libactionet_SOURCE_DIR}/include/math/aarand )
 
+target_compile_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS} )
+target_compile_options(actionet PUBLIC ${BLAS_LINKER_FLAGS} )
 
 target_link_libraries(
-    actionet PRIVATE
-    ${BLAS_LIBRARIES}
+    actionet PUBLIC
     SuiteSparse::CHOLMOD
-    # ${SUITESPARSE_LIBRARIES}
-    # ${HDF5_LIBRARIES}
+    ${LAPACK_LIBRARIES}
+    ${BLAS_LIBRARIES}
 )
