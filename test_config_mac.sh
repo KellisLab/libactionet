@@ -1,3 +1,4 @@
+mkdir -p build_test
 cd build_test
 
 if [[ "$1" = "arm" ]]; then
