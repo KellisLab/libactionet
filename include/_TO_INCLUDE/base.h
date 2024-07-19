@@ -38,11 +38,11 @@ using namespace mini_thread;
 #define STATS_ENABLE_ARMA_WRAPPERS
 #include <stats.hpp>
 
-// SVD algorithms
-#define FULL_SVD -1
-#define IRLB_ALG 0
-#define HALKO_ALG 1
-#define FENG_ALG 2
+// // SVD algorithms
+// #define FULL_SVD -1
+// #define IRLB_ALG 0
+// #define HALKO_ALG 1
+// #define FENG_ALG 2
 
 // Kernel reduction algorithms
 #define ACTIONRED_ALG 1
@@ -168,68 +168,62 @@ namespace ACTIONet
   // Low-level functions
   // *********************************
   // Basic (randomized) SVD algorithms
-  field<mat> FengSVD(sp_mat &A, int dim, int iters, int seed, int verbose);
-  field<mat> FengSVD(mat &A, int dim, int iters, int seed, int verbose);
+  // field<mat> FengSVD(sp_mat &A, int dim, int iters, int seed, int verbose);
+  // field<mat> FengSVD(mat &A, int dim, int iters, int seed, int verbose);
 
-  field<mat> HalkoSVD(mat &A, int dim, int max_it, int seed, int verbose);
-  field<mat> HalkoSVD(sp_mat &A, int dim, int max_it, int seed, int verbose);
+  // field<mat> HalkoSVD(mat &A, int dim, int max_it, int seed, int verbose);
+  // field<mat> HalkoSVD(sp_mat &A, int dim, int max_it, int seed, int verbose);
 
-  field<mat> IRLB_SVD(mat &A, int dim, int max_it, int seed, int verbose);
-  // field<mat> IRLB_SVD(sp_mat &A, int dim, int max_it, int seed);
-  field<mat> IRLB_SVD(sp_mat &A, int dim, int iters, int seed, int verbose);
+  // field<mat> IRLB_SVD(mat &A, int dim, int max_it, int seed, int verbose);
+  // field<mat> IRLB_SVD(sp_mat &A, int dim, int iters, int seed, int verbose);
 
   // Successive Projection Algorithm (SPA) to solve separable NMF
   SPA_results run_SPA(mat &M, int k);
   SPA_results run_SPA_rows_sparse(sp_mat &A, int k);
 
-  // min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
-  // mat run_simplex_regression(mat &A, mat &B);
-  mat run_simplex_regression(mat &A, mat &B, bool computeXtX);
-  mat run_simplex_regression_proxdist(mat &X, mat &Y, int pmaxiter,
-                                      int pincmaxiter);
+  // Simplex regression ofr AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
+  // mat run_simplex_regression(mat &A, mat &B, bool computeXtX);
 
   // Robust archetypal analysis method
   field<mat> run_AA(mat &A, mat &W0, int max_it = 100, double min_delta = 1e-6);
 
-  // Online archetypal analysis method (Online Dictionary Learning for Approximate
-  // Archetypal Analysis)
-  field<mat> Online_update_AA(mat &Xt, mat &D, mat &A, mat &B);
-  field<mat> run_online_AA(mat &X, mat &D0, field<uvec> samples);
-  Online_ACTION_results run_online_ACTION(mat &S_r, field<uvec> samples,
-                                          int k_min, int k_max, int thread_no);
+  // Online archetypal analysis method (Online Dictionary Learning for Approximate AA)
+  // field<mat> Online_update_AA(mat &Xt, mat &D, mat &A, mat &B);
+  // field<mat> run_online_AA(mat &X, mat &D0, field<uvec> samples);
+  // Online_ACTION_results run_online_ACTION(mat &S_r, field<uvec> samples, int k_min, int k_max, int thread_no);
 
   // *********************************
 
   // Entry-points to compute a reduced kernel matrix
-  field<mat> perturbedSVD(field<mat> SVD_results, mat &A, mat &B);
+  // field<mat> perturbedSVD(field<mat> SVD_results, mat &A, mat &B);
 
-  field<mat> SVD2ACTIONred(sp_mat &S, field<mat> SVD_results);
-  field<mat> SVD2ACTIONred(mat &S, field<mat> SVD_results);
+  // field<mat> SVD2ACTIONred(sp_mat &S, field<mat> SVD_results);
+  // field<mat> SVD2ACTIONred(mat &S, field<mat> SVD_results);
 
-  field<mat> PCA2ACTIONred(sp_mat &S, field<mat> PCA_results);
-  field<mat> PCA2ACTIONred(mat &S, field<mat> PCA_results);
+  // field<mat> PCA2ACTIONred(sp_mat &S, field<mat> PCA_results);
+  // field<mat> PCA2ACTIONred(mat &S, field<mat> PCA_results);
 
-  field<mat> SVD2PCA(sp_mat &S, field<mat> SVD_results);
-  field<mat> SVD2PCA(mat &S, field<mat> SVD_results);
-  field<mat> PCA2SVD(sp_mat &S, field<mat> PCA_results);
-  field<mat> PCA2SVD(mat &S, field<mat> PCA_results);
+  // field<mat> SVD2PCA(sp_mat &S, field<mat> SVD_results);
+  // field<mat> SVD2PCA(mat &S, field<mat> SVD_results);
+  // field<mat> PCA2SVD(sp_mat &S, field<mat> PCA_results);
+  // field<mat> PCA2SVD(mat &S, field<mat> PCA_results);
 
-  field<mat> reduce_kernel(sp_mat &S, int dim, int iter, int seed,
-                           int SVD_algorithm, bool prenormalize, int verbose);
-  field<mat> reduce_kernel(mat &S, int dim, int iter, int seed, int SVD_algorithm,
-                           bool prenormalize, int verbose);
+  // field<mat> reduce_kernel(sp_mat &S, int dim, int iter, int seed,
+  //                          int SVD_algorithm, bool prenormalize, int verbose);
+  // field<mat> reduce_kernel(mat &S, int dim, int iter, int seed, int SVD_algorithm,
+  //                          bool prenormalize, int verbose);
 
-  field<mat> ACTIONred2SVD(field<mat> SVD_results);
+  // field<mat> ACTIONred2SVD(field<mat> SVD_results);
 
-  field<mat> deflate_reduction(field<mat> SVD_results, mat &A, mat &B);
+  // field<mat> deflate_reduction(field<mat> SVD_results, mat &A, mat &B);
 
-  field<mat> orthogonalize_batch_effect(sp_mat &S, field<mat> SVD_results,
-                                        mat &design);
-  field<mat> orthogonalize_batch_effect(mat &S, field<mat> SVD_results,
-                                        mat &design);
+  // field<mat> orthogonalize_batch_effect(sp_mat &S, field<mat> SVD_results,
+  //                                       mat &design);
+  // field<mat> orthogonalize_batch_effect(mat &S, field<mat> SVD_results,
+  //                                       mat &design);
 
-  field<mat> orthogonalize_basal(sp_mat &S, field<mat> SVD_results, mat &basal);
-  field<mat> orthogonalize_basal(mat &S, field<mat> SVD_results, mat &basal);
+  // field<mat> orthogonalize_basal(sp_mat &S, field<mat> SVD_results, mat &basal);
+  // field<mat> orthogonalize_basal(mat &S, field<mat> SVD_results, mat &basal);
 
   // ACTION decomposition
   ACTION_results run_ACTION(mat &S_r, int k_min, int k_max, int thread_no,
@@ -238,8 +232,8 @@ namespace ACTIONet
                                int k_min, int k_max, int thread_no, int max_it,
                                double min_delta);
 
-  ACTION_results run_weighted_ACTION(mat &S_r, vec w, int k_min, int k_max,
-                                     int thread_no, int max_it, double min_delta);
+  // ACTION_results run_weighted_ACTION(mat &S_r, vec w, int k_min, int k_max,
+  //                                    int thread_no, int max_it, double min_delta);
 
   ACTION_results run_ACTION_plus(mat &S_r, int k_min, int k_max, int max_it,
                                  double min_delta, int max_trial);
@@ -461,8 +455,7 @@ namespace ACTIONet
       double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0,
       int perm_no = 30);
 
-  mat run_simplex_regression_FW(mat &A, mat &B, int max_iter = -1,
-                                double min_diff = 0.01);
+  // mat run_simplex_regression_FW(mat &A, mat &B, int max_iter = -1, double min_diff = 0.01);
   field<mat> recursiveNMU_mine(mat M, int dim, int max_SVD_iter,
                                int max_iter_inner);
   field<mat> recursiveNMU(mat M, int dim, int max_SVD_iter, int max_iter_inner);
@@ -479,11 +472,9 @@ namespace ACTIONet
                                 double ef = 200,
                                 string distance_metric = "jsd");
 
-  //  mat aggregate_genesets_weighted_enrichment_permutation_sparse(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int perm_no = 100, int network_normalization_method = 0, double post_alpha = 0.85, int thread_no = 0);
-
   field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0, double alpha = 0.85, int thread_no = 0);
 
-  mat oneHot_encoding(vec batches);
+  // mat oneHot_encoding(vec batches);
   mat assess_label_enrichment(sp_mat &H, mat &M, int thread_no = 0);
 
   field<mat> compute_fourier_basis(mat &G, int n_basis = -1);

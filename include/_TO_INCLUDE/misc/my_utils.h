@@ -7,9 +7,6 @@
 namespace ACTIONet
 {
     mat sampleUnif(int l, int m, double a, double b, int seed);
-    void gram_schmidt(mat &A);
-    field<mat> eigSVD(mat A);
-    mat randNorm(int l, int m, int seed);
 
     mat zscore(mat &A, int dim = 0, int thread_no = 1);
     mat tzscoret(mat &A);
@@ -19,10 +16,7 @@ namespace ACTIONet
 
     // Used in IRLB
     void randNorm_inplace(int n, double *out, int seed);
-    void convtests(int Bsz, int n, double tol, double svtol, double Smax,
-                   double *svratio, double *residuals, int *k, int *converged,
-                   double S);
-    void orthog(double *X, double *Y, double *T, int xm, int xn, int yn);
+
 
     uint32_t lfsr113(uint64_t **state);
     void lfsr113_seed(uint32_t seed, uint64_t **state);

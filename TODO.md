@@ -1,11 +1,16 @@
 ## Primary
-* Compile to Windows x86
+* Trace cholmod functions in svd.cpp
 * Remove OpenMP dependency?
 * Resolve missing eigen in n2 library
-* Replace Armadillo with Eigen3?
 * Fix namespace usage in headers
 * Fix duplicate PCG headers (run diff)?
 * Rename .cc/.cpp and .h/.hpp
+
+## Secondary
+* Fix compile warnings for svd.cpp
+* Compile to Windows x86
+* Replace Armadillo with Eigen3?
+
 
 
 ## Done

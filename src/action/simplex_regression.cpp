@@ -1,19 +1,23 @@
-#include <ACTIONet.h>
-//#include <mini_cblas.h>
-#include <cassert>
+// #include <ACTIONet.h>
+// #include <my_cblas.h>
+// #include <cassert>
+#include "simplex_regression.hpp"
+
+// using namespace arma;
 
 // Re-implemented from: Fast and Robust Archetypal Analysis for Representation
 // Learning
-namespace ACTIONet {
+// namespace ACTIONet {
 
 /* **************************
  * Active-Set Method with direct inversion, with update(matrix inversion lemma)
  * **************************/
-vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
-                   double epsilon = double(1e-5)) {
+arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2 = double(1e-5),
+                         double epsilon = double(1e-5))
+{
   int m = M.n_rows;
   int p = M.n_cols;
-  int L = min(m, p) + 1;
+  int L = std::min(m, p) + 1;
 
   arma::vec c(M.n_cols);
   cblas_dgemv(CblasColMajor, CblasTrans, M.n_rows, M.n_cols, -1, M.memptr(),
@@ -22,10 +26,10 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
   double lam2sq = lambda2 * lambda2;
 
   arma::vec x(p);
-  double* pr_M = M.memptr();
+  double *pr_M = M.memptr();
   // constraint matrix
-  arma::vec A = ones(L);
-  double* pr_A = A.memptr();
+  arma::vec A = arma::ones(L);
+  double *pr_A = A.memptr();
 
   // Non-Active Constraints Set
   arma::ivec NASet(L);
@@ -38,11 +42,11 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
   arma::vec xRed(L);
   arma::vec cRed(L);
   arma::mat MRed(m, L);
-  double* pr_MRed = MRed.memptr();
+  double *pr_MRed = MRed.memptr();
   arma::mat GRed(L, L);
-  double* pr_GRed = GRed.memptr();
+  double *pr_GRed = GRed.memptr();
   arma::mat GRedinv(L, L);
-  double* pr_GRedinv = GRedinv.memptr();
+  double *pr_GRedinv = GRedinv.memptr();
 
   // cold-start
   x.zeros();
@@ -68,38 +72,41 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
               M.n_rows, Mx.memptr(), 1, 0, Gplus.memptr(), 1);
   Gplus += (lam2sq * x + c);
 
-  double* pr_Gplus = Gplus.memptr();
+  double *pr_Gplus = Gplus.memptr();
 
   arma::vec gRed(L);
-  double* pr_gRed = gRed.memptr();
+  double *pr_gRed = gRed.memptr();
   arma::vec MRedxRed(m);
 
   arma::vec GinvA(L);
-  double* pr_GinvA = GinvA.memptr();
+  double *pr_GinvA = GinvA.memptr();
   arma::vec Ginvg(L);
-  double* pr_Ginvg = Ginvg.memptr();
+  double *pr_Ginvg = Ginvg.memptr();
   arma::vec PRed(L);
-  double* pr_PRed = PRed.memptr();
+  double *pr_PRed = PRed.memptr();
   arma::vec MRedPRed(m);
-  double* pr_MRedPRed = MRedPRed.memptr();
+  double *pr_MRedPRed = MRedPRed.memptr();
   arma::vec UB(L);
-  double* pr_UB = UB.memptr();
+  double *pr_UB = UB.memptr();
   arma::vec UAiB(L);
-  double* pr_UAiB = UAiB.memptr();
+  double *pr_UAiB = UAiB.memptr();
 
   // main loop active set
   int iter = 0;
-  while (iter <= 100 * p) {
+  while (iter <= 100 * p)
+  {
     ++iter;
     // update of na, NASet, NAMask, xRed, cRed, Gplus, GRedinv, already done
     // now update MRed, gRed, GinvA, Ginvg  (no need to update GRed)
     // MRed
-    for (int i = 0; i < na; ++i) {
+    for (int i = 0; i < na; ++i)
+    {
       // BLAS copy first columns of M to MRed
       cblas_dcopy(m, pr_M + m * NASet[i], 1, pr_MRed + m * i, 1);
     }
     // gRed
-    for (int i = 0; i < na; ++i) {
+    for (int i = 0; i < na; ++i)
+    {
       gRed[i] = Gplus[NASet[i]];
     }
 
@@ -114,7 +121,8 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
                 pr_gRed, 1, double(), pr_Ginvg, 1);
     double sGinvg = double();
     double sGinvA = double();
-    for (int i = 0; i < na; ++i) {
+    for (int i = 0; i < na; ++i)
+    {
       sGinvg += Ginvg[i];
       sGinvA += GinvA[i];
     }
@@ -125,26 +133,34 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
     cblas_daxpy(na, double(-1.0), pr_Ginvg, 1, pr_PRed, 1);
 
     double maxPRed = abs(PRed[0]);
-    for (int i = 0; i < na; ++i) {
-      if (abs(PRed[i]) > maxPRed) maxPRed = abs(PRed[i]);
+    for (int i = 0; i < na; ++i)
+    {
+      if (abs(PRed[i]) > maxPRed)
+        maxPRed = abs(PRed[i]);
     }
-    if (maxPRed < 1e-10) {
+    if (maxPRed < 1e-10)
+    {
       // P = 0, no advance possible
       bool isOpt = true;
       double lamMin = -epsilon;
       int indexMin = -1;
-      for (int i = 0; i < p; ++i) {
-        if (!NAMask[i] && Gplus[i] - lambdaS < lamMin) {
+      for (int i = 0; i < p; ++i)
+      {
+        if (!NAMask[i] && Gplus[i] - lambdaS < lamMin)
+        {
           isOpt = false;
           lamMin = Gplus[i] - lambdaS;
           indexMin = i;
         }
       }
 
-      if (isOpt) {
+      if (isOpt)
+      {
         // Got the optimal, STOP!
         return (x);
-      } else {
+      }
+      else
+      {
         // Add one constraint
         NAMask[indexMin] = 1;
         NASet[na] = indexMin;
@@ -179,19 +195,24 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
         na += 1;
         assert(na <= L);
       }
-    } else {
+    }
+    else
+    {
       // P != 0, can advance
       int indexMin = -1;
       double alphaMin = double(1.0);
-      for (int i = 0; i < na; ++i) {
-        if (PRed[i] < 0 && -xRed[i] / PRed[i] < alphaMin) {
+      for (int i = 0; i < na; ++i)
+      {
+        if (PRed[i] < 0 && -xRed[i] / PRed[i] < alphaMin)
+        {
           indexMin = i;
           alphaMin = -xRed[i] / PRed[i];
         }
       }
       // update x and Gplus
-      cblas_dscal(na, min(double(1.0), alphaMin), pr_PRed, 1);
-      for (int i = 0; i < na; ++i) {
+      cblas_dscal(na, std::min(double(1.0), alphaMin), pr_PRed, 1);
+      for (int i = 0; i < na; ++i)
+      {
         x[NASet[i]] += PRed[i];
         xRed[i] = x[NASet[i]];
         // BLAS Gplus += M.double * M[:, NASet[i]] * cAdv
@@ -207,14 +228,16 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
                   pr_MRedPRed, 1, double(1.0), pr_Gplus, 1);
 
       // delete one constraint or not?
-      if (indexMin != -1) {
+      if (indexMin != -1)
+      {
         // give true 0
         // x[NASet[indexMin]] = double();
         // delete one constraint
         NAMask[NASet[indexMin]] = 0;
         // downdate remove this -1;
         na -= 1;
-        for (int i = indexMin; i < na; ++i) {
+        for (int i = indexMin; i < na; ++i)
+        {
           NASet[i] = NASet[i + 1];
           xRed[i] = xRed[i + 1];
           cRed[i] = cRed[i + 1];
@@ -229,7 +252,8 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
         double UCi = double(1.0) / GRedinv(indexMin, indexMin);
         // BLAS UB = GRedinv[ALL\indexMin,indexMin]
         cblas_dcopy(na + 1, pr_GRedinv + indexMin * L, 1, pr_UB, 1);
-        for (int i = indexMin; i < na; ++i) UB[i] = UB[i + 1];
+        for (int i = indexMin; i < na; ++i)
+          UB[i] = UB[i + 1];
         UB[na] = double();
         // get (GRedinv translated)
         // column first
@@ -253,13 +277,14 @@ vec activeSet_arma(arma::mat& M, arma::vec& b, double lambda2 = double(1e-5),
 
 /// Active-Set Method with direct inversion, with update(matrix inversion lemma)
 /// Memorize M.double* M + lam2sq = G
-vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
-                    double lambda2 = 1e-5, double epsilon = 1e-5) {
+arma::vec activeSetS_arma(arma::mat &M, arma::vec &b, arma::mat &G,
+                          double lambda2 = 1e-5, double epsilon = 1e-5)
+{
   int m = M.n_rows;
   int p = M.n_cols;
-  int L = min(m, p) + 1;
+  int L = std::min(m, p) + 1;
   double lam2sq = lambda2 * lambda2;
-  double* pr_G = G.memptr();
+  double *pr_G = G.memptr();
 
   /*
   mat Mt = trans(M);
@@ -270,10 +295,10 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
               M.n_rows, b.memptr(), 1, 0, c.memptr(), 1);
 
   arma::vec x(p);
-  double* pr_M = M.memptr();
+  double *pr_M = M.memptr();
   // constraint matrix
-  arma::vec A = ones(L);
-  double* pr_A = A.memptr();
+  arma::vec A = arma::ones(L);
+  double *pr_A = A.memptr();
   ;
 
   // Non-Active Constraints Set
@@ -287,12 +312,12 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
   arma::vec xRed(L);
   arma::vec cRed(L);
   arma::mat MRed(m, L);
-  double* pr_MRed = MRed.memptr();
+  double *pr_MRed = MRed.memptr();
   arma::mat GRed(L, L);
   arma::mat GRedinv(L, L);
-  double* pr_GRedinv = GRedinv.memptr();
+  double *pr_GRedinv = GRedinv.memptr();
   arma::mat MTMRed(p, L);
-  double* pr_MTMRed = MTMRed.memptr();
+  double *pr_MTMRed = MTMRed.memptr();
 
   x.zeros();
   x[0] = double(1.0);
@@ -315,32 +340,34 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
   cblas_dgemv(CblasColMajor, CblasNoTrans, G.n_rows, G.n_cols, 1, G.memptr(),
               G.n_rows, x.memptr(), 1, 1, Gplus.memptr(), 1);
 
-  double* pr_Gplus = Gplus.memptr();
+  double *pr_Gplus = Gplus.memptr();
 
   arma::vec gRed(L);
-  double* pr_gRed = gRed.memptr();
+  double *pr_gRed = gRed.memptr();
   arma::vec MRedxRed(m);
 
   arma::vec GinvA(L);
-  double* pr_GinvA = GinvA.memptr();
+  double *pr_GinvA = GinvA.memptr();
   arma::vec Ginvg(L);
-  double* pr_Ginvg = Ginvg.memptr();
+  double *pr_Ginvg = Ginvg.memptr();
   arma::vec PRed(L);
-  double* pr_PRed = PRed.memptr();
+  double *pr_PRed = PRed.memptr();
   arma::vec UB(L);
-  double* pr_UB = UB.memptr();
+  double *pr_UB = UB.memptr();
   arma::vec UAiB(L);
-  double* pr_UAiB = UAiB.memptr();
+  double *pr_UAiB = UAiB.memptr();
   // main loop active set
   int iter = 0;
-  while (iter <= 100 * p) {
+  while (iter <= 100 * p)
+  {
     ++iter;
     // update of na, NASet, NAMask, xRed, cRed, Gplus, GRedinv, already done
     // now update gRed, GinvA, Ginvg  (no need to update GRed)
 
     // gRed
     // gRed = Gplus[NASet]
-    for (int i = 0; i < na; ++i) {
+    for (int i = 0; i < na; ++i)
+    {
       gRed[i] = Gplus[NASet[i]];
     }
 
@@ -354,7 +381,8 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
                 pr_gRed, 1, double(), pr_Ginvg, 1);
     double sGinvg = double();
     double sGinvA = double();
-    for (int i = 0; i < na; ++i) {
+    for (int i = 0; i < na; ++i)
+    {
       sGinvg += Ginvg[i];
       sGinvA += GinvA[i];
     }
@@ -365,26 +393,34 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
     cblas_daxpy(na, double(-1.0), pr_Ginvg, 1, pr_PRed, 1);
 
     double maxPRed = abs(PRed[0]);
-    for (int i = 0; i < na; ++i) {
-      if (abs(PRed[i]) > maxPRed) maxPRed = abs(PRed[i]);
+    for (int i = 0; i < na; ++i)
+    {
+      if (abs(PRed[i]) > maxPRed)
+        maxPRed = abs(PRed[i]);
     }
-    if (maxPRed < 1e-10) {
+    if (maxPRed < 1e-10)
+    {
       // P = 0, no advance possible
       bool isOpt = true;
       double lamMin = -epsilon;
       int indexMin = -1;
-      for (int i = 0; i < p; ++i) {
-        if (!NAMask[i] && Gplus[i] - lambdaS < lamMin) {
+      for (int i = 0; i < p; ++i)
+      {
+        if (!NAMask[i] && Gplus[i] - lambdaS < lamMin)
+        {
           isOpt = false;
           lamMin = Gplus[i] - lambdaS;
           indexMin = i;
         }
       }
 
-      if (isOpt) {
+      if (isOpt)
+      {
         // Got the optimal, STOP!
         return (x);
-      } else {
+      }
+      else
+      {
         // Add one constraint
         NAMask[indexMin] = 1;
         NASet[na] = indexMin;
@@ -397,7 +433,8 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
         // update GRedinv
         // BLAS UB = MRed.double * M[:, indexMin]
         // Use G instead here
-        for (int i = 0; i < na; ++i) {
+        for (int i = 0; i < na; ++i)
+        {
           UB[i] = G(NASet[i], indexMin);
         }
         // BLAS UC = M[:,indexMin].double* M[:, indexMin]
@@ -421,19 +458,24 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
         na += 1;
         assert(na <= L);
       }
-    } else {
+    }
+    else
+    {
       // P != 0, can advance
       int indexMin = -1;
       double alphaMin = double(1.0);
-      for (int i = 0; i < na; ++i) {
-        if (PRed[i] < 0 && -xRed[i] / PRed[i] < alphaMin) {
+      for (int i = 0; i < na; ++i)
+      {
+        if (PRed[i] < 0 && -xRed[i] / PRed[i] < alphaMin)
+        {
           indexMin = i;
           alphaMin = -xRed[i] / PRed[i];
         }
       }
       // update x and Gplus
-      cblas_dscal(na, min(double(1.0), alphaMin), pr_PRed, 1);
-      for (int i = 0; i < na; ++i) {
+      cblas_dscal(na, std::min(double(1.0), alphaMin), pr_PRed, 1);
+      for (int i = 0; i < na; ++i)
+      {
         x[NASet[i]] += PRed[i];
         xRed[i] = x[NASet[i]];
       }
@@ -442,14 +484,16 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
                   pr_PRed, 1, double(1.0), pr_Gplus, 1);
 
       // delete one constraint or not?
-      if (indexMin != -1) {
+      if (indexMin != -1)
+      {
         // give true 0
         // x[NASet[indexMin]] = double();
         // delete one constraint
         NAMask[NASet[indexMin]] = 0;
         // downdate remove this -1;
         na -= 1;
-        for (int i = indexMin; i < na; ++i) {
+        for (int i = indexMin; i < na; ++i)
+        {
           NASet[i] = NASet[i + 1];
           xRed[i] = xRed[i + 1];
           cRed[i] = cRed[i + 1];
@@ -468,7 +512,8 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
         double UCi = double(1.0) / GRedinv(indexMin, indexMin);
         // BLAS UB = GRedinv[ALL\indexMin,indexMin]
         cblas_dcopy(na + 1, pr_GRedinv + indexMin * L, 1, pr_UB, 1);
-        for (int i = indexMin; i < na; ++i) UB[i] = UB[i + 1];
+        for (int i = indexMin; i < na; ++i)
+          UB[i] = UB[i + 1];
         UB[na] = double();
         // get (GRedinv translated)
         // column first
@@ -490,39 +535,51 @@ vec activeSetS_arma(arma::mat& M, arma::vec& b, arma::mat& G,
   return (x);
 }
 
-// min(|| AX - B ||) s.t. simplex constraint
-mat run_simplex_regression(mat& A, mat& B, bool computeXtX = false) {
-  double lambda2 = 1e-5, epsilon = 1e-5;
+// void activeSet_arma_ptr(double* M_ptr, int m, int n, double* b_ptr,
+//                         double* x_ptr) {
+//   arma::mat M = arma::mat(M_ptr, m, n, false);
+//   arma::vec b = arma::vec(b_ptr, m, false);
 
-  mat X = zeros(A.n_cols, B.n_cols);
-  if (computeXtX) {
-    double lam2sq = lambda2 * lambda2;
-    mat G = trans(A) * A + lam2sq;
-    for (int i = 0; i < B.n_cols; i++) {
-      vec b = B.col(i);
-      X.col(i) = activeSetS_arma(A, b, G, lambda2, epsilon);
+//   arma::vec x = activeSet_arma(M, b);
+//   memcpy(x_ptr, x.memptr(), x.n_elem * sizeof(double));
+
+//   return;
+// }
+
+// min(|| AX - B ||) s.t. simplex constraint
+
+namespace ACTIONet
+{
+
+  arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX = false)
+  {
+
+    double lambda2 = 1e-5, epsilon = 1e-5;
+
+    arma::mat X = arma::zeros(A.n_cols, B.n_cols);
+    if (computeXtX)
+    {
+      double lam2sq = lambda2 * lambda2;
+      arma::mat G = trans(A) * A + lam2sq;
+      for (int i = 0; i < B.n_cols; i++)
+      {
+        arma::vec b = B.col(i);
+        X.col(i) = activeSetS_arma(A, b, G, lambda2, epsilon);
+      }
     }
-  } else {
-    for (int i = 0; i < B.n_cols; i++) {
-      vec b = B.col(i);
-      X.col(i) = activeSet_arma(A, b, lambda2, epsilon);
+    else
+    {
+      for (int i = 0; i < B.n_cols; i++)
+      {
+        arma::vec b = B.col(i);
+        X.col(i) = activeSet_arma(A, b, lambda2, epsilon);
+      }
     }
+
+    X = clamp(X, 0, 1);
+    X = normalise(X, 1);
+
+    return (X);
   }
 
-  X = clamp(X, 0, 1);
-  X = normalise(X, 1);
-
-  return (X);
-}
-
-void activeSet_arma_ptr(double* M_ptr, int m, int n, double* b_ptr,
-                        double* x_ptr) {
-  mat M = mat(M_ptr, m, n, false);
-  vec b = vec(b_ptr, m, false);
-
-  vec x = activeSet_arma(M, b);
-  memcpy(x_ptr, x.memptr(), x.n_elem * sizeof(double));
-
-  return;
-}
-}  // namespace ACTIONet
+} // namespace ACTIONet

@@ -1,8 +1,6 @@
-#include "ACTIONet.h"
-#include <cholmod.h>
+#include "helpers_matrix.hpp"
 
 // Mat-vec product (Ax)
-// dsdmult('n', A.n_rows, A.n_cols, A_as_cholmod, x.memptr(), out.memptr(), &chol_c);
 void dsdmult(char transpose, int n_rows, int n_cols, const void *A, const double *x, double *out,
              cholmod_common *chol_cp)
 {
@@ -40,7 +38,7 @@ cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A,
                                   cholmod_common *chol_c)
 {
     int nrow = A.n_rows, ncol = A.n_cols, nz = A.n_nonzero;
-    cholmod_allocate_work(0, max(nrow, ncol), 0, chol_c);
+    cholmod_allocate_work(0, std::max(nrow, ncol), 0, chol_c);
     chol_A = cholmod_allocate_sparse(nrow, ncol, nz, 1 /*sorted*/, 1 /*packed*/, 0 /*NOT symmetric*/, CHOLMOD_REAL, chol_c);
 
     int *ptr = (int *)chol_A->p;
@@ -63,7 +61,7 @@ cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A,
     return chol_A;
 }
 
-sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *chol_c)
+arma::sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *chol_c)
 {
     // Allocate space
     A = arma::sp_mat(chol_A->nrow, chol_A->ncol);
@@ -95,6 +93,8 @@ sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *
 
     return A;
 }
+
+using namespace arma;
 
 namespace ACTIONet
 {
@@ -159,52 +159,6 @@ namespace ACTIONet
         cholmod_free_sparse(&chol_A, &chol_c);
         cholmod_free_sparse(&chol_B, &chol_c);
         cholmod_finish(&chol_c);
-
-        return (res);
-    }
-
-    mat spmat_mat_product_parallel_leaky(sp_mat &A, mat &B, int thread_no)
-    {
-        if (thread_no <= 0)
-        {
-            thread_no = SYS_THREADS_DEF;
-        }
-        int M = A.n_rows;
-        int N = B.n_cols;
-        mat res = zeros(M, N);
-
-        if (thread_no > N)
-        {
-            thread_no = N;
-
-            parallelFor(
-                0, B.n_cols, [&](unsigned int k)
-                {
-                            vec u = B.col(k);
-                            vec v = spmat_vec_product(A, u);
-                            res.col(k) = v; },
-                thread_no);
-        }
-        else
-        {
-            int slice_size = ceil((double)N / thread_no);
-
-            parallelFor(
-                0, thread_no, [&](unsigned int k)
-                {
-                            int i = k * slice_size;
-                            if (i <= (N - 1))
-                            {
-                                int j = (k + 1) * slice_size - 1;
-                                if (j > (N - 1))
-                                    j = N - 1;
-
-                                mat subB = B.cols(i, j);
-                                mat subC = spmat_mat_product(A, subB);
-                                res.cols(i, j) = subC;
-                            } },
-                thread_no);
-        }
 
         return (res);
     }

@@ -3,6 +3,8 @@
 namespace ACTIONet {
   
 field<mat> run_AA(mat &A, mat &W0, int max_it, double min_delta);
+
+
 // Solves the weighted Archetypal Analysis (AA) problem
 field<mat> run_weighted_AA(mat &A, mat &W0, vec w, int max_it = 50,
                            double min_delta = 0.01) {
@@ -235,19 +237,19 @@ Online_ACTION_results run_online_ACTION(mat &S_r, field<uvec> samples,
 }
 
 
-	mat oneHot_encoding(vec batches) {
-		vec uniue_batches = sort(unique(batches));
+mat oneHot_encoding(vec batches) {
+  vec uniue_batches = sort(unique(batches));
 
-		mat encoding = zeros(uniue_batches.n_elem, batches.n_elem);
-		for(int i = 0; i < uniue_batches.n_elem; i++) {
-			uvec idx = find(batches == uniue_batches[i]);
-			vec batch_encoding = zeros(batches.n_elem);
-			batch_encoding.elem(idx).ones();
+  mat encoding = zeros(uniue_batches.n_elem, batches.n_elem);
+  for(int i = 0; i < uniue_batches.n_elem; i++) {
+    uvec idx = find(batches == uniue_batches[i]);
+    vec batch_encoding = zeros(batches.n_elem);
+    batch_encoding.elem(idx).ones();
 
-			encoding.row(i) = trans(batch_encoding);
-		}
+    encoding.row(i) = trans(batch_encoding);
+  }
 
-		return(encoding);
-	}
+  return(encoding);
+}
 
 }  // namespace ACTIONet

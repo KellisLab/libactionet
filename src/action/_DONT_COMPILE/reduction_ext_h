@@ -1,0 +1,18 @@
+#ifndef REDUCTION_EXT_HPP
+#define REDUCTION_EXT_HPP
+
+#include "action.hpp"
+
+#include "config_actionet.hpp"
+
+arma::field<arma::mat> SVD2ACTIONred(arma::sp_mat &S, arma::field<arma::mat> SVD_results);
+
+arma::field<arma::mat> SVD2ACTIONred(arma::mat &S, arma::field<arma::mat> SVD_results);
+
+arma::field<arma::mat> PCA2ACTIONred(arma::sp_mat &S, arma::field<arma::mat> PCA_results);
+
+arma::field<arma::mat> PCA2ACTIONred(arma::mat &S, arma::field<arma::mat> PCA_results);
+
+arma::field<arma::mat> ACTIONred2SVD(arma::field<arma::mat> SVD_results)
+
+#endif

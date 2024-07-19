@@ -5,18 +5,18 @@
 
 #include <cholmod.h>
 
-sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
-                       cholmod_common *chol_c);
+// sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
+//                        cholmod_common *chol_c);
 
 void dsdmult(char transpose, int m, int n, const void *a, const double *b, double *c,
              cholmod_common *chol_cp);
 
-cholmod_sparse *as_cholmod_sparse(const sp_mat &A, cholmod_sparse *chol_A,
-                                  cholmod_common *chol_c);
+// cholmod_sparse *as_cholmod_sparse(const sp_mat &A, cholmod_sparse *chol_A,
+//                                   cholmod_common *chol_c);
 
-arma::vec diffusion_solve_FISTA(arma::sp_mat &adj_mat, arma::vec &prob_dist,
-                                double alpha, double rho, double epsilon,
-                                int max_iter);
+// arma::vec diffusion_solve_FISTA(arma::sp_mat &adj_mat, arma::vec &prob_dist,
+//                                 double alpha, double rho, double epsilon,
+//                                 int max_iter);
 
 namespace ACTIONet
 {

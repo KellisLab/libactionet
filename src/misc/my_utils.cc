@@ -6,14 +6,14 @@
 #include <limits>
 #include <cholmod.h>
 
-sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
-                       cholmod_common *chol_c);
+// sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
+//                        cholmod_common *chol_c);
 
-void dsdmult(char transpose, int m, int n, const void *a, const double *b, double *c,
-             cholmod_common *chol_cp);
+// void dsdmult(char transpose, int m, int n, const void *a, const double *b, double *c,
+//              cholmod_common *chol_cp);
 
-cholmod_sparse *as_cholmod_sparse(const sp_mat &A, cholmod_sparse *chol_A,
-                                  cholmod_common *chol_c);
+// cholmod_sparse *as_cholmod_sparse(const sp_mat &A, cholmod_sparse *chol_A,
+//                                   cholmod_common *chol_c);
 
 double r8_normal_01_cdf_inverse(double p);
 
@@ -262,22 +262,6 @@ namespace ACTIONet
     return R;
   }
 
-  mat randNorm(int l, int m, int seed)
-  {
-    std::default_random_engine gen(seed);
-    std::normal_distribution<double> normDist(0.0, 1.0);
-
-    mat R(l, m);
-    for (int j = 0; j < m; j++)
-    {
-      for (int i = 0; i < l; i++)
-      {
-        R(i, j) = normDist(gen);
-      }
-    }
-    return R;
-  }
-
   void randNorm_inplace(int n, double *out, int seed = 0)
   {
     std::default_random_engine gen(seed);
@@ -287,54 +271,6 @@ namespace ACTIONet
     {
       out[i] = normDist(gen);
     }
-  }
-
-  void gram_schmidt(mat &A)
-  {
-    for (uword i = 0; i < A.n_cols; ++i)
-    {
-      for (uword j = 0; j < i; ++j)
-      {
-        double r = dot(A.col(i), A.col(j));
-        A.col(i) -= r * A.col(j);
-      }
-
-      double col_norm = norm(A.col(i), 2);
-
-      if (col_norm < 1E-4)
-      {
-        for (uword k = i; k < A.n_cols; ++k)
-          A.col(k).zeros();
-
-        return;
-      }
-      A.col(i) /= col_norm;
-    }
-  }
-
-  field<mat> eigSVD(mat A)
-  {
-    int n = A.n_cols;
-    mat B = trans(A) * A;
-
-    vec d;
-    mat V;
-    eig_sym(d, V, B);
-    d = sqrt(d);
-
-    // Compute U
-    sp_mat S(n, n);
-    S.diag() = 1 / d;
-    mat U = (S * trans(V)) * trans(A);
-    U = trans(U);
-
-    field<mat> out(3);
-
-    out(0) = U;
-    out(1) = d;
-    out(2) = V;
-
-    return (out);
   }
 
   mat robust_zscore(mat &A, int dim, int thread_no)
@@ -540,49 +476,6 @@ namespace ACTIONet
     Zr.replace(datum::nan, 0); // replace each NaN with 0
 
     return (Zr);
-  }
-
-  void convtests(int Bsz, int n, double tol, double svtol, double Smax,
-                 double *svratio, double *residuals, int *k, int *converged,
-                 double S)
-  {
-    int j, Len_res = 0;
-    for (j = 0; j < Bsz; j++)
-    {
-      if ((fabs(residuals[j]) < tol * Smax) && (svratio[j] < svtol))
-        Len_res++;
-    }
-
-    if (Len_res >= n || S == 0)
-    {
-      *converged = 1;
-      return;
-    }
-    if (*k < n + Len_res)
-      *k = n + Len_res;
-
-    if (*k > Bsz - 3)
-      *k = Bsz - 3;
-
-    if (*k < 1)
-      *k = 1;
-
-    *converged = 0;
-
-    return;
-  }
-
-  void orthog(double *X, double *Y, double *T, int xm, int xn, int yn)
-  {
-    double a = 1, b = 1;
-    int inc = 1;
-    memset(T, 0, xn * yn * sizeof(double));
-    // T = t(X) * Y
-    cblas_dgemv(CblasColMajor, CblasTrans, xm, xn, a, X, xm, Y, inc, b, T, inc);
-    // Y = Y - X * T
-    a = -1.0;
-    b = 1.0;
-    cblas_dgemv(CblasColMajor, CblasNoTrans, xm, xn, a, X, xm, T, inc, b, Y, inc);
   }
 
 } // namespace ACTIONet

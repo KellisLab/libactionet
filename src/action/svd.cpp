@@ -1,16 +1,13 @@
-#include "ACTIONet.h"
+#include "svd.hpp"
 
-#include <cholmod.h>
-sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
-                       cholmod_common *chol_c);
+// sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
+//                        cholmod_common *chol_c);
 
-void dsdmult(char transpose, int m, int n, const void *a, const double *b, double *c,
-             cholmod_common *chol_cp);
+// void dsdmult(char transpose, int m, int n, const void *a, const double *b, double *c,
+//              cholmod_common *chol_cp);
 
-cholmod_sparse *as_cholmod_sparse(const sp_mat &A, cholmod_sparse *chol_A,
-                                  cholmod_common *chol_c);
-
-// #define StdNorm(v, n, engine) randN_Marsaglia(v, n, engine)
+// cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A,
+//                                   cholmod_common *chol_c);
 
 inline void StdNorm(double *v, int n, std::mt19937_64 engine)
 {
@@ -24,8 +21,119 @@ inline void StdNorm(double *v, int n, std::mt19937_64 engine)
   v[n - 1] = paired.first;
 }
 
+void orthog(double *X, double *Y, double *T, int xm, int xn, int yn)
+{
+  double a = 1, b = 1;
+  int inc = 1;
+  memset(T, 0, xn * yn * sizeof(double));
+  // T = t(X) * Y
+  cblas_dgemv(CblasColMajor, CblasTrans, xm, xn, a, X, xm, Y, inc, b, T, inc);
+  // Y = Y - X * T
+  a = -1.0;
+  b = 1.0;
+  cblas_dgemv(CblasColMajor, CblasNoTrans, xm, xn, a, X, xm, T, inc, b, Y, inc);
+}
+
+#// Convergence test
+void convtests(int Bsz, int n, double tol, double svtol, double Smax,
+               double *svratio, double *residuals, int *k, int *converged,
+               double S)
+{
+  int j, Len_res = 0;
+  for (j = 0; j < Bsz; j++)
+  {
+    if ((fabs(residuals[j]) < tol * Smax) && (svratio[j] < svtol))
+      Len_res++;
+  }
+
+  if (Len_res >= n || S == 0)
+  {
+    *converged = 1;
+    return;
+  }
+  if (*k < n + Len_res)
+    *k = n + Len_res;
+
+  if (*k > Bsz - 3)
+    *k = Bsz - 3;
+
+  if (*k < 1)
+    *k = 1;
+
+  *converged = 0;
+
+  return;
+}
+
+arma::mat randNorm(int l, int m, int seed)
+{
+  std::default_random_engine gen(seed);
+  std::normal_distribution<double> normDist(0.0, 1.0);
+
+  arma::mat R(l, m);
+  for (int j = 0; j < m; j++)
+  {
+    for (int i = 0; i < l; i++)
+    {
+      R(i, j) = normDist(gen);
+    }
+  }
+  return R;
+}
+
+arma::field<arma::mat> eigSVD(arma::mat A)
+{
+  int n = A.n_cols;
+  arma::mat B = arma::trans(A) * A;
+
+  arma::vec d;
+  arma::mat V;
+  arma::eig_sym(d, V, B);
+  d = sqrt(d);
+
+  // Compute U
+  arma::sp_mat S(n, n);
+  S.diag() = 1 / d;
+  arma::mat U = (S * arma::trans(V)) * arma::trans(A);
+  U = arma::trans(U);
+
+  arma::field<arma::mat> out(3);
+
+  out(0) = U;
+  out(1) = d;
+  out(2) = V;
+
+  return (out);
+}
+
+void gram_schmidt(arma::mat &A)
+{
+  for (arma::uword i = 0; i < A.n_cols; ++i)
+  {
+    for (arma::uword j = 0; j < i; ++j)
+    {
+      double r = dot(A.col(i), A.col(j));
+      A.col(i) -= r * A.col(j);
+    }
+
+    double col_norm = norm(A.col(i), 2);
+
+    if (col_norm < 1E-4)
+    {
+      for (arma::uword k = i; k < A.n_cols; ++k)
+        A.col(k).zeros();
+
+      return;
+    }
+    A.col(i) /= col_norm;
+  }
+}
+
+using namespace arma;
+
 namespace ACTIONet
 {
+
   field<mat> orient_SVD(field<mat> SVD_res)
   {
     mat U = SVD_res(0);
@@ -88,7 +196,7 @@ namespace ACTIONet
     int m = A.n_rows;
     int n = A.n_cols;
 
-    dim = min(dim, min(m, n) - 1);
+    dim = std::min(dim, std::min(m, n) - 1);
 
     if (verbose)
     {
@@ -359,7 +467,7 @@ namespace ACTIONet
     int m = A.n_rows;
     int n = A.n_cols;
 
-    dim = min(dim, min(m, n) - 1);
+    dim = std::min(dim, std::min(m, n) - 1);
 
     int work = dim + 7;
     int lwork = 7 * work * (1 + work);
@@ -606,14 +714,14 @@ namespace ACTIONet
   // Beijing, China, Nov. 2018.
   //****************************************************************************************************************************************************************************
   field<mat> FengSVD(sp_mat &A, int dim, int iters, int seed = 0,
-                     int verbose = 1)
+                      int verbose = 1)
   {
     int s = 5;
 
     int m = A.n_rows;
     int n = A.n_cols;
 
-    dim = min(dim, min(m, n) + s - 1);
+    dim = std::min(dim, std::min(m, n) + s - 1);
 
     if (verbose)
     {
@@ -727,9 +835,6 @@ namespace ACTIONet
     return (orient_SVD(out));
   }
 
-  // From: Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzisped SVD for
-  // Sparse Data," in Proc. the 10th Asian Conference on Machine Learning
-  // (ACML), Beijing, China, Nov. 2018.
   field<mat> FengSVD(mat &A, int dim, int iters, int seed = 0, int verbose = 1)
   {
     int s = 5;
@@ -737,7 +842,7 @@ namespace ACTIONet
     int m = A.n_rows;
     int n = A.n_cols;
 
-    dim = min(dim, min(m, n) + s - 1);
+    dim = std::min(dim, std::min(m, n) + s - 1);
 
     if (verbose)
     {
@@ -870,7 +975,7 @@ namespace ACTIONet
     int m = A.n_rows;
     int n = A.n_cols;
 
-    dim = min(dim, min(m, n) - 2);
+    dim = std::min(dim, std::min(m, n) - 2);
 
     int l = dim + 2;
 
@@ -978,7 +1083,7 @@ namespace ACTIONet
     int m = A.n_rows;
     int n = A.n_cols;
 
-    dim = min(dim, min(m, n) - 2);
+    dim = std::min(dim, std::min(m, n) - 2);
 
     int l = dim + 2;
 
@@ -1078,4 +1183,5 @@ namespace ACTIONet
 
     return (orient_SVD(results));
   }
+
 } // namespace ACTIONet

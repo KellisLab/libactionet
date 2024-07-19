@@ -1,0 +1,8 @@
+#! /bin/sh
+
+g++ -c simplex_regression.cpp  -std=c++17 -I../../include -llapack -lblas -lgfortran
+
+g++ -c svd.cpp  -std=c++17 -I../../include -I/usr/include/suitesparse -I/usr/include/x86_64-linux-gnu -llapack -lblas -lgfortran
+
+g++ -c *.cpp -I../../include -I/usr/include/suitesparse -I/usr/include/x86_64-linux-gnu -llapack -lblas -lgfortran
+g++ -c *.cpp -I../../include -I/usr/include/suitesparse -llapack -lblas -lgfortran

@@ -1,7 +1,28 @@
-#include "ACTIONet.h"
+#include "reduction.hpp"
+#include "svd.hpp"
+
+using namespace arma;
+
+field<mat> deflate_reduction(field<mat> SVD_results, mat &A, mat &B)
+{
+  stdout_printf("\tDeflating reduction ... ");
+  FLUSH;
+
+  vec mu_A = vec(trans(mean(A, 0)));
+  vec mu = B * mu_A;
+
+  A = join_rows(ones(A.n_rows), A);
+  B = join_rows(-mu, B);
+  stdout_printf("done\n");
+  FLUSH;
+
+  field<mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+  return (perturbed_SVD);
+}
 
 namespace ACTIONet
 {
+
   field<mat> perturbedSVD(field<mat> SVD_results, mat &A, mat &B)
   {
     int n = A.n_rows;
@@ -141,82 +162,6 @@ namespace ACTIONet
     return perturbed_SVD;
   }
 
-  field<mat> SVD2ACTIONred(sp_mat &S, field<mat> SVD_results)
-  {
-    stdout_printf("SVD => ACTIONred (sparse)\n");
-    FLUSH;
-    int n = S.n_rows;
-    int dim = SVD_results(0).n_cols;
-
-    // Update 1: Orthogonalize columns w.r.t. background (mean)
-    vec mu = vec(mean(S, 1));
-    vec v = mu / norm(mu, 2);
-    vec a1 = v;
-    vec b1 = -trans(S) * v;
-
-    // Update 2: Center columns of orthogonalized matrix before performing SVD
-    vec c = vec(trans(mean(S, 0)));
-    double a1_mean = mean(a1);
-    vec a2 = ones(S.n_rows);
-    vec b2 = -(a1_mean * b1 + c);
-
-    mat A = join_rows(a1, a2);
-    mat B = join_rows(b1, b2);
-
-    field<mat> perturbed_SVD = perturbedSVD(SVD_results, A, B);
-
-    return perturbed_SVD;
-  }
-
-  field<mat> SVD2ACTIONred(mat &S, field<mat> SVD_results)
-  {
-    stdout_printf("SVD => ACTIONred (dense)\n");
-    FLUSH;
-    int n = S.n_rows;
-    int dim = SVD_results(0).n_cols;
-
-    // Update 1: Orthogonalize columns w.r.t. background (mean)
-    vec mu = vec(mean(S, 1));
-    vec v = mu / norm(mu, 2);
-    vec a1 = v;
-    vec b1 = -trans(S) * v;
-
-    // Update 2: Center columns of orthogonalized matrix before performing SVD
-    vec c = vec(trans(mean(S, 0)));
-    double a1_mean = mean(a1);
-    vec a2 = ones(S.n_rows);
-    vec b2 = -(a1_mean * b1 + c);
-
-    mat A = join_rows(a1, a2);
-    mat B = join_rows(b1, b2);
-
-    field<mat> perturbed_SVD = perturbedSVD(SVD_results, A, B);
-
-    return perturbed_SVD;
-  }
-
-  field<mat> PCA2ACTIONred(sp_mat &S, field<mat> PCA_results)
-  {
-    stdout_printf("Reverting column-centering ... ");
-    field<mat> SVD_results = PCA2SVD(S, PCA_results);
-    stdout_printf("done\n");
-    FLUSH;
-
-    field<mat> output = SVD2ACTIONred(S, SVD_results);
-    return output;
-  }
-
-  field<mat> PCA2ACTIONred(mat &S, field<mat> PCA_results)
-  {
-    stdout_printf("Reverting column-centering ... ");
-    field<mat> SVD_results = PCA2SVD(S, PCA_results);
-    stdout_printf("done\n");
-    FLUSH;
-
-    field<mat> output = SVD2ACTIONred(S, SVD_results);
-    return output;
-  }
-
   field<mat> reduce_kernel(sp_mat &S, int dim, int iter = 5, int seed = 0,
                            int SVD_algorithm = HALKO_ALG,
                            bool prenormalize = false,
@@ -344,101 +289,4 @@ namespace ACTIONet
     return perturbed_SVD;
   }
 
-  field<mat> ACTIONred2SVD(field<mat> SVD_results)
-  {
-    stdout_printf("ACTION kernel => SVD\n");
-    FLUSH;
-
-    mat A = -1 * SVD_results(3); // Reverting
-    mat B = SVD_results(4);
-
-    field<mat> perturbed_SVD = perturbedSVD(SVD_results, A, B);
-
-    return perturbed_SVD;
-  }
-
-  field<mat> deflate_reduction(field<mat> SVD_results, mat &A, mat &B)
-  {
-    stdout_printf("\tDeflating reduction ... ");
-    FLUSH;
-
-    vec mu_A = vec(trans(mean(A, 0)));
-    vec mu = B * mu_A;
-
-    A = join_rows(ones(A.n_rows), A);
-    B = join_rows(-mu, B);
-    stdout_printf("done\n");
-    FLUSH;
-
-    field<mat> perturbed_SVD = perturbedSVD(SVD_results, A, B);
-    return (perturbed_SVD);
-  }
-
-  field<mat> orthogonalize_batch_effect(sp_mat &S, field<mat> SVD_results,
-                                        mat &design)
-  {
-    stdout_printf("Orthogonalizing batch effect (sparse):\n");
-    FLUSH;
-
-    mat Z = mat(S * design);
-    gram_schmidt(Z);
-
-    mat A = Z;
-    mat B = -mat(trans(trans(Z) * S));
-
-    field<mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
-    FLUSH;
-    return (perturbed_SVD);
-  }
-
-  field<mat> orthogonalize_batch_effect(mat &S, field<mat> SVD_results,
-                                        mat &design)
-  {
-    stdout_printf("Orthogonalizing batch effect: (dense):\n");
-    FLUSH;
-
-    mat Z = mat(S * design);
-    gram_schmidt(Z);
-
-    mat A = Z;
-    mat B = -mat(trans(trans(Z) * S));
-
-    field<mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
-    FLUSH;
-    return (perturbed_SVD);
-  }
-
-  field<mat> orthogonalize_basal(sp_mat &S, field<mat> SVD_results,
-                                 mat &basal_state)
-  {
-    stdout_printf("Orthogonalizing basal (sparse):\n");
-    FLUSH;
-
-    mat Z = basal_state;
-    gram_schmidt(Z);
-
-    mat A = Z;
-    mat B = -mat(trans(trans(Z) * S));
-
-    field<mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
-    FLUSH;
-    return (perturbed_SVD);
-  }
-
-  field<mat> orthogonalize_basal(mat &S, field<mat> SVD_results,
-                                 mat &basal_state)
-  {
-    stdout_printf("Orthogonalizing basal (dense):\n");
-    FLUSH;
-
-    mat Z = basal_state;
-    gram_schmidt(Z);
-
-    mat A = Z;
-    mat B = -mat(trans(trans(Z) * S));
-
-    field<mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
-    FLUSH;
-    return (perturbed_SVD);
-  }
 } // namespace ACTIONet
