@@ -5,7 +5,7 @@
 
 // #include "config_actionet.hpp"
 
-#include "helpers_matrix.hpp"
+#include "utils_matrix.hpp"
 #include "aarand/aarand.hpp"
 
 #include <cblas.h>

@@ -1,5 +1,6 @@
 ## Primary
-* Trace cholmod functions in svd.cpp
+* Fix threading (RcppThread, mini_thread, inline, OpenMP)
+* Condense redundant SVD functions
 * Remove OpenMP dependency?
 * Resolve missing eigen in n2 library
 * Fix namespace usage in headers

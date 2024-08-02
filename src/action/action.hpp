@@ -12,6 +12,9 @@ namespace ACTIONet
 
   // svd
   // Basic (randomized) SVD algorithms
+
+  arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
+  
   arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose);
 
   arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int verbose);
@@ -26,8 +29,6 @@ namespace ACTIONet
 
   // reduction
   // Entry-points to compute a reduced kernel matrix
-  arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
-
   arma::field<arma::mat> PCA2SVD(arma::sp_mat &S, arma::field<arma::mat> PCA_results);
 
   arma::field<arma::mat> PCA2SVD(arma::mat &S, arma::field<arma::mat> PCA_results);

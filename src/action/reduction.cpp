@@ -22,66 +22,6 @@ field<mat> deflate_reduction(field<mat> SVD_results, mat &A, mat &B)
 
 namespace ACTIONet
 {
-
-  field<mat> perturbedSVD(field<mat> SVD_results, mat &A, mat &B)
-  {
-    int n = A.n_rows;
-
-    mat U = SVD_results(0);
-    vec s = SVD_results(1);
-    mat V = SVD_results(2);
-
-    int dim = U.n_cols;
-
-    vec s_prime;
-    mat U_prime, V_prime;
-
-    mat M = U.t() * A;
-    mat A_ortho_proj = A - U * M;
-    mat P = A_ortho_proj;
-    gram_schmidt(P);
-    mat R_P = P.t() * A_ortho_proj;
-
-    mat N = V.t() * B;
-    mat B_ortho_proj = B - V * N;
-    mat Q = B_ortho_proj;
-    gram_schmidt(Q);
-    mat R_Q = Q.t() * B_ortho_proj;
-
-    mat K1 = zeros(s.n_elem + A.n_cols, s.n_elem + A.n_cols);
-    for (int i = 0; i < s.n_elem; i++)
-    {
-      K1(i, i) = s(i);
-    }
-
-    mat K2 = join_vert(M, R_P) * trans(join_vert(N, R_Q));
-
-    mat K = K1 + K2;
-
-    svd(U_prime, s_prime, V_prime, K);
-
-    mat U_updated = join_horiz(U, P) * U_prime;
-    mat V_updated = join_horiz(V, Q) * V_prime;
-
-    field<mat> output(5);
-    output(0) = U_updated.cols(0, dim - 1);
-    output(1) = s_prime(span(0, dim - 1));
-    output(2) = V_updated.cols(0, dim - 1);
-
-    if ((SVD_results.n_elem == 5) && (SVD_results(3).n_elem != 0))
-    {
-      output(3) = join_rows(SVD_results(3), A);
-      output(4) = join_rows(SVD_results(4), B);
-    }
-    else
-    {
-      output(3) = A;
-      output(4) = B;
-    }
-
-    return output;
-  }
-
   field<mat> PCA2SVD(sp_mat &S, field<mat> PCA_results)
   {
     int n = S.n_rows;

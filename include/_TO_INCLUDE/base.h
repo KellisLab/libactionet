@@ -51,7 +51,7 @@ using namespace mini_thread;
 #define ACTIONet_AND_SYM 1
 #define ACTIONet_OR_SYM 2
 
-#define SYS_THREADS_DEF (std::thread::hardware_concurrency() - 2)
+// #define SYS_THREADS_DEF (std::thread::hardware_concurrency() - 2)
 
 // Visualization associated parameter settings
 #define TUMAP_LAYOUT 0
