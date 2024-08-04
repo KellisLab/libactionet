@@ -58,24 +58,24 @@ using namespace mini_thread;
 #define UMAP_LAYOUT 1
 #define GRAPHVIS_LAYOUT 2
 
-struct mvtrace_obj
-{
-  vector<uvec> selected_cols;
+// struct mvtrace_obj
+// {
+//   vector<uvec> selected_cols;
 
-  vector<mat> H_primary;
-  vector<mat> C_primary;
+//   vector<mat> H_primary;
+//   vector<mat> C_primary;
 
-  vector<mat> H_secondary;
-  vector<mat> C_secondary;
+//   vector<mat> H_secondary;
+//   vector<mat> C_secondary;
 
-  vector<mat> C_consensus;
-};
+//   vector<mat> C_consensus;
+// };
 
-struct full_trace
-{
-  vector<mvtrace_obj> indiv_trace;
-  vector<mat> H_consensus;
-};
+// struct full_trace
+// {
+//   vector<mvtrace_obj> indiv_trace;
+//   vector<mat> H_consensus;
+// };
 
 // s_gd2 visualization
 void layout_unweighted(int n, double *X, int m, int *I, int *J, int t_max,
@@ -99,13 +99,13 @@ void mds_direct(int n, int kd, double *X, double *d, double *w, int t_max,
 
 namespace ACTIONet
 {
-  struct PCHAkernel_ret
-  {
-    arma::mat S;
-    arma::mat C;
-    float SSE;
-    arma::mat alphaC;
-  };
+  // struct PCHAkernel_ret
+  // {
+  //   arma::mat S;
+  //   arma::mat C;
+  //   float SSE;
+  //   arma::mat alphaC;
+  // };
 
   // Main structures
   // To store the output of compute_AA_coreset()
@@ -117,29 +117,29 @@ namespace ACTIONet
   };
 
   // To store the output of run_SPA()
-  struct SPA_results
-  {
-    uvec selected_columns;
-    vec column_norms;
-  };
+  // struct SPA_results
+  // {
+  //   uvec selected_columns;
+  //   vec column_norms;
+  // };
 
   // To store the output of run_ACTION()
-  struct ACTION_results
-  {
-    field<uvec> selected_cols;
-    field<mat> H;
-    field<mat> C;
-  };
+  // struct ACTION_results
+  // {
+  //   field<uvec> selected_cols;
+  //   field<mat> H;
+  //   field<mat> C;
+  // };
 
   // To store the output of run_ACTION()
-  struct Online_ACTION_results
-  {
-    field<uvec> selected_cols;
-    field<mat> A;
-    field<mat> B;
-    field<mat> C;
-    field<mat> D;
-  };
+  // struct Online_ACTION_results
+  // {
+  //   field<uvec> selected_cols;
+  //   field<mat> A;
+  //   field<mat> B;
+  //   field<mat> C;
+  //   field<mat> D;
+  // };
 
   // To store the output of reconstruct_archetypes()
   struct multilevel_archetypal_decomposition
@@ -178,14 +178,14 @@ namespace ACTIONet
   // field<mat> IRLB_SVD(sp_mat &A, int dim, int iters, int seed, int verbose);
 
   // Successive Projection Algorithm (SPA) to solve separable NMF
-  SPA_results run_SPA(mat &M, int k);
-  SPA_results run_SPA_rows_sparse(sp_mat &A, int k);
+  // SPA_results run_SPA(mat &M, int k);
+  // SPA_results run_SPA_rows_sparse(sp_mat &A, int k);
 
   // Simplex regression ofr AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
   // mat run_simplex_regression(mat &A, mat &B, bool computeXtX);
 
   // Robust archetypal analysis method
-  field<mat> run_AA(mat &A, mat &W0, int max_it = 100, double min_delta = 1e-6);
+  // field<mat> run_AA(mat &A, mat &W0, int max_it = 100, double min_delta = 1e-6);
 
   // Online archetypal analysis method (Online Dictionary Learning for Approximate AA)
   // field<mat> Online_update_AA(mat &Xt, mat &D, mat &A, mat &B);
@@ -460,8 +460,8 @@ namespace ACTIONet
                                int max_iter_inner);
   field<mat> recursiveNMU(mat M, int dim, int max_SVD_iter, int max_iter_inner);
 
-  mat normalize_mat(mat &X, int normalization = 0, int dim = 0);
-  sp_mat normalize_mat(sp_mat &X, int normalization = 0, int dim = 0);
+//   mat normalize_mat(mat &X, int normalization = 0, int dim = 0);
+//   sp_mat normalize_mat(sp_mat &X, int normalization = 0, int dim = 0);
   vec rank_vec(vec x, int method = 0);
   vec xicor(vec xvec, vec yvec, bool compute_pval = true, int seed = 0);
   field<mat> XICOR(mat &X, mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);

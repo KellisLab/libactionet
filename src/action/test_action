@@ -4,18 +4,24 @@ g++ -c simplex_regression.cpp  -std=c++17 -I../../include -llapack -lblas -lgfor
 
 g++ -c svd.cpp  -std=c++17 -I../../include -I/usr/include/suitesparse -I/usr/include/x86_64-linux-gnu -llapack -lblas -lgfortran
 
-g++ -c *.cpp -I../../include -I/usr/include/suitesparse -I/usr/include/x86_64-linux-gnu -llapack -lblas -lgfortran
-g++ -c *.cpp -I../../include -I/usr/include/suitesparse -llapack -lblas -lgfortran
+g++ -c *.cpp -Isrc -I../../include -I/usr/include/suitesparse -llapack -lblas -lgfortran
+
+find src -name "*.cpp" -type f -print | xargs g++ -c \
+    -Isrc \
+    -Iinclude \
+    -I/usr/include/suitesparse \
+    -I/usr/include/x86_64-linux-gnu \
+    -llapack -lblas -lgfortran
 
 
-
+# Mac OS
 g++ -c *.cpp -Isrc \
     -Iinclude \
     -I/opt/homebrew/Cellar/suite-sparse/7.7.0/include/suitesparse \
     -I/Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers \
     -llapack -lblas -lgfortran
 
-find . -name "*.cpp" -type f -print | xargs /opt/homebrew/Cellar/gcc/14.1.0_1/bin/g++-14 -c  \
+find src -name "*.cpp" -type f -print | xargs /opt/homebrew/Cellar/gcc/14.1.0_1/bin/g++-14 -c  \
     -std=c++17 \
     -I./ \
     -I../include \

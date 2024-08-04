@@ -313,46 +313,6 @@ namespace ACTIONet
     return A;
   }
 
-  mat zscore(mat &A, int dim, int thread_no)
-  {
-    int N = A.n_cols;
-    if (dim != 0)
-    {
-      N = A.n_rows;
-    }
-
-    parallelFor(
-        0, N,
-        [&](size_t j)
-        {
-          vec v = A.col(j);
-          if (dim == 0)
-          {
-            v = A.col(j);
-          }
-          else
-          {
-            v = A.row(j);
-          }
-          double mu = arma::mean(v);
-          double sigma = arma::stddev(v);
-
-          vec z = (v - mu) / sigma;
-          if (dim == 0)
-          {
-            A.col(j) = z;
-          }
-          else
-          {
-            A.row(j) = z;
-          }
-        },
-        thread_no);
-    A.replace(datum::nan, 0); // replace each NaN with 0
-
-    return A;
-  }
-
   mat mean_center(mat &A)
   {
     mat A_centered = A;
@@ -368,39 +328,6 @@ namespace ACTIONet
     mat At = A.t();
     A = zscore(At);
     return (A.t());
-  }
-
-  mat normalize_mat(mat &X, int normalization, int dim)
-  {
-    mat X_norm = X;
-    if (normalization == 1)
-    {
-      X_norm = normalise(X_norm, 1, dim);
-    }
-    if (normalization == 2)
-    {
-      X_norm = normalise(X_norm, 2, dim);
-    }
-    if (normalization == -1)
-    {
-      X_norm = zscore(X_norm, dim);
-    }
-
-    return (X_norm);
-  }
-
-  sp_mat normalize_mat(sp_mat &X, int normalization, int dim)
-  {
-    sp_mat X_norm = X;
-    if (normalization == 1)
-    {
-      X_norm = normalise(X_norm, 1, dim);
-    }
-    if (normalization == 2)
-    {
-      X_norm = normalise(X_norm, 2, dim);
-    }
-    return (X_norm);
   }
 
   /* Rank a numeric vector giving ties their average rank */

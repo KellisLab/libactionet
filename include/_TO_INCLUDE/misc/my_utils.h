@@ -8,7 +8,7 @@ namespace ACTIONet
 {
     mat sampleUnif(int l, int m, double a, double b, int seed);
 
-    mat zscore(mat &A, int dim = 0, int thread_no = 1);
+    // mat zscore(mat &A, int dim = 0, int thread_no = 1);
     mat tzscoret(mat &A);
     mat robust_zscore(mat &A, int dim = 0, int thread_no = 1);
     mat RIN_transform(mat &A, int thread_no = 1);

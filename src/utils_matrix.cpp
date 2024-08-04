@@ -94,6 +94,38 @@ arma::sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_co
     return A;
 }
 
+arma::mat normalize_mat(arma::mat &X, int normalization, int dim)
+{
+    arma::mat X_norm = X;
+    if (normalization == 1)
+    {
+        X_norm = arma::normalise(X_norm, 1, dim);
+    }
+    if (normalization == 2)
+    {
+        X_norm = arma::normalise(X_norm, 2, dim);
+    }
+    if (normalization == -1)
+    {
+        X_norm = zscore(X_norm, dim);
+    }
+
+    return (X_norm);
+}
+
+arma::sp_mat normalize_mat(arma::sp_mat &X, int normalization, int dim)
+{
+    arma::sp_mat X_norm = X;
+    if (normalization == 1)
+    {
+        X_norm = arma::normalise(X_norm, 1, dim);
+    }
+    if (normalization == 2)
+    {
+        X_norm = arma::normalise(X_norm, 2, dim);
+    }
+    return (X_norm);
+}
 
 arma::vec spmat_vec_product(arma::sp_mat &A, arma::vec &x)
 {
@@ -153,7 +185,7 @@ arma::sp_mat spmat_spmat_product(arma::sp_mat &A, arma::sp_mat &B)
     cholmod_sparse *chol_B = as_cholmod_sparse(B, chol_B, &chol_c);
 
     cholmod_sparse *chol_res = cholmod_ssmult(chol_A, chol_B, 0, true,
-                                                true, &chol_c);
+                                              true, &chol_c);
 
     res = as_arma_sparse(chol_res, res, &chol_c);
 

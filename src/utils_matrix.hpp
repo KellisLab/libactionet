@@ -5,6 +5,7 @@
 #include "config_actionet.hpp"
 
 #include "utils_parallel.hpp"
+#include "utils_math.hpp"
 
 #include <cholmod.h>
 
@@ -13,6 +14,10 @@ void dsdmult(char transpose, int n_rows, int n_cols, const void *A, const double
 cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A, cholmod_common *chol_c);
 
 arma::sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *chol_c);
+
+arma::mat normalize_mat(arma::mat &X, int normalization, int dim);
+
+arma::sp_mat normalize_mat(arma::sp_mat &X, int normalization, int dim);
 
 arma::vec spmat_vec_product(arma::sp_mat &A, arma::vec &x);
 

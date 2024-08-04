@@ -6,12 +6,14 @@
 * Fix namespace usage in headers
 * Fix duplicate PCG headers (run diff)?
 * Rename .cc/.cpp and .h/.hpp
+* Fix defaules (Source -> header)
+* COmbine utils into module
 
 ## Secondary
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
 * Replace Armadillo with Eigen3?
-
+* zscore is multithreaded???
 
 
 ## Done

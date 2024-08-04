@@ -3,18 +3,38 @@
 
 #include "config_arma.hpp"
 #include "config_actionet.hpp"
+#include "utils_parallel.hpp"
+#include "utils_matrix.hpp"
+
+// To store the output of run_SPA()
+struct SPA_results
+{
+  arma::uvec selected_columns;
+  arma::vec column_norms;
+};
+
+// To store the output of run_ACTION()
+struct ACTION_results
+{
+  arma::field<arma::uvec> selected_cols;
+  arma::field<arma::mat> H;
+  arma::field<arma::mat> C;
+};
 
 namespace ACTIONet
 {
-  // simplex_regression
+  // spa
   // Successive Projection Algorithm (SPA) to solve separable NMF
+  SPA_results run_SPA(arma::mat &A, int k);
+
+  // simplex_regression
+  // Simplex regression ofr AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
   arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX);
 
   // svd
   // Basic (randomized) SVD algorithms
-
   arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
-  
+
   arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose);
 
   arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int verbose);
@@ -26,6 +46,10 @@ namespace ACTIONet
   arma::field<arma::mat> HalkoSVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose);
 
   arma::field<arma::mat> HalkoSVD(arma::mat &A, int dim, int iters, int seed, int verbose);
+
+  // aa
+  // Solves the standard Archetypal Analysis (AA) problem
+  arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double min_delta);
 
   // reduction
   // Entry-points to compute a reduced kernel matrix
