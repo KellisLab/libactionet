@@ -1,4 +1,4 @@
-#include "utils_math.hpp"
+#include "utils/utils_math.hpp"
 
 arma::mat zscore(arma::mat &A, int dim, int thread_no)
 {

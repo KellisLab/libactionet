@@ -1,4 +1,4 @@
-#include "svd.hpp"
+#include "action/svd.hpp"
 
 // sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
 //                        cholmod_common *chol_c);
@@ -773,7 +773,7 @@ namespace ACTIONet
   // Beijing, China, Nov. 2018.
   //****************************************************************************************************************************************************************************
   field<mat> FengSVD(sp_mat &A, int dim, int iters, int seed = 0,
-                      int verbose = 1)
+                     int verbose = 1)
   {
     int s = 5;
 

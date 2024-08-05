@@ -1,7 +1,4 @@
-// #include <ACTIONet.h>
-// #include <my_cblas.h>
-// #include <cassert>
-#include "simplex_regression.hpp"
+#include "action/simplex_regression.hpp"
 
 // using namespace arma;
 
@@ -132,11 +129,11 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2 = double(1e-
     cblas_dscal(na, lambdaS, pr_PRed, 1);
     cblas_daxpy(na, double(-1.0), pr_Ginvg, 1, pr_PRed, 1);
 
-    double maxPRed = abs(PRed[0]);
+    double maxPRed = std::abs(PRed[0]);
     for (int i = 0; i < na; ++i)
     {
-      if (abs(PRed[i]) > maxPRed)
-        maxPRed = abs(PRed[i]);
+      if (std::abs(PRed[i]) > maxPRed)
+        maxPRed = std::abs(PRed[i]);
     }
     if (maxPRed < 1e-10)
     {
@@ -392,11 +389,11 @@ arma::vec activeSetS_arma(arma::mat &M, arma::vec &b, arma::mat &G,
     cblas_dscal(na, lambdaS, pr_PRed, 1);
     cblas_daxpy(na, double(-1.0), pr_Ginvg, 1, pr_PRed, 1);
 
-    double maxPRed = abs(PRed[0]);
+    double maxPRed = std::abs(PRed[0]);
     for (int i = 0; i < na; ++i)
     {
-      if (abs(PRed[i]) > maxPRed)
-        maxPRed = abs(PRed[i]);
+      if (std::abs(PRed[i]) > maxPRed)
+        maxPRed = std::abs(PRed[i]);
     }
     if (maxPRed < 1e-10)
     {
@@ -560,7 +557,7 @@ namespace ACTIONet
     if (computeXtX)
     {
       double lam2sq = lambda2 * lambda2;
-      arma::mat G = trans(A) * A + lam2sq;
+      arma::mat G = arma::trans(A) * A + lam2sq;
       for (int i = 0; i < B.n_cols; i++)
       {
         arma::vec b = B.col(i);
@@ -576,8 +573,8 @@ namespace ACTIONet
       }
     }
 
-    X = clamp(X, 0, 1);
-    X = normalise(X, 1);
+    X = arma::clamp(X, 0, 1);
+    X = arma::normalise(X, 1);
 
     return (X);
   }

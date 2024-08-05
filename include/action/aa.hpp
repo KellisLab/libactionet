@@ -3,7 +3,5 @@
 
 #include "action.hpp"
 #include <cblas.h>
-// #include "utils_matrix.hpp"
-// #include <cholmod.h>
 
 #endif

@@ -9,4 +9,6 @@
 // #define stderr_printf REprintf
 // #define FLUSH R_FlushConsole()
 
+// #include <Rinterface.h>
+
 #endif

@@ -3,9 +3,7 @@
 
 #include "action.hpp"
 
-// #include "config_actionet.hpp"
-
-#include "utils_matrix.hpp"
+#include "utils/utils_matrix.hpp"
 #include "aarand/aarand.hpp"
 
 #include <cblas.h>

@@ -2,6 +2,7 @@
 #define ACTION_EXT_HPP
 
 #include "action.hpp"
+#include "utils/utils_parallel.hpp"
 
 #include "aa_ext_h"
 #include <cblas.h>

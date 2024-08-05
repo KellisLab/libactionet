@@ -3,8 +3,6 @@
 
 #include "config_arma.hpp"
 #include "config_actionet.hpp"
-#include "utils_parallel.hpp"
-#include "utils_matrix.hpp"
 
 // To store the output of run_SPA()
 struct SPA_results
@@ -21,16 +19,32 @@ struct ACTION_results
   arma::field<arma::mat> C;
 };
 
+// To store the output of prune_archetypes()
+struct multilevel_archetypal_decomposition
+{
+  arma::uvec selected_archs; // If hub removal requested, this will hold the indices
+                             // of retained archetypes
+  arma::mat C_stacked;       // Stacking of C matrices, after potentially removing the hub
+                             // archetypes
+  arma::mat H_stacked;       // Stacking of H matrices, after potentially removing the hub
+                             // archetypes
+};
+
+// To store the output of unify_archetypes()
+struct unification_results
+{
+  arma::mat dag_adj;
+  arma::vec dag_node_annotations;
+  arma::uvec selected_archetypes;
+  arma::mat C_unified;
+  arma::mat H_unified;
+  arma::uvec assigned_archetypes;
+  arma::vec archetype_group;
+  arma::mat arch_membership_weights;
+};
+
 namespace ACTIONet
 {
-  // spa
-  // Successive Projection Algorithm (SPA) to solve separable NMF
-  SPA_results run_SPA(arma::mat &A, int k);
-
-  // simplex_regression
-  // Simplex regression ofr AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
-  arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX);
-
   // svd
   // Basic (randomized) SVD algorithms
   arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
@@ -46,10 +60,6 @@ namespace ACTIONet
   arma::field<arma::mat> HalkoSVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose);
 
   arma::field<arma::mat> HalkoSVD(arma::mat &A, int dim, int iters, int seed, int verbose);
-
-  // aa
-  // Solves the standard Archetypal Analysis (AA) problem
-  arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double min_delta);
 
   // reduction
   // Entry-points to compute a reduced kernel matrix
@@ -74,6 +84,30 @@ namespace ACTIONet
   arma::field<arma::mat> orthogonalize_basal(arma::sp_mat &S, arma::field<arma::mat> SVD_results, arma::mat &basal);
 
   arma::field<arma::mat> orthogonalize_basal(arma::mat &S, arma::field<arma::mat> SVD_results, arma::mat &basal);
+
+  // spa
+  // Successive Projection Algorithm (SPA) to solve separable NMF
+  SPA_results run_SPA(arma::mat &A, int k);
+
+  // simplex_regression
+  // Simplex regression ofr AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
+  arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX);
+
+  // aa
+  // Solves the standard Archetypal Analysis (AA) problem
+  arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double min_delta);
+
+  // action_decomp
+  // Runs main ACTION decomposition
+  ACTION_results run_ACTION(arma::mat &S_r, int k_min, int k_max, int thread_no, int max_it = 100, double min_delta = 1e-6, int normalization = 0);
+
+  // action_post
+  // Postprocessing ACTION results
+  multilevel_archetypal_decomposition prune_archetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace, double min_specificity_z_threshold,
+                                                       int min_cells = 3);
+
+  unification_results unify_archetypes(arma::mat &S_r, arma::mat &C_stacked, arma::mat &H_stacked, double backbone_density, double resolution,
+                                       int min_cluster_size, int thread_no, int normalization);
 
 } // namespace ACTIONet
 

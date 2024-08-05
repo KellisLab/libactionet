@@ -1,6 +1,4 @@
-#include "action.hpp"
-
-using namespace arma;
+#include "action/action_decomp.hpp"
 
 // sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
 //                        cholmod_common *chol_c);
@@ -13,9 +11,10 @@ using namespace arma;
 
 namespace ACTIONet
 {
-  ACTION_results run_ACTION(mat &S_r, int k_min, int k_max, int thread_no,
-                            int max_it = 100, double min_delta = 1e-6,
-                            int normalization = 0)
+
+  ACTION_results run_ACTION(arma::mat &S_r, int k_min, int k_max, int thread_no,
+                            int max_it, double min_delta,
+                            int normalization)
   {
     if (thread_no <= 0)
     {
@@ -35,12 +34,12 @@ namespace ACTIONet
 
     ACTION_results trace;
 
-    trace.H = field<mat>(k_max + 1);
-    trace.C = field<mat>(k_max + 1);
-    trace.selected_cols = field<uvec>(k_max + 1);
+    trace.H = arma::field<arma::mat>(k_max + 1);
+    trace.C = arma::field<arma::mat>(k_max + 1);
+    trace.selected_cols = arma::field<arma::uvec>(k_max + 1);
 
     // ATTENTION!
-    mat X_r = normalize_mat(S_r, normalization, 0);
+    arma::mat X_r = normalize_mat(S_r, normalization, 0);
 
     int current_k = 0;
     char status_msg[50];
@@ -57,9 +56,9 @@ namespace ACTIONet
           SPA_results SPA_res = run_SPA(X_r, kk);
           trace.selected_cols[kk] = SPA_res.selected_columns;
 
-          mat W = X_r.cols(trace.selected_cols[kk]);
+          arma::mat W = X_r.cols(trace.selected_cols[kk]);
 
-          field<mat> AA_res;
+          arma::field<arma::mat> AA_res;
 
           AA_res = run_AA(X_r, W, max_it, min_delta);
           trace.C[kk] = AA_res(0);

@@ -1,5 +1,4 @@
 #include "simplex_regression_fw_h"
-// #include <cassert>
 #include <chrono>
 
 #define duration(a) std::chrono::duration_cast<std::chrono::nanoseconds>(a).count()
@@ -111,8 +110,8 @@ arma::mat run_simplex_regression_FW_base(arma::mat &A, arma::mat &B, int max_ite
         old_X = X;
     }
 
-    X = clamp(X, 0, 1);
-    X = normalise(X, 1);
+    X = arma::clamp(X, 0, 1);
+    X = arma::normalise(X, 1);
 
     return (X);
 }

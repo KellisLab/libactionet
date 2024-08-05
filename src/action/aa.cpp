@@ -1,5 +1,5 @@
 // Solves the standard Archetypal Analysis (AA) problem
-#include "aa.hpp"
+#include "action/aa.hpp"
 
 namespace ACTIONet
 {
@@ -22,12 +22,12 @@ namespace ACTIONet
         {
             arma::mat C_old = C;
             arma::mat H_old = H;
-            double A_norm = norm(A, "fro");
+            double A_norm = arma::norm(A, "fro");
             H = ACTIONet::run_simplex_regression(W, A, true);
             // H = run_simplex_regression_FW(W, A, 30);
 
             arma::mat R = A - W * H;
-            arma::mat Ht = trans(H);
+            arma::mat Ht = arma::trans(H);
             for (int i = 0; i < k; i++)
             {
                 arma::vec w = W.col(i);
@@ -37,7 +37,7 @@ namespace ACTIONet
                 if (norm_sq < double(10e-8))
                 {
                     // singular
-                    int max_res_idx = arma::index_max(arma::rowvec(sum(square(R), 0)));
+                    int max_res_idx = arma::index_max(arma::rowvec(arma::sum(arma::square(R), 0)));
                     W.col(i) = A.col(max_res_idx);
                     c.zeros();
                     c(max_res_idx) = 1;
@@ -51,7 +51,6 @@ namespace ACTIONet
                                 b.memptr(), 1);
 
                     C.col(i) = ACTIONet::run_simplex_regression(A, b, false);
-                    // C.col(i) = run_simplex_regression_FW(A, b, 30);
 
                     arma::vec w_new = A * C.col(i);
                     arma::vec delta = (w - w_new);
@@ -63,18 +62,18 @@ namespace ACTIONet
                     W.col(i) = w_new;
                 }
             }
-            double RSS = norm(R, "fro");
-            double delta_RSS = abs(RSS - old_RSS) / A_norm;
+            double RSS = arma::norm(R, "fro");
+            double delta_RSS = std::abs(RSS - old_RSS) / A_norm;
             old_RSS = RSS;
 
             if (delta_RSS < min_delta)
                 break;
         }
 
-        C = clamp(C, 0, 1);
-        C = normalise(C, 1);
-        H = clamp(H, 0, 1);
-        H = normalise(H, 1);
+        C = arma::clamp(C, 0, 1);
+        C = arma::normalise(C, 1);
+        H = arma::clamp(H, 0, 1);
+        H = arma::normalise(H, 1);
 
         arma::field<arma::mat> decomposition(2, 1);
         decomposition(0) = C;
