@@ -274,7 +274,7 @@ namespace ACTIONet
                         double ef_construction = 200, double ef = 200,
                         bool mutual_edges_only = true, int k = 10);
 
-    mat computeFullSim(mat &H, int thread_no);
+    // mat computeFullSim(mat &H, int thread_no);
 
     // SGD-based force-directed layout (adopted and modified from the UMAP (uwot)
     field<mat> layoutNetwork_xmap(sp_mat &G, mat &initial_position,

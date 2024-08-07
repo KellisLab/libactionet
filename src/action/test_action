@@ -11,7 +11,7 @@ find src -name "*.cpp" -type f -print | xargs g++ -c \
     -Iinclude \
     -I/usr/include/suitesparse \
     -I/usr/include/x86_64-linux-gnu \
-    -llapack -lblas -lgfortran
+    -llapack -lblas -lgfortran -w
 
 
 # Mac OS

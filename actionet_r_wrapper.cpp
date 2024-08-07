@@ -1823,12 +1823,12 @@ Rcpp::List perturbedSVD(mat u, vec d, mat v, mat A, mat B)
 }
 
 // [[Rcpp::export]]
-mat computeFullSim(mat &H, int thread_no = 0)
-{
-  mat G = ACTIONet::computeFullSim(H, thread_no);
+// mat computeFullSim(mat &H, int thread_no = 0)
+// {
+//   mat G = ACTIONet::computeFullSim(H, thread_no);
 
-  return (G);
-}
+//   return (G);
+// }
 
 // [[Rcpp::export]]
 Rcpp::List run_subACTION(mat &S_r, mat &W_parent, mat &H_parent, int kk, int k_min,

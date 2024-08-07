@@ -1,4 +1,5 @@
 ## Primary
+* Review defaults vs base.h and wrappers.
 * Fix threading (RcppThread, mini_thread, inline, OpenMP)
 * Condense redundant SVD functions
 * Remove OpenMP dependency?
@@ -6,14 +7,15 @@
 * Fix namespace usage in headers
 * Fix duplicate PCG headers (run diff)?
 * Rename .cc/.cpp and .h/.hpp
-* Fix defaules (Source -> header)
-* COmbine utils into module
+* Fix defaults (Source -> header)
+* Replace and remove "ParallelFor" in build_network.
 
 ## Secondary
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
 * Replace Armadillo with Eigen3?
 * zscore is multithreaded???
+
 
 
 ## Done
@@ -25,3 +27,6 @@
 * Compile to Apple arm64 native
 * Compile to Apple x86 via Rosetta2
 * Remove Harmony
+* Create "utils" module
+* Duplicate JSD functions (wtf?) in "network_construction" and hnsw (space_js.h)
+    * Moved to "network_construction_ext"

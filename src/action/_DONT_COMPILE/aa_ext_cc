@@ -14,7 +14,7 @@ arma::field<arma::mat> run_weighted_AA(arma::mat &A, arma::mat &W0, arma::vec w,
     return (decomposition);
   }
 
-  w = clamp(w, 0, 1);
+  w = arma::clamp(w, 0, 1);
   arma::mat A_scaled = A;
   for (int i = 0; i < N; i++)
   {
@@ -170,10 +170,10 @@ arma::field<arma::mat> run_AA_with_prior(arma::mat &A, arma::mat &W0, arma::mat 
     }
   }
 
-  C = clamp(C, 0, 1);
-  C = normalise(C, 1);
-  H = clamp(H, 0, 1);
-  H = normalise(H, 1);
+  C = arma::clamp(C, 0, 1);
+  C = arma::normalise(C, 1);
+  H = arma::clamp(H, 0, 1);
+  H = arma::normalise(H, 1);
 
   arma::field<arma::mat> decomposition(2, 1);
   decomposition(0) = C;
