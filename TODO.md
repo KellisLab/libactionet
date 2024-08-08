@@ -9,6 +9,7 @@
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
 * Replace and remove "ParallelFor" in build_network.
+* Update StatsLib
 
 ## Secondary
 * Fix compile warnings for svd.cpp

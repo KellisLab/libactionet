@@ -1,6 +1,4 @@
 #include "action/orthogonalization.hpp"
-#include "action/svd.hpp"
-#include "action/reduction.hpp"
 
 namespace ACTIONet
 {

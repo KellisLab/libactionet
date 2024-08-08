@@ -5,11 +5,11 @@
 
 // linked from dqrng
 #include "convert_seed.h"
-#include "pcg_random.hpp"
+#include "pcg/pcg_random.hpp"
 
 #include "tauprng.h"
 
-#include <math/StatsLib/stats.hpp>
+#include <StatsLib/stats.hpp>`
 
 // NOT THREAD SAFE
 // based on code in the dqsample package

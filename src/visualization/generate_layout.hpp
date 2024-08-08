@@ -9,7 +9,7 @@
 
 #include "uwot/coords.h"
 
-#include "UmapFactory.hpp"
+#include "create_xmap.hpp"
 #include "find_ab.hpp"
 
 #endif

@@ -16,6 +16,9 @@ dist
 README.md
 pybind11/
 .vscode/
+.editorconfig
+.idea/
 *.code-workspace
 .lintr
 build_test/
+cmake-build-debug/

@@ -1,16 +1,16 @@
-#include <ACTIONet.h>
+// #include <ACTIONet.h>
 
-#include <atomic>
-#include <cfloat>
-#include <thread>
+// #include <atomic>
+// #include <cfloat>
+// #include <thread>
 
-#include "coords.h"
-#include "epoch.h"
-#include "gradient.h"
-#include "optimize.h"
-#include "rng.h"
-#include "rparallel.h"
-#include "sampler.h"
+// #include "coords.h"
+// #include "epoch.h"
+// #include "gradient.h"
+// #include "optimize.h"
+// #include "rng.h"
+// #include "rparallel.h"
+// #include "sampler.h"
 
 const double UMAP_A[101] = {
     1.93280839781719, 1.89560586588002, 1.85873666431227, 1.82221007490834,
@@ -147,59 +147,8 @@ sp_mat smoothKNN(sp_mat &D, int max_iter = 64, double epsilon = 1e-6,
   return (G);
 }
 
-// Template class specialization to handle different rng/batch combinations
-template <bool DoBatch = true>
-struct BatchRngFactory
-{
-  using PcgFactoryType = batch_pcg_factory;
-  using TauFactoryType = batch_tau_factory;
-};
-template <>
-struct BatchRngFactory<false>
-{
-  using PcgFactoryType = pcg_factory;
-  using TauFactoryType = tau_factory;
-};
-
-void create_umap(UmapFactory &umap_factory, double a, double b, double gamma,
-                 bool approx_pow)
-{
-  if (approx_pow)
-  {
-    const uwot::apumap_gradient gradient(a, b, gamma);
-    umap_factory.create(gradient);
-  }
-  else
-  {
-    const uwot::umap_gradient gradient(a, b, gamma);
-    umap_factory.create(gradient);
-  }
-}
-
-void create_tumap(UmapFactory &umap_factory)
-{
-  const uwot::tumap_gradient gradient;
-  umap_factory.create(gradient);
-}
-
-void create_pacmap(UmapFactory &umap_factory, double a, double b)
-{
-  const uwot::pacmap_gradient gradient(a, b);
-  umap_factory.create(gradient);
-}
-
-void create_largevis(UmapFactory &umap_factory, double gamma)
-{
-  const uwot::largevis_gradient gradient(gamma);
-  umap_factory.create(gradient);
-}
-
-
 namespace ACTIONet
 {
-
-
-
 
   mat transform_layout(sp_mat &G, mat &reference_layout, bool presmooth_network,
                        const std::string &method, double min_dist, double spread,

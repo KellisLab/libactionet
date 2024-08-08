@@ -1,11 +1,10 @@
 #include "generate_layout.hpp"
 
-arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_position, bool presmooth_network, const std::string &method,
-                                          double min_dist, double spread, double gamma, unsigned int n_epochs, int thread_no, int seed,
-                                          double learning_rate, int sim2dist)
-{
-    if (thread_no <= 0)
-    {
+arma::field<arma::mat>
+layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_position, bool presmooth_network, const std::string &method,
+                   double min_dist, double spread, double gamma, unsigned int n_epochs, int thread_no, int seed,
+                   double learning_rate, int sim2dist) {
+    if (thread_no <= 0) {
         thread_no = SYS_THREADS_DEF;
     }
 
@@ -14,9 +13,9 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
     double b = found.second;
 
     stdout_printf(
-        "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, "
-        "threads=%d)\n",
-        method.c_str(), a, b, n_epochs, thread_no);
+            "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, "
+            "threads=%d)\n",
+            method.c_str(), a, b, n_epochs, thread_no);
 
     bool move_other = true;
     std::size_t grain_size = 1;
@@ -25,14 +24,13 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
     bool batch = true;
     std::string opt_name = "adam";
     double alpha = ADAM_ALPHA, beta1 = ADAM_BETA1, beta2 = ADAM_BETA2,
-           eps = ADAM_EPS, negative_sample_rate = NEGATIVE_SAMPLE_RATE;
+            eps = ADAM_EPS, negative_sample_rate = NEGATIVE_SAMPLE_RATE;
 
     arma::field<arma::mat> res(3);
     std::mt19937_64 engine(seed);
 
     arma::mat init_coors;
-    if (initial_position.n_rows != G.n_rows)
-    {
+    if (initial_position.n_rows != G.n_rows) {
         stderr_printf("Number of rows in the initial_position should match with the number of vertices in G\n");
         FLUSH;
         return (res);
@@ -40,33 +38,21 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
 
     // Encode positive edges of the graph
     arma::sp_mat H = G;
-    if (presmooth_network == true)
-    {
+    if (presmooth_network == true) {
         stdout_printf("%\tSmoothing similarities (sim2dist = %d) ... ", sim2dist);
-        if (sim2dist == 1)
-        {
-            H.for_each([](arma::sp_mat::elem_type &val)
-                       { val = 1 - val; });
-        }
-        else if (sim2dist == 2)
-        {
-            H.for_each([](arma::sp_mat::elem_type &val)
-                       { val = (1 - val) * (1 - val); });
-        }
-        else if (sim2dist == 3)
-        {
-            H.for_each([](arma::sp_mat::elem_type &val)
-                       { val = -std::log(val); });
-        }
-        else
-        {
-            H.for_each([](arma::sp_mat::elem_type &val)
-                       { val = 1 / val; });
+        if (sim2dist == 1) {
+            H.for_each([](arma::sp_mat::elem_type &val) { val = 1 - val; });
+        } else if (sim2dist == 2) {
+            H.for_each([](arma::sp_mat::elem_type &val) { val = (1 - val) * (1 - val); });
+        } else if (sim2dist == 3) {
+            H.for_each([](arma::sp_mat::elem_type &val) { val = -std::log(val); });
+        } else {
+            H.for_each([](arma::sp_mat::elem_type &val) { val = 1 / val; });
         }
 
         int max_iter = 64;
         double epsilon = 1e-6, bandwidth = 1.0, local_connectivity = 1.0,
-               min_k_dist_scale = 1e-3, min_sim = 1e-8;
+                min_k_dist_scale = 1e-3, min_sim = 1e-8;
 
         H = smoothKNN(H, max_iter, epsilon, bandwidth, local_connectivity,
                       min_k_dist_scale, min_sim, thread_no);
@@ -90,27 +76,21 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
     std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
 
     int i = 0;
-    if (batch == false)
-    {
-        for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it)
-        {
+    if (batch == false) {
+        for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it) {
             epochs_per_sample[i] = w_max / (*it);
             positive_head[i] = it.row();
             positive_tail[i] = it.col();
             i++;
         }
-    }
-    else
-    {
-        for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it)
-        {
+    } else {
+        for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
             epochs_per_sample[i] = w_max / (*it);
             positive_tail[i] = it.row();
             positive_head[i] = it.col();
             i++;
         }
-        for (int k = 0; k < Ht.n_cols + 1; k++)
-        {
+        for (int k = 0; k < Ht.n_cols + 1; k++) {
             positive_ptr[k] = Ht.col_ptrs[k];
         }
     }
@@ -127,31 +107,22 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
     uwot::Coords coords = uwot::Coords(head_embedding);
 
     UmapFactory umap_factory(
-        move_other, pcg_rand, coords.get_head_embedding(),
-        coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
-        n_epochs, nV, nV, epochs_per_sample, learning_rate, negative_sample_rate,
-        batch, thread_no, grain_size, opt_name, alpha, beta1, beta2, eps, engine);
+            move_other, pcg_rand, coords.get_head_embedding(),
+            coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
+            n_epochs, nV, nV, epochs_per_sample, learning_rate, negative_sample_rate,
+            batch, thread_no, grain_size, opt_name, alpha, beta1, beta2, eps, engine);
 
     stdout_printf("Computing 2D layout ... ");
     FLUSH;
-    if (method == "umap")
-    {
+    if (method == "umap") {
         create_umap(umap_factory, a, b, gamma, approx_pow);
-    }
-    else if (method == "tumap")
-    {
+    } else if (method == "tumap") {
         create_tumap(umap_factory);
-    }
-    else if (method == "largevis")
-    {
+    } else if (method == "largevis") {
         create_largevis(umap_factory, gamma);
-    }
-    else if (method == "pacmap")
-    {
+    } else if (method == "pacmap") {
         create_pacmap(umap_factory, a, b);
-    }
-    else
-    {
+    } else {
         stderr_printf("Unknown method: %s\n", method.c_str());
         FLUSH;
         return (res);
@@ -163,8 +134,7 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
 
     arma::mat coordinates_3D = arma::zeros(nV, 3);
     arma::mat RGB_colors = arma::zeros(nV, 3);
-    if (initial_position.n_cols > 2)
-    {
+    if (initial_position.n_cols > 2) {
         arma::mat coors3D = arma::join_rows(coordinates_2D, initial_position.col(2));
         init_coors = arma::trans(zscore(coors3D));
         head_embedding.clear();
@@ -175,52 +145,45 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
         coords = uwot::Coords(head_embedding);
 
         UmapFactory umap_factory_3D(
-            move_other, pcg_rand, coords.get_head_embedding(),
-            coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
-            n_epochs / 2, nV, nV, epochs_per_sample, learning_rate,
-            negative_sample_rate, batch, thread_no, grain_size, opt_name, alpha,
-            beta1, beta2, eps, engine);
+                move_other, pcg_rand, coords.get_head_embedding(),
+                coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
+                n_epochs / 2, nV, nV, epochs_per_sample, learning_rate,
+                negative_sample_rate, batch, thread_no, grain_size, opt_name, alpha,
+                beta1, beta2, eps, engine);
 
         stdout_printf("Computing 3D layout ... ");
         FLUSH;
-        if (method == "umap")
-        {
+        if (method == "umap") {
             create_umap(umap_factory_3D, a, b, gamma, approx_pow);
-        }
-        else if (method == "tumap")
-        {
+        } else if (method == "tumap") {
             create_tumap(umap_factory_3D);
-        }
-        else if (method == "largevis")
-        {
+        } else if (method == "largevis") {
             create_largevis(umap_factory_3D, gamma);
-        }
-        else if (method == "pacmap")
-        {
+        } else if (method == "pacmap") {
             create_pacmap(umap_factory_3D, a, b);
-        }
-        else
-        {
+        } else {
             stderr_printf("Unknown method: %s\n", method.c_str());
             FLUSH;
             return (res);
         }
-        
+
         arma::fmat coordinates_float(coords.get_head_embedding().data(), 3, nV);
         coordinates_3D = arma::trans(arma::conv_to<arma::mat>::from(coordinates_float));
-        
+
         stdout_printf("done\n");
         FLUSH;
 
         stdout_printf("Computing de novo node colors ... ");
         FLUSH;
-        
+
         arma::mat U;
         arma::vec s;
         arma::mat V;
         arma::svd_econ(U, s, V, coordinates_3D, "left", "std");
 
-        arma::mat Z = normalize_scores(U.cols(0, 2), 1, thread_no);
+//        arma::mat Z = normalize_scores(U.cols(0, 2), 1, thread_no);
+        arma::mat Z = U.cols(0, 2);
+        Z = zscore(Z, 0, thread_no);
 
         arma::vec a = 75 * Z.col(0);
         arma::vec b = 75 * Z.col(1);
@@ -229,8 +192,7 @@ arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_po
         L = 25.0 + 70.0 * (L - arma::min(L)) / (arma::max(L) - arma::min(L));
 
         double r_channel, g_channel, b_channel;
-        for (int i = 0; i < nV; i++)
-        {
+        for (int i = 0; i < nV; i++) {
             Lab2Rgb(&r_channel, &g_channel, &b_channel, L(i), a(i), b(i));
 
             RGB_colors(i, 0) = std::min(1.0, std::max(0.0, r_channel));

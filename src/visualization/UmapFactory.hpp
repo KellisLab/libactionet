@@ -3,6 +3,23 @@
 
 #include "visualization.hpp"
 #include "uwot/optimize.h"
+#include "uwot/rng.h"
+#include "uwot/epoch.h"
+#include "uwot/rparallel.h"
+
+// Template class specialization to handle different rng/batch combinations
+template <bool DoBatch = true>
+struct BatchRngFactory
+{
+  using PcgFactoryType = batch_pcg_factory;
+  using TauFactoryType = batch_tau_factory;
+};
+template <>
+struct BatchRngFactory<false>
+{
+  using PcgFactoryType = pcg_factory;
+  using TauFactoryType = tau_factory;
+};
 
 struct UmapFactory
 {
