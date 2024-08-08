@@ -26,7 +26,7 @@
 #include <sampler.h>
 #include <tauprng.h>
 #include <mini_thread/mini_thread.h>
-#include <colorspace.h>
+#include "ext/colorspace.h"
 #include <my_utils.h>
 #include <aarand/aarand.hpp>
 #include <hdbscan.hpp>

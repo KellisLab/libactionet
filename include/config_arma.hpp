@@ -10,6 +10,6 @@
 
 // #include <RcppArmadillo.h>
 
-#include <armadillo>
+#include <armadillo/armadillo>
 
 #endif

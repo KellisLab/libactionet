@@ -8,6 +8,7 @@
 #include "utils_xmap.hpp"
 
 #include "uwot/coords.h"
+#include "colorspace.h"
 
 #include "create_xmap.hpp"
 #include "find_ab.hpp"

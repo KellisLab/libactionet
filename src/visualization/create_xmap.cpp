@@ -1,4 +1,4 @@
-#include "create_xmap.hpp"
+#include "visualization/create_xmap.hpp"
 
 void create_umap(UmapFactory &umap_factory, double a, double b, double gamma, bool approx_pow)
 {

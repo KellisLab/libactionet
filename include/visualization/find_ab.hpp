@@ -114,5 +114,4 @@ std::pair<Float, Float> find_ab(Float spread, Float min_dist, Float grid = 300, 
     return std::make_pair(a, b);
 }
 
-
 #endif

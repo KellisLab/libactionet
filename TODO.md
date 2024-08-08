@@ -5,11 +5,9 @@
 * Remove OpenMP dependency?
 * Resolve missing eigen in n2 library
 * Fix namespace usage in headers
-* Fix duplicate PCG headers (run diff)?
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
-* Replace and remove "ParallelFor" in build_network.
-* Update StatsLib
+
 
 ## Secondary
 * Fix compile warnings for svd.cpp
@@ -31,3 +29,6 @@
 * Create "utils" module
 * Duplicate JSD functions (wtf?) in "network_construction" and hnsw (space_js.h)
     * Moved to "network_construction_ext"
+* Replace and remove "ParallelFor" in build_network.
+* Update StatsLib
+* Fix duplicate PCG headers (run diff)?

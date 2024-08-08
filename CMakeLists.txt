@@ -57,7 +57,8 @@ find_package(SuiteSparse REQUIRED)
 
 ## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES *.cpp *.cc *.c)
-add_library(actionet STATIC ${SOURCES})
+add_library(actionet STATIC ${SOURCES}
+        src/visualization/utils_xmap.cpp)
 
 ## [Dirty] Add all header files in the directory for testing
 HEADER_DIRECTORIES(header_list)

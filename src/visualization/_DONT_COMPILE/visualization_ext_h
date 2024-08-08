@@ -1,0 +1,14 @@
+#ifndef VISUALIZATION_EXT_H
+#define VISUALIZATION_EXT_H
+
+#include "visualization.hpp"
+
+#include "utils/utils_matrix.hpp"
+#include "utils/utils_xmap.hpp"
+
+#include "uwot/coords.h"
+
+#include "visualization/create_xmap.hpp"
+#include "visualization/find_ab.hpp"
+
+#endif //VISUALIZATION_EXT_H
