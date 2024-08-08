@@ -1,17 +1,4 @@
 #include "actionet/build_network.hpp"
-// #include <atomic>
-// #include <thread>
-// #include <string>
-// #include <exception>
-// #include <algorithm>
-// #include <optional>
-// #include <hnswlib.h>
-
-// #include <space_ip.h>
-// #include <space_l2.h>
-// #include <mutex>
-
-// std::mutex hnsw_mutex;
 
 // Obtain approximation algorithm
 hnswlib::HierarchicalNSW<float> *getApproximationAlgo(std::string distance_metric, arma::mat H, double M, double ef_construction)

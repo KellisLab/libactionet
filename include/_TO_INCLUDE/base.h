@@ -36,7 +36,7 @@ using namespace mini_thread;
 
 #define STATS_GO_INLINE
 #define STATS_ENABLE_ARMA_WRAPPERS
-#include <stats.hpp>
+//#include <stats.hpp>
 
 // // SVD algorithms
 // #define FULL_SVD -1
@@ -258,21 +258,21 @@ namespace ACTIONet
 
     // Main functions to build an interaction network from multi-level archetypal
     // decompositions
-    sp_mat buildNetwork_KstarNN(mat H_stacked, double density, int thread_no,
-                                double M, double ef_construction, double ef,
-                                bool mutual_edges_only, string distance_metric);
-    sp_mat buildNetwork_KstarNN_v2(mat H_stacked, double density, int thread_no,
-                                   double M, double ef_construction, double ef,
-                                   bool mutual_edges_only, string distance_metric);
-    sp_mat buildNetwork_KNN(mat H_stacked, int k, int thread_no, double M,
-                            double ef_construction, double ef,
-                            bool mutual_edges_only, string distance_metric);
+//    sp_mat buildNetwork_KstarNN(mat H_stacked, double density, int thread_no,
+//                                double M, double ef_construction, double ef,
+//                                bool mutual_edges_only, string distance_metric);
+//    sp_mat buildNetwork_KstarNN_v2(mat H_stacked, double density, int thread_no,
+//                                   double M, double ef_construction, double ef,
+//                                   bool mutual_edges_only, string distance_metric);
+//    sp_mat buildNetwork_KNN(mat H_stacked, int k, int thread_no, double M,
+//                            double ef_construction, double ef,
+//                            bool mutual_edges_only, string distance_metric);
 
-    sp_mat buildNetwork(mat H, string algorithm = "k*nn",
-                        string distance_metric = "jsd", double density = 1.0,
-                        int thread_no = 0, double M = 16,
-                        double ef_construction = 200, double ef = 200,
-                        bool mutual_edges_only = true, int k = 10);
+//    sp_mat buildNetwork(mat H, string algorithm = "k*nn",
+//                        string distance_metric = "jsd", double density = 1.0,
+//                        int thread_no = 0, double M = 16,
+//                        double ef_construction = 200, double ef = 200,
+//                        bool mutual_edges_only = true, int k = 10);
 
     // mat computeFullSim(mat &H, int thread_no);
 
@@ -466,11 +466,11 @@ namespace ACTIONet
     vec xicor(vec xvec, vec yvec, bool compute_pval = true, int seed = 0);
     field<mat> XICOR(mat &X, mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
 
-    sp_mat buildNetwork_bipartite(mat H1, mat H2, double density = 1.0,
-                                  int thread_no = 0, double M = 16,
-                                  double ef_construction = 200,
-                                  double ef = 200,
-                                  string distance_metric = "jsd");
+//    sp_mat buildNetwork_bipartite(mat H1, mat H2, double density = 1.0,
+//                                  int thread_no = 0, double M = 16,
+//                                  double ef_construction = 200,
+//                                  double ef = 200,
+//                                  string distance_metric = "jsd");
 
     field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0, double alpha = 0.85, int thread_no = 0);
 
