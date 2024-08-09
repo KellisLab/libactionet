@@ -2,7 +2,7 @@
 #define ACTION_HPP
 
 #include "config_arma.hpp"
-#include "config_actionet.hpp"
+#include "config_interface.hpp"
 
 // To store the output of run_SPA()
 struct SPA_results

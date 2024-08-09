@@ -2,7 +2,7 @@
 #define UTILS_MATRIX_HPP
 
 #include "config_arma.hpp"
-#include "config_actionet.hpp"
+#include "config_interface.hpp"
 
 #include "utils_parallel.hpp"
 #include "utils_math.hpp"

@@ -5,10 +5,16 @@
 
 #include "utils/utils_matrix.hpp"
 #include "utils/utils_xmap.hpp"
+#include "utils/utils_graph.hpp"
 
 #include "uwot/coords.h"
 
 #include "visualization/create_xmap.hpp"
 #include "visualization/find_ab.hpp"
+
+// Functions
+arma::mat transform_layout(arma::sp_mat &G, arma::mat &reference_layout, bool presmooth_network,
+                           const std::string &method, double min_dist, double spread, double gamma,
+                           unsigned int n_epochs, int thread_no, int seed, double learning_rate, int sim2dist);
 
 #endif //VISUALIZATION_EXT_H

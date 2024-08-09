@@ -5,7 +5,9 @@
 #undef ARMA_BLAS_CAPITALS
 #define ARMA_BLAS_UNDERSCORE
 
-// #define STATS_ENABLE_ARMA_WRAPPERS 1
+#define STATS_ENABLE_ARMA_WRAPPERS 1
+#define STATS_GO_INLINE
+
 // #define USE_RCPP_ARMADILLO 1
 
 // #include <RcppArmadillo.h>

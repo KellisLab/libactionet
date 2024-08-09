@@ -34,8 +34,8 @@
 
 using namespace mini_thread;
 
-#define STATS_GO_INLINE
-#define STATS_ENABLE_ARMA_WRAPPERS
+//#define STATS_GO_INLINE
+//#define STATS_ENABLE_ARMA_WRAPPERS
 //#include <stats.hpp>
 
 // // SVD algorithms
@@ -277,18 +277,18 @@ namespace ACTIONet
     // mat computeFullSim(mat &H, int thread_no);
 
     // SGD-based force-directed layout (adopted and modified from the UMAP (uwot)
-    field<mat> layoutNetwork_xmap(sp_mat &G, mat &initial_position,
-                                  bool presmooth_network = false,
-                                  const std::string &method = "umap",
-                                  double min_dist = 1, double spread = 1,
-                                  double gamma = 1.0, unsigned int n_epochs = 500,
-                                  int thread_no = 0, int seed = 0,
-                                  double learning_rate = 1.0, int sim2dist = 2);
+//    field<mat> layoutNetwork_xmap(sp_mat &G, mat &initial_position,
+//                                  bool presmooth_network = false,
+//                                  const std::string &method = "umap",
+//                                  double min_dist = 1, double spread = 1,
+//                                  double gamma = 1.0, unsigned int n_epochs = 500,
+//                                  int thread_no = 0, int seed = 0,
+//                                  double learning_rate = 1.0, int sim2dist = 2);
 
-    mat transform_layout(sp_mat &G, mat &reference_layout, bool presmooth_network,
-                         const std::string &method, double min_dist, double spread,
-                         double gamma, unsigned int n_epochs, int thread_no,
-                         int seed, double learning_rate, int sim2dist);
+//    mat transform_layout(sp_mat &G, mat &reference_layout, bool presmooth_network,
+//                         const std::string &method, double min_dist, double spread,
+//                         double gamma, unsigned int n_epochs, int thread_no,
+//                         int seed, double learning_rate, int sim2dist);
 
     // Methods for pseudo-bulk construction
     mat compute_pseudo_bulk_per_archetype(sp_mat &S, mat &H);
@@ -334,14 +334,14 @@ namespace ACTIONet
     // Network tools
     uvec compute_core_number(sp_mat &G);
     vec compute_archetype_core_centrality(sp_mat &G, uvec sample_assignments);
-    mat compute_network_diffusion(sp_mat &G, sp_mat &X0, int thread_no,
-                                  double alpha, int max_it);
-    mat compute_network_diffusion_fast(sp_mat &G, sp_mat &X0, int thread_no,
-                                       double alpha, int max_it);
-    mat compute_network_diffusion_direct(sp_mat &G, sp_mat &X0, int thread_no,
-                                         double alpha);
-    mat compute_network_diffusion_SFMULT(sp_mat &G, sp_mat &X0, double alpha,
-                                         int max_it);
+//    mat compute_network_diffusion(sp_mat &G, sp_mat &X0, int thread_no,
+//                                  double alpha, int max_it);
+//    mat compute_network_diffusion_fast(sp_mat &G, sp_mat &X0, int thread_no,
+//                                       double alpha, int max_it);
+//    mat compute_network_diffusion_direct(sp_mat &G, sp_mat &X0, int thread_no,
+//                                         double alpha);
+//    mat compute_network_diffusion_SFMULT(sp_mat &G, sp_mat &X0, double alpha,
+//                                         int max_it);
 
     vec NetDBSCAN(sp_mat &G, int minPts, double eps, double alpha_val);
 
@@ -364,23 +364,23 @@ namespace ACTIONet
                                        double alpha, int max_it, int thread_no,
                                        bool ignore_baseline_expression);
 
-    mat compute_marker_aggregate_stats_basic_sum(sp_mat &S, sp_mat &marker_mat);
-    mat compute_marker_aggregate_stats_basic_sum_perm(sp_mat &S, sp_mat &marker_mat,
-                                                      int perm_no, int thread_no);
-    mat compute_marker_aggregate_stats_basic_sum_perm_smoothed(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
-        int perm_no, int thread_no);
-    mat compute_marker_aggregate_stats_basic_sum_smoothed(sp_mat &G, sp_mat &S,
-                                                          sp_mat &marker_mat,
-                                                          double alpha, int max_it,
-                                                          int perm_no,
-                                                          int thread_no);
-    mat compute_marker_aggregate_stats_basic_sum_smoothed_normalized(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double, int max_it, int perm_no,
-        int thread_no);
-    mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
-        int perm_no, int thread_no);
+//    mat compute_marker_aggregate_stats_basic_sum(sp_mat &S, sp_mat &marker_mat);
+//    mat compute_marker_aggregate_stats_basic_sum_perm(sp_mat &S, sp_mat &marker_mat,
+//                                                      int perm_no, int thread_no);
+//    mat compute_marker_aggregate_stats_basic_sum_perm_smoothed(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
+//        int perm_no, int thread_no);
+//    mat compute_marker_aggregate_stats_basic_sum_smoothed(sp_mat &G, sp_mat &S,
+//                                                          sp_mat &marker_mat,
+//                                                          double alpha, int max_it,
+//                                                          int perm_no,
+//                                                          int thread_no);
+//    mat compute_marker_aggregate_stats_basic_sum_smoothed_normalized(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double, int max_it, int perm_no,
+//        int thread_no);
+//    mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
+//        int perm_no, int thread_no);
 
     mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(
         sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
@@ -410,10 +410,10 @@ namespace ACTIONet
                                      int normalization_method = 1, int perm_no = 30,
                                      int thread_no = 0);
 
-    sp_mat normalize_adj(sp_mat &G, int norm_type = 1);
-    mat compute_network_diffusion_Chebyshev(sp_mat &P, mat &X, int thread_no = 0,
-                                            double alpha = 0.85, int max_it = 5,
-                                            double res_threshold = 1e-8);
+//    sp_mat normalize_adj(sp_mat &G, int norm_type = 1);
+//    mat compute_network_diffusion_Chebyshev(sp_mat &P, mat &X, int thread_no = 0,
+//                                            double alpha = 0.85, int max_it = 5,
+//                                            double res_threshold = 1e-8);
     mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat,
                                                      int thread_no = 0);
 
@@ -472,7 +472,7 @@ namespace ACTIONet
 //                                  double ef = 200,
 //                                  string distance_metric = "jsd");
 
-    field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0, double alpha = 0.85, int thread_no = 0);
+//    field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0, double alpha = 0.85, int thread_no = 0);
 
     // mat oneHot_encoding(vec batches);
     mat assess_label_enrichment(sp_mat &H, mat &M, int thread_no = 0);

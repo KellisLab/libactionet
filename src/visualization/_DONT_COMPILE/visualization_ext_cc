@@ -1,6 +1,5 @@
 #include "visualization_ext_h"
 
-
 const double UMAP_A[101] = {
         1.93280839781719, 1.89560586588002, 1.85873666431227, 1.82221007490834,
         1.78603612060048, 1.75022496320214, 1.71478579945151, 1.67972997626197,
@@ -88,7 +87,6 @@ arma::mat transform_layout(arma::sp_mat &G, arma::mat &reference_layout, bool pr
     stdout_printf("\tmethod = %s, a = %.3f, b = %.3f (epochs = %d, threads=%d)\n",
                   method.c_str(), a, b, n_epochs, thread_no);
 
-    // TODO: `normalize_adj` in `network_diffusion.cc`
     arma::sp_mat W = normalize_adj(G, 1);
     arma::mat query_layout = spmat_mat_product_parallel(W, reference_layout, thread_no);
 
