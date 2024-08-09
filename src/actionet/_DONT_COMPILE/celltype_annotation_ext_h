@@ -1,4 +1,7 @@
 #ifndef CELLTYPE_ANNOTATION_EXT_HPP
 #define CELLTYPE_ANNOTATION_EXT_HPP
 
+#include "actionet.hpp"
+#include "utils/utils_matrix.hpp"
+
 #endif //CELLTYPE_ANNOTATION_EXT_HPP

@@ -2,149 +2,156 @@
 
 // TODO: Add declarations with defaults.
 // TODO: Remove from base.h
-double F2z(double F, double d1, double d2)
-{
+
+double F2z(double F, double d1, double d2) {
     double mu = d2 / (d2 - 2);                                                               // Only valud if d2 > 2
     double sigma_sq = (2 * d2 * d2 * (d1 + d2 - 2)) / (d1 * (d2 - 2) * (d2 - 2) * (d2 - 4)); // Only valid when d2 > 4
 
-    double z = (F - mu) / sqrt(sigma_sq);
+    double z = (F - mu) / std::sqrt(sigma_sq);
     return (z);
 }
 
-mat doubleNorm(mat &X)
-{
-    vec rs = sum(X, 1);
-    vec cs = trans(sum(X, 0));
+arma::mat doubleNorm(arma::mat &X) {
+    arma::vec rs = arma::sum(X, 1);
+    arma::vec cs = arma::trans(arma::sum(X, 0));
 
-    mat Dr = diagmat(1 / sqrt(rs));
-    mat Dc = diagmat(1 / sqrt(cs));
+    arma::mat Dr = arma::diagmat(1 / arma::sqrt(rs));
+    arma::mat Dc = arma::diagmat(1 / arma::sqrt(cs));
 
-    mat Y = Dr * X * Dc;
+    arma::mat Y = Dr * X * Dc;
 
     return (Y);
 }
 
-sp_mat scale_expression(sp_mat &S)
-{
-    sp_mat T = S;
+arma::sp_mat scale_expression(arma::sp_mat &S) {
+    arma::sp_mat T = S;
 
-    sp_mat::iterator it = T.begin();
-    sp_mat::iterator it_end = T.end();
+    arma::sp_mat::iterator it = T.begin();
+    arma::sp_mat::iterator it_end = T.end();
 
-    vec mu = vec(sum(T, 1)) / vec(sum(spones(T), 1));
-    for (; it != it_end; ++it)
-    {
+    arma::vec mu = arma::vec(arma::sum(T, 1)) / arma::vec(arma::sum(arma::spones(T), 1));
+    for (; it != it_end; ++it) {
         (*it) -= mu(it.row());
     }
-    vec sigma = vec(sum(square(T), 1));
+    arma::vec sigma = arma::vec(arma::sum(arma::square(T), 1));
 
     T = S;
-    for (; it != it_end; ++it)
-    {
+    for (; it != it_end; ++it) {
         (*it) /= sigma(it.row());
     }
 
     return (T);
 }
 
-
-mat compute_marker_aggregate_stats_basic_sum(sp_mat &S, sp_mat &marker_mat) {
-    marker_mat = normalise(marker_mat, 1, 0);
-    sp_mat X = trans(marker_mat);
+arma::mat compute_marker_aggregate_stats_basic_sum(arma::sp_mat &S, arma::sp_mat &marker_mat) {
+    marker_mat = arma::normalise(marker_mat, 1, 0);
+    arma::sp_mat X = arma::trans(marker_mat);
 
     S = scale_expression(S);
-    mat stats = mat(trans(X * S));
+    arma::mat stats = arma::mat(trans(X * S));
 
     return (stats);
 }
 
-mat compute_marker_aggregate_stats_basic_sum_perm(sp_mat &S, sp_mat &marker_mat, int perm_no = 100, int thread_no = 0)
-{
-    marker_mat = normalise(marker_mat, 1, 0);
-    mat X = trans(mat(marker_mat));
+arma::mat compute_marker_aggregate_stats_basic_sum_perm(arma::sp_mat &S, arma::sp_mat &marker_mat, int perm_no = 100,
+                                                        int thread_no = 0) {
+
+    marker_mat = arma::normalise(marker_mat, 1, 0);
+    arma::mat X = arma::trans(arma::mat(marker_mat));
 
     // S = scale_expression(S);
-    mat stats = mat(trans(sp_mat(X * S)));
+    arma::mat stats = arma::mat(arma::trans(arma::sp_mat(X * S)));
 
     int N = X.n_cols;
 
-    mat E = zeros(size(stats));
-    mat Esq = zeros(size(stats));
-    parallelFor(
-            0, perm_no, [&](size_t i)
-            {
-                uvec perm = randperm(N);
-                mat rand_stats = mat(trans(sp_mat(X.cols(perm) * S)));
-                mat shifted_vals = (rand_stats - stats);
+    arma::mat E = arma::zeros(arma::size(stats));
+    arma::mat Esq = arma::zeros(arma::size(stats));
+
+    mini_thread::parallelFor(
+            0, perm_no, [&](size_t i) {
+                arma::uvec perm = arma::randperm(N);
+                arma::mat rand_stats = arma::mat(arma::trans(arma::sp_mat(X.cols(perm) * S)));
+                arma::mat shifted_vals = (rand_stats - stats);
                 E += shifted_vals;
-                Esq += square(shifted_vals); },
+                Esq += square(shifted_vals);
+            },
             thread_no);
-    mat mu = E / perm_no + stats;
-    mat sigma = sqrt((Esq - square(E) / perm_no) / (perm_no - 1));
-    mat Z = (stats - mu) / sigma;
+    arma::mat mu = E / perm_no + stats;
+    arma::mat sigma = arma::sqrt((Esq - arma::square(E) / perm_no) / (perm_no - 1));
+    arma::mat Z = (stats - mu) / sigma;
 
     return (Z);
 }
 
-mat compute_marker_aggregate_stats_basic_sum_perm_smoothed(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85, int max_it = 5, int perm_no = 100, int thread_no = 0)
-{
-    marker_mat = normalise(marker_mat, 1, 0);
-    mat X = trans(mat(marker_mat));
+arma::mat compute_marker_aggregate_stats_basic_sum_perm_smoothed(arma::sp_mat &G, arma::sp_mat &S,
+                                                                 arma::sp_mat &marker_mat, double alpha = 0.85,
+                                                                 int max_it = 5, int perm_no = 100, int thread_no = 0) {
+
+    marker_mat = arma::normalise(marker_mat, 1, 0);
+    arma::mat X = arma::trans(arma::mat(marker_mat));
 
     S = scale_expression(S);
-    sp_mat raw_stats = trans(sp_mat(X * S));
-    mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it); // * diagmat(vec(trans(sum(raw_stats))));
+    arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
+    // TODO: Declared in actionet/network_diffusion.hpp
+    arma::mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha,
+                                                     max_it); // * diagmat(vec(trans(sum(raw_stats))));
 
     int N = X.n_cols;
 
-    mat E = zeros(size(stats));
-    mat Esq = zeros(size(stats));
-    parallelFor(
-            0, perm_no, [&](size_t i)
-            {
-                uvec perm = randperm(N);
-                sp_mat raw_rand_stats = trans(sp_mat(X.cols(perm) * S));
-                mat rand_stats = compute_network_diffusion_fast(G, raw_rand_stats, 1, alpha, max_it); // * diagmat(vec(trans(sum(raw_rand_stats))));
+    arma::mat E = arma::zeros(arma::size(stats));
+    arma::mat Esq = arma::zeros(arma::size(stats));
 
-                mat shifted_vals = (rand_stats - stats);
+    mini_thread::parallelFor(
+            0, perm_no, [&](size_t i) {
+                arma::uvec perm = arma::randperm(N);
+                arma::sp_mat raw_rand_stats = trans(arma::sp_mat(X.cols(perm) * S));
+                arma::mat rand_stats = compute_network_diffusion_fast(G, raw_rand_stats, 1, alpha,
+                                                                      max_it); // * diagmat(vec(trans(sum(raw_rand_stats))));
+
+                arma::mat shifted_vals = (rand_stats - stats);
                 E += shifted_vals;
-                Esq += square(shifted_vals); },
+                Esq += arma::square(shifted_vals);
+            },
             thread_no);
-    mat mu = E / perm_no + stats;
-    mat sigma = sqrt((Esq - square(E) / perm_no) / (perm_no - 1));
-    mat Z = (stats - mu) / sigma;
+    arma::mat mu = E / perm_no + stats;
+    arma::mat sigma = arma::sqrt((Esq - arma::square(E) / perm_no) / (perm_no - 1));
+    arma::mat Z = (stats - mu) / sigma;
 
     return (Z);
 }
 
-mat compute_marker_aggregate_stats_basic_sum_smoothed(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85, int max_it = 5, int perm_no = 100, int thread_no = 0)
-{
-    marker_mat = normalise(marker_mat, 1, 0);
-    mat X = trans(mat(marker_mat));
+arma::mat compute_marker_aggregate_stats_basic_sum_smoothed(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+                                                            double alpha = 0.85, int max_it = 5, int perm_no = 100,
+                                                            int thread_no = 0) {
 
-    sp_mat raw_stats = trans(sp_mat(X * S));
-    mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) * diagmat(vec(trans(sum(raw_stats))));
+    marker_mat = arma::normalise(marker_mat, 1, 0);
+    arma::mat X = arma::trans(arma::mat(marker_mat));
+
+    arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
+    arma::mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+                      arma::diagmat(arma::vec(arma::trans(arma::sum(raw_stats))));
 
     return (stats);
 }
 
-mat compute_marker_aggregate_stats_basic_sum_smoothed_normalized(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85, int max_it = 5, int perm_no = 100, int thread_no = 0)
-{
-    marker_mat = normalise(marker_mat, 1, 0);
-    mat X = trans(mat(marker_mat));
+arma::mat compute_marker_aggregate_stats_basic_sum_smoothed_normalized(arma::sp_mat &G, arma::sp_mat &S,
+                                                                       arma::sp_mat &marker_mat, double alpha = 0.85,
+                                                                       int max_it = 5, int perm_no = 100,
+                                                                       int thread_no = 0) {
+    marker_mat = arma::normalise(marker_mat, 1, 0);
+    arma::mat X = arma::trans(arma::mat(marker_mat));
 
-    sp_mat raw_stats = trans(sp_mat(X * S));
-    mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) * diagmat(vec(trans(sum(raw_stats))));
+    arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
+    arma::mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+                      arma::diagmat(arma::vec(arma::trans(arma::sum(raw_stats))));
 
-    sp_mat p = trans(sum(S));
-    vec pr =
-            compute_network_diffusion_fast(G, p, thread_no, alpha, max_it).col(0);
+    arma::sp_mat p = arma::trans(arma::sum(S));
+    arma::vec pr = compute_network_diffusion_fast(G, p, thread_no, alpha, max_it).col(0);
 
-    for (int j = 0; j < stats.n_cols; j++)
-    {
-        vec ppr = stats.col(j);
-        vec scores_norm = log2(ppr / pr);
-        uvec zero_idx = find(ppr == 0);
+    for (int j = 0; j < stats.n_cols; j++) {
+        arma::vec ppr = stats.col(j);
+        arma::vec scores_norm = arma::log2(ppr / pr);
+        arma::uvec zero_idx = arma::find(ppr == 0);
         scores_norm(zero_idx).zeros();
         scores_norm = scores_norm % ppr;
 
@@ -154,13 +161,15 @@ mat compute_marker_aggregate_stats_basic_sum_smoothed_normalized(sp_mat &G, sp_m
     return (stats);
 }
 
-mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85, int max_it = 5, int perm_no = 100, int thread_no = 0)
-{
+mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+                                                              double alpha = 0.85, int max_it = 5, int perm_no = 100,
+                                                              int thread_no = 0) {
     marker_mat = normalise(marker_mat, 1, 0);
     mat X = trans(mat(marker_mat));
 
     sp_mat raw_stats = trans(sp_mat(X * S));
-    mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) * diagmat(vec(trans(sum(raw_stats))));
+    mat stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+                diagmat(vec(trans(sum(raw_stats))));
 
     mat raw_stats_mat = mat(raw_stats);
 
@@ -168,15 +177,16 @@ mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(sp_mat &G, sp_mat 
     mat E = zeros(size(stats));
     mat Esq = zeros(size(stats));
     parallelFor(
-            0, perm_no, [&](size_t i)
-            {
+            0, perm_no, [&](size_t i) {
                 uvec perm = randperm(N);
 
                 sp_mat raw_rand_stats = sp_mat(raw_stats_mat.rows(perm));
-                mat rand_stats = compute_network_diffusion_fast(G, raw_rand_stats, 1, alpha, max_it) * diagmat(vec(trans(sum(raw_rand_stats))));
+                mat rand_stats = compute_network_diffusion_fast(G, raw_rand_stats, 1, alpha, max_it) *
+                                 diagmat(vec(trans(sum(raw_rand_stats))));
 
                 E += rand_stats;
-                Esq += square(rand_stats); },
+                Esq += square(rand_stats);
+            },
             thread_no);
     mat mu = E / perm_no;
     mat sigma = sqrt(Esq / perm_no - square(mu));
@@ -185,14 +195,12 @@ mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(sp_mat &G, sp_mat 
     return (Z);
 }
 
-mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat, int thread_no)
-{
+mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat, int thread_no) {
     mat St = trans(S);
     mat Z = RIN_transform(St, thread_no); // cell x gene
 
     mat stats = zeros(Z.n_rows, marker_mat.n_cols);
-    for (int i = 0; i < marker_mat.n_cols; i++)
-    {
+    for (int i = 0; i < marker_mat.n_cols; i++) {
         vec v = vec(marker_mat.col(i));
         uvec idx = find(v != 0);
         vec w = v(idx);
@@ -203,18 +211,16 @@ mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat, int
     return (stats);
 }
 
-mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85, int max_it = 5, int perm_no = 100, int thread_no = 0, int normalization = 1)
-{
+mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85,
+                                                      int max_it = 5, int perm_no = 100, int thread_no = 0,
+                                                      int normalization = 1) {
     marker_mat = normalise(marker_mat, 1, 0);
     mat X = trans(mat(marker_mat));
 
     sp_mat T;
-    if (normalization == 0)
-    {
+    if (normalization == 0) {
         T = S;
-    }
-    else if (normalization == 1)
-    {
+    } else if (normalization == 1) {
         T = LSI(S);
     }
 
@@ -224,8 +230,7 @@ mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(sp_mat &G, sp_mat &S, sp_m
     sp_mat::iterator it_end = T.end();
     vec E = zeros(T.n_cols);
     vec Esq = zeros(T.n_cols);
-    for (; it != it_end; ++it)
-    {
+    for (; it != it_end; ++it) {
         double x = *it - base(it.col());
         E(it.col()) += x;
         Esq(it.col()) += (x * x);
@@ -238,19 +243,15 @@ mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(sp_mat &G, sp_mat &S, sp_m
 
     sp_mat raw_stats = trans(sp_mat(X * T));
     mat stats;
-    if (alpha == 0)
-    {
+    if (alpha == 0) {
         stats = raw_stats;
-    }
-    else
-    {
-        stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) * diagmat(vec(trans(sum(raw_stats))));
+    } else {
+        stats = compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+                diagmat(vec(trans(sum(raw_stats))));
     }
 
-    for (int i = 0; i < stats.n_rows; i++)
-    {
-        for (int j = 0; j < stats.n_cols; j++)
-        {
+    for (int i = 0; i < stats.n_rows; i++) {
+        for (int j = 0; j < stats.n_cols; j++) {
             double stat = stats(i, j);
             double z = (stat - mu(i) * w1(j)) / (sigma(i) * w2(j));
             stats(i, j) = z;
@@ -260,16 +261,17 @@ mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(sp_mat &G, sp_mat &S, sp_m
     return (stats);
 }
 
-mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method, int expression_normalization_method, int gene_scaling_method, double pre_alpha, double post_alpha, int thread_no, int perm_no)
-{
-    if (S.n_rows != marker_mat.n_rows)
-    {
+mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+                                                       int network_normalization_method,
+                                                       int expression_normalization_method, int gene_scaling_method,
+                                                       double pre_alpha, double post_alpha, int thread_no,
+                                                       int perm_no) {
+    if (S.n_rows != marker_mat.n_rows) {
         stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
         FLUSH;
         return (mat());
     }
-    if (S.n_cols != G.n_rows)
-    {
+    if (S.n_cols != G.n_rows) {
         stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
         FLUSH;
         return (mat());
@@ -277,29 +279,23 @@ mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_
 
     // 0: pagerank, 2: sym_pagerank
     sp_mat P;
-    if (pre_alpha != 0 || post_alpha != 0)
-    {
+    if (pre_alpha != 0 || post_alpha != 0) {
         P = normalize_adj(G, network_normalization_method);
     }
 
     // 0: no normalization, 1: TF/IDF
     mat T = mat(normalize_expression_profile(S, expression_normalization_method));
 
-    if (pre_alpha != 0)
-    {
+    if (pre_alpha != 0) {
         mat T_t = trans(T);
         T = compute_network_diffusion_Chebyshev(P, T_t, thread_no, pre_alpha);
         T = trans(T);
     }
 
-    if (gene_scaling_method != 0)
-    {
-        if (gene_scaling_method > 0)
-        {
+    if (gene_scaling_method != 0) {
+        if (gene_scaling_method > 0) {
             T = normalise(T, gene_scaling_method, 1);
-        }
-        else
-        {
+        } else {
             mat T_t = trans(T);
             T = normalize_scores(T_t, -gene_scaling_method, thread_no);
             T = trans(T);
@@ -314,8 +310,7 @@ mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_
 
     mat E = zeros(size(stats));
     mat Esq = zeros(size(stats));
-    for (int k = 0; k < perm_no; k++)
-    {
+    for (int k = 0; k < perm_no; k++) {
         uvec perm = randperm(Y.n_rows);
         mat Y_perm = Y.rows(perm);
         mat rand_stats = spmat_mat_product(X, Y_perm);
@@ -331,8 +326,7 @@ mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_
     marker_stats.replace(datum::nan, 0);
 
     mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
-    if (post_alpha != 0)
-    {
+    if (post_alpha != 0) {
         stdout_printf("Post-smoothing expression values ... ");
         marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no, post_alpha);
         stdout_printf("done\n");
@@ -358,16 +352,15 @@ mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_
     return (marker_stats_smoothed);
 }
 
-mat aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method, int expression_normalization_method, int gene_scaling_method, double pre_alpha, double post_alpha, int thread_no)
-{
-    if (S.n_rows != marker_mat.n_rows)
-    {
+mat aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method,
+                                           int expression_normalization_method, int gene_scaling_method,
+                                           double pre_alpha, double post_alpha, int thread_no) {
+    if (S.n_rows != marker_mat.n_rows) {
         stdout_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
         FLUSH;
         return (mat());
     }
-    if (S.n_cols != G.n_rows)
-    {
+    if (S.n_cols != G.n_rows) {
         stdout_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
         FLUSH;
         return (mat());
@@ -375,29 +368,23 @@ mat aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_
 
     // 0: pagerank, 2: sym_pagerank
     sp_mat P;
-    if (pre_alpha != 0 || post_alpha != 0)
-    {
+    if (pre_alpha != 0 || post_alpha != 0) {
         P = normalize_adj(G, network_normalization_method);
     }
 
     // 0: no normalization, 1: TF/IDF
     mat T = mat(normalize_expression_profile(S, expression_normalization_method));
 
-    if (pre_alpha != 0)
-    {
+    if (pre_alpha != 0) {
         mat T_t = trans(T);
         T = compute_network_diffusion_Chebyshev(P, T_t, thread_no, pre_alpha);
         T = trans(T);
     }
 
-    if (gene_scaling_method != 0)
-    {
-        if (gene_scaling_method > 0)
-        {
+    if (gene_scaling_method != 0) {
+        if (gene_scaling_method > 0) {
             T = normalise(T, gene_scaling_method, 1);
-        }
-        else
-        {
+        } else {
             mat T_t = trans(T);
             T = normalize_scores(T_t, -gene_scaling_method, thread_no);
             T = trans(T);
@@ -405,13 +392,10 @@ mat aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_
     }
 
     mat marker_stats;
-    if (gene_scaling_method >= 0)
-    {
-        field<mat> res = assess_enrichment(T, marker_mat, thread_no);
+    if (gene_scaling_method >= 0) {
+        field <mat> res = assess_enrichment(T, marker_mat, thread_no);
         marker_stats = trans(res(0));
-    }
-    else
-    {
+    } else {
         vec w = vec(sqrt(trans(sum(square(marker_mat), 0))));
         w.replace(0.0, 1.0);
         mat w_mat = diagmat(1.0 / w);
@@ -421,8 +405,7 @@ mat aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_
     marker_stats.replace(datum::nan, 0);
 
     mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
-    if (post_alpha != 0)
-    {
+    if (post_alpha != 0) {
         stdout_printf("Post-smoothing expression values ... ");
         marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no, post_alpha);
         stdout_printf("done\n");
@@ -447,28 +430,22 @@ mat aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_
     return (marker_stats_smoothed);
 }
 
-mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization, int thread_no)
-{
+mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization, int thread_no) {
     mat St = trans(S); // cell x gene
 
     mat Z;
-    if (normalization == 0)
-    {
+    if (normalization == 0) {
         Z = zscore(St, thread_no);
-    }
-    else if (normalization == 1)
-    {
+    } else if (normalization == 1) {
         Z = RIN_transform(St, thread_no);
-    }
-    else // default to z-score
+    } else // default to z-score
     {
         Z = zscore(St, thread_no);
     }
 
     mat stats = zeros(Z.n_rows, marker_mat.n_cols);
     parallelFor(
-            0, marker_mat.n_cols, [&](size_t i)
-            {
+            0, marker_mat.n_cols, [&](size_t i) {
                 vec v = vec(marker_mat.col(i));
                 uvec idx = find(v != 0);
                 vec w = v(idx);
@@ -477,7 +454,7 @@ mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization, int
                 double denom = sqrt(sum(sum(cov(subZ))));
                 vec z = sum(subZ, 1) / denom;
 
-                field<mat> SVD_results = HalkoSVD(subZ, 1, 5, 0, 0);
+                field <mat> SVD_results = HalkoSVD(subZ, 1, 5, 0, 0);
                 vec u = SVD_results(0);
                 if (dot(u, z) < 0) // orient
                 {
@@ -486,24 +463,23 @@ mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization, int
 
                 u = u * stddev(z) / stddev(u);
 
-                stats.col(i) = u; },
+                stats.col(i) = u;
+            },
             thread_no);
 
     return (stats);
 }
 
-field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method, double alpha, int thread_no)
-{
-    field<mat> out(3);
+field <mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method,
+                                      double alpha, int thread_no) {
+    field <mat> out(3);
 
-    if (S.n_rows != marker_mat.n_rows)
-    {
+    if (S.n_rows != marker_mat.n_rows) {
         stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
         FLUSH;
         return (out);
     }
-    if (S.n_cols != G.n_rows)
-    {
+    if (S.n_cols != G.n_rows) {
         stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
         FLUSH;
         return (out);
@@ -511,8 +487,7 @@ field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, i
 
     // 0: pagerank, 2: sym_pagerank
     sp_mat P;
-    if (alpha != 0)
-    {
+    if (alpha != 0) {
         P = normalize_adj(G, network_normalization_method);
     }
 
@@ -524,8 +499,7 @@ field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, i
     // Compute cell-specific stats to adjust for depth, etc.
     vec mu = zeros(S.n_cols);
     vec nnz = zeros(S.n_cols);
-    for (sp_mat::const_iterator it = S.begin(); it != S.end(); ++it)
-    {
+    for (sp_mat::const_iterator it = S.begin(); it != S.end(); ++it) {
         mu[it.col()] += (*it);
         nnz[it.col()]++;
     }
@@ -533,8 +507,7 @@ field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, i
     vec p_nnz = nnz / S.n_rows; // 1 - p_zero
 
     vec sigma_sq = zeros(S.n_cols);
-    for (sp_mat::const_iterator it = S.begin(); it != S.end(); ++it)
-    {
+    for (sp_mat::const_iterator it = S.begin(); it != S.end(); ++it) {
         float delta = mu[it.col()] - (*it);
         sigma_sq[it.col()] += delta * delta;
     }
@@ -551,8 +524,7 @@ field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, i
     marker_stats.replace(datum::nan, 0);
 
     mat marker_stats_smoothed = marker_stats;
-    if (alpha != 0)
-    {
+    if (alpha != 0) {
         stdout_printf("Smoothing geneset scores ... ");
         marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no, alpha);
         stdout_printf("done\n");
