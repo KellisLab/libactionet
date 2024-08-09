@@ -115,7 +115,7 @@
 #include <unistd.h>
 #endif
 
-#include "randomkit.h"
+#include "../../../include/_TO_INCLUDE/layout/s_gd2/randomkit.h"
 
 #ifndef RK_DEV_URANDOM
 #define RK_DEV_URANDOM "/dev/urandom"

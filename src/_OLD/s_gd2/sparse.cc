@@ -9,8 +9,8 @@
 // for debug and test
 #include <iostream>
 
-#include "layout.hpp"
-#include "randomkit.h"
+#include "../../../include/_TO_INCLUDE/layout/s_gd2/layout.hpp"
+#include "../../../include/_TO_INCLUDE/layout/s_gd2/randomkit.h"
 
 using std::vector;
 
