@@ -59,8 +59,12 @@ find_package(SuiteSparse REQUIRED)
 file(GLOB_RECURSE SOURCES *.cpp)
 add_library(libactionet STATIC ${SOURCES})
 
-target_include_directories(libactionet PUBLIC "${libactionet_SOURCE_DIR}/include/extern")
-target_include_directories(libactionet PUBLIC "${libactionet_SOURCE_DIR}/include")
+target_include_directories(
+        libactionet
+        PRIVATE "${libactionet_SOURCE_DIR}/include/extern/gcem"
+        PRIVATE "${libactionet_SOURCE_DIR}/include/extern"
+        PUBLIC "${libactionet_SOURCE_DIR}/include"
+)
 
 ## [Dirty] Add all header files in the directory for testing
 #HEADER_DIRECTORIES(header_list)
