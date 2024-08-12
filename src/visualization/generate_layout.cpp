@@ -15,8 +15,7 @@ namespace ACTIONet {
         double b = found.second;
 
         stdout_printf(
-                "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, "
-                "threads=%d)\n",
+                "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, threads=%d)\n",
                 method.c_str(), a, b, n_epochs, thread_no);
 
         bool move_other = true;
@@ -103,8 +102,8 @@ namespace ACTIONet {
         // Initial coordinates of vertices (0-simplices)
         std::vector<float> head_embedding(init_coors.n_elem);
         arma::fmat sub_coor = arma::conv_to<arma::fmat>::from(init_coors);
-        memcpy(head_embedding.data(), sub_coor.memptr(),
-               sizeof(float) * head_embedding.size());
+        std::memcpy(head_embedding.data(), sub_coor.memptr(),
+                    sizeof(float) * head_embedding.size());
         // vector<float> tail_embedding(head_embedding);
         uwot::Coords coords = uwot::Coords(head_embedding);
 
@@ -142,8 +141,8 @@ namespace ACTIONet {
             head_embedding.clear();
             head_embedding.resize(nV * 3);
             sub_coor = arma::conv_to<arma::fmat>::from(init_coors);
-            memcpy(head_embedding.data(), sub_coor.memptr(),
-                   sizeof(float) * head_embedding.size());
+            std::memcpy(head_embedding.data(), sub_coor.memptr(),
+                        sizeof(float) * head_embedding.size());
             coords = uwot::Coords(head_embedding);
 
             UmapFactory umap_factory_3D(
@@ -183,9 +182,7 @@ namespace ACTIONet {
             arma::mat V;
             arma::svd_econ(U, s, V, coordinates_3D, "left", "std");
 
-//        arma::mat Z = normalize_scores(U.cols(0, 2), 1, thread_no);
-            arma::mat Z = U.cols(0, 2);
-            Z = zscore(Z, 0, thread_no);
+            arma::mat Z = normalize_scores(U.cols(0, 2), 1, thread_no);
 
             arma::vec a = 75 * Z.col(0);
             arma::vec b = 75 * Z.col(1);

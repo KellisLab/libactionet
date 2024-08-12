@@ -2,7 +2,7 @@
 #define VISUALIZATION_HPP
 
 #include "config_arma.hpp"
-#include "config_interface.hpp"
+#include "libactionet_config.hpp"
 
 // Exported functions
 namespace ACTIONet {

@@ -360,9 +360,9 @@ namespace ACTIONet
             double sig_threshold = 3, uvec fixed_labels = uvec(),
             int thread_no = 0);
 
-    mat compute_marker_aggregate_stats(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
-                                       double alpha, int max_it, int thread_no,
-                                       bool ignore_baseline_expression);
+//    mat compute_marker_aggregate_stats(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+//                                       double alpha, int max_it, int thread_no,
+//                                       bool ignore_baseline_expression);
 
 //    mat compute_marker_aggregate_stats_basic_sum(sp_mat &S, sp_mat &marker_mat);
 //    mat compute_marker_aggregate_stats_basic_sum_perm(sp_mat &S, sp_mat &marker_mat,
@@ -382,11 +382,11 @@ namespace ACTIONet
 //        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
 //        int perm_no, int thread_no);
 
-    mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
-        int perm_no, int thread_no, int normalization);
+//    mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha, int max_it,
+//        int perm_no, int thread_no, int normalization);
 
-    sp_mat LSI(sp_mat &X, double size_factor);
+//    sp_mat LSI(sp_mat &X, double size_factor);
 
     field<vec> autocorrelation_Moran_parametric(mat G, mat scores,
                                                 int normalization_method = 4,
@@ -414,46 +414,46 @@ namespace ACTIONet
 //    mat compute_network_diffusion_Chebyshev(sp_mat &P, mat &X, int thread_no = 0,
 //                                            double alpha = 0.85, int max_it = 5,
 //                                            double res_threshold = 1e-8);
-    mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat,
-                                                     int thread_no = 0);
+//    mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat,
+//                                                     int thread_no = 0);
 
     // full_trace runACTION_muV(vector<mat> cell_signatures, int k_min, int k_max,
     //                          vec alpha, double lambda = 1, int AA_iters = 50,
     //                          int Opt_iters = 0, int thread_no = 0);
-    mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization = 0,
-                                  int thread_no = 0);
+//    mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization = 0,
+//                                  int thread_no = 0);
 
     // vec sweepcut(sp_mat &A, vec s, int min_size = 5, int max_size = -1);
 
-    mat normalize_scores(mat scores, int method = 1, int thread_no = 0);
+//    mat normalize_scores(mat scores, int method = 1, int thread_no = 0);
 
-    mat aggregate_genesets(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
-                           int network_normalization_method = 0,
-                           int expression_normalization_method = 0,
-                           int gene_scaling_method = 0, double post_alpha = 0.85,
-                           int thread_no = 0);
+//    mat aggregate_genesets(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+//                           int network_normalization_method = 0,
+//                           int expression_normalization_method = 0,
+//                           int gene_scaling_method = 0, double post_alpha = 0.85,
+//                           int thread_no = 0);
 
-    mat aggregate_genesets_mahalanobis_2archs(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
-        int network_normalization_method = 0,
-        int expression_normalization_method = 0, int gene_scaling_method = 3,
-        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
-    mat aggregate_genesets_mahalanobis_2gmm(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
-        int network_normalization_method = 0,
-        int expression_normalization_method = 0, int gene_scaling_method = 3,
-        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
-    mat aggregate_genesets_weighted_enrichment(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
-        int network_normalization_method = 0,
-        int expression_normalization_method = 0, int gene_scaling_method = 3,
-        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
-    mat aggregate_genesets_weighted_enrichment_permutation(
-        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
-        int network_normalization_method = 0,
-        int expression_normalization_method = 0, int gene_scaling_method = 3,
-        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0,
-        int perm_no = 30);
+//    mat aggregate_genesets_mahalanobis_2archs(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+//        int network_normalization_method = 0,
+//        int expression_normalization_method = 0, int gene_scaling_method = 3,
+//        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
+//    mat aggregate_genesets_mahalanobis_2gmm(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+//        int network_normalization_method = 0,
+//        int expression_normalization_method = 0, int gene_scaling_method = 3,
+//        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
+//    mat aggregate_genesets_weighted_enrichment(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+//        int network_normalization_method = 0,
+//        int expression_normalization_method = 0, int gene_scaling_method = 3,
+//        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
+//    mat aggregate_genesets_weighted_enrichment_permutation(
+//        sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+//        int network_normalization_method = 0,
+//        int expression_normalization_method = 0, int gene_scaling_method = 3,
+//        double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0,
+//        int perm_no = 30);
 
     // mat run_simplex_regression_FW(mat &A, mat &B, int max_iter = -1, double min_diff = 0.01);
     // field<mat> recursiveNMU_mine(mat M, int dim, int max_SVD_iter,
@@ -462,7 +462,7 @@ namespace ACTIONet
 
     //   mat normalize_mat(mat &X, int normalization = 0, int dim = 0);
     //   sp_mat normalize_mat(sp_mat &X, int normalization = 0, int dim = 0);
-    vec rank_vec(vec x, int method = 0);
+//    vec rank_vec(vec x, int method = 0);
     vec xicor(vec xvec, vec yvec, bool compute_pval = true, int seed = 0);
     field<mat> XICOR(mat &X, mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
 

@@ -1,11 +1,9 @@
 #include "action/orthogonalization.hpp"
 
-namespace ACTIONet
-{
+namespace ACTIONet {
 
     arma::field<arma::mat> orthogonalize_batch_effect(arma::sp_mat &S, arma::field<arma::mat> SVD_results,
-                                                      arma::mat &design)
-    {
+                                                      arma::mat &design) {
         stdout_printf("Orthogonalizing batch effect (sparse):\n");
         FLUSH;
 
@@ -15,14 +13,13 @@ namespace ACTIONet
         arma::mat A = Z;
         arma::mat B = -arma::mat(arma::trans(arma::trans(Z) * S));
 
-        arma::field<arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
+        arma::field <arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
         FLUSH;
         return (perturbed_SVD);
     }
 
     arma::field<arma::mat> orthogonalize_batch_effect(arma::mat &S, arma::field<arma::mat> SVD_results,
-                                                      arma::mat &design)
-    {
+                                                      arma::mat &design) {
         stdout_printf("Orthogonalizing batch effect: (dense):\n");
         FLUSH;
 
@@ -32,14 +29,13 @@ namespace ACTIONet
         arma::mat A = Z;
         arma::mat B = -arma::mat(arma::trans(arma::trans(Z) * S));
 
-        arma::field<arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
+        arma::field <arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
         FLUSH;
         return (perturbed_SVD);
     }
 
     arma::field<arma::mat> orthogonalize_basal(arma::sp_mat &S, arma::field<arma::mat> SVD_results,
-                                               arma::mat &basal_state)
-    {
+                                               arma::mat &basal_state) {
         stdout_printf("Orthogonalizing basal (sparse):\n");
         FLUSH;
 
@@ -49,14 +45,13 @@ namespace ACTIONet
         arma::mat A = Z;
         arma::mat B = -arma::mat(arma::trans(arma::trans(Z) * S));
 
-        arma::field<arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
+        arma::field <arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
         FLUSH;
         return (perturbed_SVD);
     }
 
     arma::field<arma::mat> orthogonalize_basal(arma::mat &S, arma::field<arma::mat> SVD_results,
-                                               arma::mat &basal_state)
-    {
+                                               arma::mat &basal_state) {
         stdout_printf("Orthogonalizing basal (dense):\n");
         FLUSH;
 
@@ -66,7 +61,7 @@ namespace ACTIONet
         arma::mat A = Z;
         arma::mat B = -arma::mat(arma::trans(arma::trans(Z) * S));
 
-        arma::field<arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
+        arma::field <arma::mat> perturbed_SVD = deflate_reduction(SVD_results, A, B);
         FLUSH;
         return (perturbed_SVD);
     }

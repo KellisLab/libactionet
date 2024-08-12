@@ -7,6 +7,7 @@
 * Fix namespace usage in headers
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
+* utils/ -> utils_internal/
 
 
 ## Secondary
@@ -14,14 +15,14 @@
 * Compile to Windows x86
 * Replace Armadillo with Eigen3?
 * zscore is multithreaded???
-
+* Consistent header guards
 
 
 ## Done
 * Automate link SuiteSparse on unix/macos
 * Upgrade Armadillo
-* Remove obselete igraph
-* Remove obselete libleidenalg
+* Remove obsolete igraph
+* Remove obsolete libleidenalg
 * Compile to Unix x86
 * Compile to Apple arm64 native
 * Compile to Apple x86 via Rosetta2

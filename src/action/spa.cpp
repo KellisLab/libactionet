@@ -1,11 +1,9 @@
-// Solves separable NMF problem
+// Successive projection algorithm (SPA)
 #include "action/spa.hpp"
 
-namespace ACTIONet
-{
+namespace ACTIONet {
 
-    SPA_results run_SPA(arma::mat &A, int k)
-    {
+    SPA_results run_SPA(arma::mat &A, int k) {
         SPA_results res;
 
         int n = A.n_cols;
@@ -20,8 +18,7 @@ namespace ACTIONet
         arma::vec norm_trace = arma::zeros(k);
         double eps = 1e-16;
 
-        for (int i = 1; i <= k; i++)
-        {
+        for (int i = 1; i <= k; i++) {
             // Find the column with maximum norm. In case of having more than one column
             // with almost very small diff in norm, pick the one that originally had the
             // largest norm
@@ -29,17 +26,12 @@ namespace ACTIONet
             norm_trace(i - 1) = a;
 
             arma::uvec b = arma::find((a * arma::ones(1, n) - normM) / a <= eps);
-            if (b.n_elem == 0)
-            {
+            if (b.n_elem == 0) {
                 break;
-            }
-            else if (b.n_elem > 1)
-            {
+            } else if (b.n_elem > 1) {
                 arma::uword idx = arma::index_max(normM1(b));
                 K(i - 1) = b(idx);
-            }
-            else
-            {
+            } else {
                 K(i - 1) = b(0);
             }
 
@@ -47,12 +39,10 @@ namespace ACTIONet
             U.col(i - 1) = A.col(K(i - 1));
 
             // Orthogonalize with respect to current basis
-            if (i > 1)
-            {
-                for (int j = 1; j <= i - 1; j++)
-                {
+            if (i > 1) {
+                for (int j = 1; j <= i - 1; j++) {
                     U.col(i - 1) =
-                        U.col(i - 1) - sum(U.col(j - 1) % U.col(i - 1)) * U.col(j - 1);
+                            U.col(i - 1) - sum(U.col(j - 1) % U.col(i - 1)) * U.col(j - 1);
                 }
             }
             double nm = arma::norm(U.col(i - 1), 2);
@@ -61,16 +51,13 @@ namespace ACTIONet
 
             // Update column norms
             arma::vec u = U.col(i - 1);
-            if (i > 1)
-            {
-                for (int j = i - 1; 1 <= j; j--)
-                {
+            if (i > 1) {
+                for (int j = i - 1; 1 <= j; j--) {
                     u = u - arma::sum(U.col(j - 1) % u) * U.col(j - 1);
                 }
             }
             normM = normM - arma::square(u.t() * A);
-            normM.transform([](double val)
-                            { return (val < 0 ? 0 : val); });
+            normM.transform([](double val) { return (val < 0 ? 0 : val); });
         }
 
         res.selected_columns = K;

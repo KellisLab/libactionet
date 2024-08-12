@@ -1,11 +1,9 @@
 // Solves the standard Archetypal Analysis (AA) problem
 #include "action/aa.hpp"
 
-namespace ACTIONet
-{
+namespace ACTIONet {
 
-    arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it = 100, double min_delta = 1e-16)
-    {
+    arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double min_delta) {
         int sample_no = A.n_cols;
         int d = A.n_rows;  // input dimension
         int k = W0.n_cols; // AA components
@@ -18,8 +16,7 @@ namespace ACTIONet
 
         double old_RSS = 0;
 
-        for (int it = 0; it < max_it; it++)
-        {
+        for (int it = 0; it < max_it; it++) {
             arma::mat C_old = C;
             arma::mat H_old = H;
             double A_norm = arma::norm(A, "fro");
@@ -28,23 +25,19 @@ namespace ACTIONet
 
             arma::mat R = A - W * H;
             arma::mat Ht = arma::trans(H);
-            for (int i = 0; i < k; i++)
-            {
+            for (int i = 0; i < k; i++) {
                 arma::vec w = W.col(i);
                 arma::vec h = Ht.col(i);
 
                 double norm_sq = arma::dot(h, h);
-                if (norm_sq < double(10e-8))
-                {
+                if (norm_sq < double(10e-8)) {
                     // singular
                     int max_res_idx = arma::index_max(arma::rowvec(arma::sum(arma::square(R), 0)));
                     W.col(i) = A.col(max_res_idx);
                     c.zeros();
                     c(max_res_idx) = 1;
                     C.col(i) = c;
-                }
-                else
-                {
+                } else {
                     arma::vec b = w;
                     cblas_dgemv(CblasColMajor, CblasNoTrans, R.n_rows, R.n_cols,
                                 (1.0 / norm_sq), R.memptr(), R.n_rows, h.memptr(), 1, 1,

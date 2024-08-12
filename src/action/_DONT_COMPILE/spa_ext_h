@@ -1,7 +1,0 @@
-#ifndef SPA_EXT_HPP
-#define SPA_EXT_HPP
-
-#include "action.hpp"
-#include <cholmod.h>
-
-#endif

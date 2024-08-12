@@ -1,23 +1,9 @@
-
+// Network imputation using PageRank
 #include "actionet/network_diffusion.hpp"
-
-// sp_mat &as_arma_sparse(cholmod_sparse *chol_A, sp_mat &A,
-//                        cholmod_common *chol_c);
-
-//void dsdmult(char transpose, int m, int n, const void *a, const double *b, double *c,
-//             cholmod_common *chol_cp);
-
-// cholmod_sparse *as_cholmod_sparse(const sp_mat &A, cholmod_sparse *chol_A,
-//                                   cholmod_common *chol_c);
-
-// arma::vec diffusion_solve_FISTA(arma::sp_mat &adj_mat, arma::vec &prob_dist,
-//                                 double alpha, double rho, double epsilon,
-//                                 int max_iter);
 
 namespace ACTIONet {
 
-    arma::mat compute_network_diffusion(arma::sp_mat &G, arma::sp_mat &X0, int thread_no = 4, double alpha = 0.85,
-                                        int max_it = 3) {
+    arma::mat compute_network_diffusion(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha, int max_it) {
         thread_no = std::min(thread_no, (int) X0.n_cols);
 
         int N = G.n_rows;
@@ -46,8 +32,8 @@ namespace ACTIONet {
         return (X);
     }
 
-    arma::mat compute_network_diffusion_fast(arma::sp_mat &G, arma::sp_mat &X0, int thread_no = 4, double alpha = 0.85,
-                                             int max_it = 5) {
+    arma::mat compute_network_diffusion_fast(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha,
+                                             int max_it) {
 
         thread_no = std::min(thread_no, (int) X0.n_cols);
 

@@ -3,9 +3,9 @@
 
 #include "visualization.hpp"
 
-#include "utils/utils_parallel.hpp"
-#include "utils/utils_math.hpp"
-#include "utils_xmap.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_xmap.hpp"
+#include "tools/tl_normalization.hpp"
 
 #include "uwot/coords.h"
 #include "colorspace.h"

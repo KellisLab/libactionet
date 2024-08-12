@@ -24,16 +24,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-MACRO(HEADER_DIRECTORIES return_list)
-    FILE(GLOB_RECURSE new_list *.h *.hpp)
-    SET(dir_list "")
-    FOREACH(file_path ${new_list})
-        GET_FILENAME_COMPONENT(dir_path ${file_path} PATH)
-        SET(dir_list ${dir_list} ${dir_path})
-    ENDFOREACH()
-    LIST(REMOVE_DUPLICATES dir_list)
-    SET(${return_list} ${dir_list})
-ENDMACRO()
+#MACRO(HEADER_DIRECTORIES return_list)
+#    FILE(GLOB_RECURSE new_list *.h *.hpp)
+#    SET(dir_list "")
+#    FOREACH(file_path ${new_list})
+#        GET_FILENAME_COMPONENT(dir_path ${file_path} PATH)
+#        SET(dir_list ${dir_list} ${dir_path})
+#    ENDFOREACH()
+#    LIST(REMOVE_DUPLICATES dir_list)
+#    SET(${return_list} ${dir_list})
+#ENDMACRO()
 
 add_compile_options(-w)
 # add_compile_options(-O3)
@@ -56,13 +56,16 @@ find_package(SuiteSparse REQUIRED)
 # include_directories(${SUITESPARSE_INCLUDE_DIRS})
 
 ## Add all C/C++ code to sources for compilation
-file(GLOB_RECURSE SOURCES *.cpp *.cc *.c)
-add_library(actionet STATIC ${SOURCES})
+file(GLOB_RECURSE SOURCES *.cpp)
+add_library(libactionet STATIC ${SOURCES})
+
+target_include_directories(libactionet PUBLIC "${libactionet_SOURCE_DIR}/include/extern")
+target_include_directories(libactionet PUBLIC "${libactionet_SOURCE_DIR}/include")
 
 ## [Dirty] Add all header files in the directory for testing
-HEADER_DIRECTORIES(header_list)
-include_directories("${libactionet_SOURCE_DIR}/../../inst/include")
-include_directories(${header_list})
+#HEADER_DIRECTORIES(header_list)
+#include_directories("${libactionet_SOURCE_DIR}/../../inst/include")
+#include_directories(${header_list})
 
 ## Add include headers
 # set(HEADER_ROOT "${libactionet_SOURCE_DIR}/include")
@@ -71,12 +74,12 @@ include_directories(${header_list})
 # include_directories(${HEADER_DIRS} )
 # target_include_directories(libactionet PUBLIC ${libactionet_SOURCE_DIR}/include ${libactionet_SOURCE_DIR}/include/math/aarand )
 
-target_compile_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS} )
-target_compile_options(actionet PUBLIC ${BLAS_LINKER_FLAGS} )
+target_compile_options(libactionet PUBLIC ${LAPACK_LINKER_FLAGS})
+target_compile_options(libactionet PUBLIC ${BLAS_LINKER_FLAGS})
 
 target_link_libraries(
-    actionet PUBLIC
-    SuiteSparse::CHOLMOD
-    ${LAPACK_LIBRARIES}
-    ${BLAS_LIBRARIES}
+        libactionet PUBLIC
+        SuiteSparse::CHOLMOD
+        ${LAPACK_LIBRARIES}
+        ${BLAS_LIBRARIES}
 )

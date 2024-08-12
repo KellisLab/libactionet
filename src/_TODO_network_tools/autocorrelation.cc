@@ -3,44 +3,6 @@
 namespace ACTIONet
 {
 
-  mat normalize_scores(mat scores, int method, int thread_no)
-  {
-    mat normalized_scores(size(scores));
-    switch (method)
-    {
-    case 0: //"none"
-    {
-      normalized_scores = scores;
-      break;
-    }
-    case 1: //"zscore"
-    {
-      normalized_scores = zscore(scores, 0, thread_no);
-      break;
-    }
-    case 2: //"RINT" (nonparametric)
-    {
-      normalized_scores = RIN_transform(scores, thread_no);
-      break;
-    }
-    case 3: //"robust_zscore" (kinda hack!)
-    {
-      normalized_scores = robust_zscore(scores, 0, thread_no);
-      break;
-    }
-    case 4: // mean centering
-    {
-      normalized_scores = mean_center(scores);
-      break;
-    }
-    default:
-      stderr_printf("Unknown normalization method\n");
-      FLUSH;
-      normalized_scores = scores;
-    }
-    return (normalized_scores);
-  }
-
   // G is the cell-cell network, scores is a cell x geneset matrix
   field<vec> autocorrelation_Moran_parametric(mat G, mat scores, int normalization_method, int thread_no)
   {

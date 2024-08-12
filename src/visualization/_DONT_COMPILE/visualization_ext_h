@@ -3,9 +3,9 @@
 
 #include "visualization.hpp"
 
-#include "utils/utils_matrix.hpp"
-#include "utils/utils_xmap.hpp"
-#include "utils/utils_graph.hpp"
+#include "utils_internal/utils_matrix.hpp"
+#include "utils_internal/utils_xmap.hpp"
+#include "utils_internal/utils_graph.hpp"
 
 #include "uwot/coords.h"
 
