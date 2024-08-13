@@ -1,20 +1,14 @@
 ## Primary
+* Rcpp wrappers
+* pybind 11 wrappers
 * Condense redundant SVD functions
 * Remove OpenMP dependency?
-* Resolve missing eigen in n2 library
-* Fix namespace usage in headers
-* Rename .cc/.cpp and .h/.hpp
-* Fix defaults (Source -> header)
 * Update hnswlib
-
 
 ## Secondary
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
-* Replace Armadillo with Eigen3?
 * zscore is multithreaded???
-* Consistent header guards
-
 
 ## Done
 * Automate link SuiteSparse on unix/macos
@@ -32,3 +26,7 @@
 * Update StatsLib
 * Fix duplicate PCG headers (run diff)?
 * Fix threading (RcppThread, mini_thread, inline, OpenMP)
+* Rename .cc/.cpp and .h/.hpp
+* Fix defaults (Source -> header)
+* Fix namespace usage in headers
+* Consistent header guards
