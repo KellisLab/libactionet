@@ -16,7 +16,6 @@
 // Exported functions
 namespace ACTIONet {
 
-    // generate_layout
     // Generate (U/t-U/PaC)MAP layout
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_position,
                                               bool presmooth_network = false, const std::string &method = "umap",

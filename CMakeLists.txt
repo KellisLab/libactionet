@@ -35,20 +35,19 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #    SET(${return_list} ${dir_list})
 #ENDMACRO()
 
-add_compile_options(-w)
+#add_compile_options(-w)
 # add_compile_options(-O3)
 
 # ########### Third-party dependencies
 ## Check for BLAS/LAPACK
 find_package(BLAS REQUIRED)
 # message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
-add_definitions("-DEIGEN_USE_BLAS") # Keep for future Eigen use
+#add_definitions("-DEIGEN_USE_BLAS") # Keep for future Eigen use
 # list(APPEND EXTERNAL_LIBS "${BLAS_LIBRARIES}")
 
 find_package(LAPACK REQUIRED)
 # message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
 # list(APPEND EXTERNAL_LIBS "${LAPACK_LIBRARIES}")
-
 
 ## Check for CHOLMOD
 find_package(SuiteSparse REQUIRED)
@@ -56,27 +55,22 @@ find_package(SuiteSparse REQUIRED)
 # include_directories(${SUITESPARSE_INCLUDE_DIRS})
 
 ## Add all C/C++ code to sources for compilation
-file(GLOB_RECURSE SOURCES *.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libactionet STATIC ${SOURCES})
 
+## Add include headers
 target_include_directories(
         libactionet
+        PRIVATE "${libactionet_SOURCE_DIR}/include/extern/armadillo"
         PRIVATE "${libactionet_SOURCE_DIR}/include/extern/gcem"
         PRIVATE "${libactionet_SOURCE_DIR}/include/extern"
         PUBLIC "${libactionet_SOURCE_DIR}/include"
 )
-
-## [Dirty] Add all header files in the directory for testing
-#HEADER_DIRECTORIES(header_list)
 #include_directories("${libactionet_SOURCE_DIR}/../../inst/include")
+
+## [Dirty] Add all header files in the directory for testing/
+#HEADER_DIRECTORIES(header_list)
 #include_directories(${header_list})
-
-## Add include headers
-# set(HEADER_ROOT "${libactionet_SOURCE_DIR}/include")
-
-# file(GLOB HEADER_DIRS ${libactionet_SOURCE_DIR}/include)
-# include_directories(${HEADER_DIRS} )
-# target_include_directories(libactionet PUBLIC ${libactionet_SOURCE_DIR}/include ${libactionet_SOURCE_DIR}/include/math/aarand )
 
 target_compile_options(libactionet PUBLIC ${LAPACK_LINKER_FLAGS})
 target_compile_options(libactionet PUBLIC ${BLAS_LINKER_FLAGS})

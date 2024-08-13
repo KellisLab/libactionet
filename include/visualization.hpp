@@ -2,7 +2,6 @@
 #define LIBACTIONET_VISUALIZATION_HPP
 
 #include "libactionet_config.hpp"
-
 #include "visualization/umap_structs.hpp"
 #include "visualization/create_xmap.hpp"
 #include "visualization/find_ab.hpp"

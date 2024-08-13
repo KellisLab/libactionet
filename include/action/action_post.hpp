@@ -3,10 +3,10 @@
 #define LIBACTIONET_ACTION_POST_HPP
 
 #include "libactionet_config.hpp"
+#include "utils_internal/utils_stats.hpp"
 #include "action/spa.hpp"
 #include "action/simplex_regression.hpp"
-#include "utils/utils_matrix.hpp"
-#include "utils_internal/utils_stats.hpp"
+#include "tools/normalization.hpp"
 
 // Exported
 namespace ACTIONet {

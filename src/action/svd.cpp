@@ -106,60 +106,60 @@ void gram_schmidt(arma::mat &A) {
     }
 }
 
-namespace ACTIONet {
+arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res) {
+    arma::mat U = SVD_res(0);
+    arma::vec s = SVD_res(1);
+    arma::mat V = SVD_res(2);
 
-    arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res) {
-        arma::mat U = SVD_res(0);
-        arma::vec s = SVD_res(1);
-        arma::mat V = SVD_res(2);
+    int dim = s.n_elem;
+    arma::uvec mask_idx;
 
-        int dim = s.n_elem;
-        arma::uvec mask_idx;
+    for (int i = 0; i < dim; i++) {
+        arma::vec u = U.col(i);
+        arma::vec v = V.col(i);
 
-        for (int i = 0; i < dim; i++) {
-            arma::vec u = U.col(i);
-            arma::vec v = V.col(i);
+        arma::vec up = u;
+        mask_idx = find(u < 0);
+        if (mask_idx.n_elem > 0)
+            up(mask_idx).zeros();
 
-            arma::vec up = u;
-            mask_idx = find(u < 0);
-            if (mask_idx.n_elem > 0)
-                up(mask_idx).zeros();
+        arma::vec un = -u;
+        mask_idx = find(u > 0);
+        if (mask_idx.n_elem > 0)
+            un(mask_idx).zeros();
 
-            arma::vec un = -u;
-            mask_idx = find(u > 0);
-            if (mask_idx.n_elem > 0)
-                un(mask_idx).zeros();
+        arma::vec vp = v;
+        mask_idx = find(v < 0);
+        if (mask_idx.n_elem > 0)
+            vp(mask_idx).zeros();
 
-            arma::vec vp = v;
-            mask_idx = find(v < 0);
-            if (mask_idx.n_elem > 0)
-                vp(mask_idx).zeros();
+        arma::vec vn = -v;
+        mask_idx = find(v > 0);
+        if (mask_idx.n_elem > 0)
+            vn(mask_idx).zeros();
 
-            arma::vec vn = -v;
-            mask_idx = find(v > 0);
-            if (mask_idx.n_elem > 0)
-                vn(mask_idx).zeros();
+        double n_up = norm(up);
+        double n_un = norm(un);
+        double n_vp = norm(vp);
+        double n_vn = norm(vn);
 
-            double n_up = norm(up);
-            double n_un = norm(un);
-            double n_vp = norm(vp);
-            double n_vn = norm(vn);
-
-            double termp = n_up * n_vp;
-            double termn = n_un * n_vn;
-            if (termp < termn) {
-                U.col(i) *= -1;
-                V.col(i) *= -1;
-            }
+        double termp = n_up * n_vp;
+        double termn = n_un * n_vn;
+        if (termp < termn) {
+            U.col(i) *= -1;
+            V.col(i) *= -1;
         }
-
-        arma::field<arma::mat> out(3);
-        out(0) = U;
-        out(1) = s;
-        out(2) = V;
-
-        return (out);
     }
+
+    arma::field<arma::mat> out(3);
+    out(0) = U;
+    out(1) = s;
+    out(2) = V;
+
+    return (out);
+}
+
+namespace ACTIONet {
 
     arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B) {
         int n = A.n_rows;

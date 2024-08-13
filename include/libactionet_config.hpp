@@ -32,7 +32,7 @@
     #define stderr_printf printf
     #define FLUSH fflush(stdout)
 
-    #include <armadillo/armadillo>
+    #include "armadillo"
 
 #endif
 

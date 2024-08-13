@@ -93,7 +93,6 @@ namespace ACTIONet {
 
         return (X);
     }
-
-
+    
 } // namespace ACTIONet
 

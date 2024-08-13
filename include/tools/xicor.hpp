@@ -4,7 +4,8 @@
 #define LIBACTIONET_XICOR_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_stats.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_misc.hpp"
 #include "aarand/aarand.hpp"
 
 namespace ACTIONet {
@@ -13,6 +14,6 @@ namespace ACTIONet {
 
     arma::field<arma::mat> XICOR(arma::mat &X, arma::mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
 
-}
+} // namespace ACTIONet
 
 #endif //LIBACTIONET_XICOR_HPP

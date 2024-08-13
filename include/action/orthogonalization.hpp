@@ -19,6 +19,6 @@ namespace ACTIONet {
 
     arma::field<arma::mat> orthogonalize_basal(arma::mat &S, arma::field<arma::mat> SVD_results, arma::mat &basal);
 
-}
+} // namespace ACTIONet
 
 #endif //LIBACTIONET_ORTHOGONALIZATION_HPP

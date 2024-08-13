@@ -4,7 +4,6 @@
 
 #include "libactionet_config.hpp"
 #include "utils_parallel.hpp"
-
 #include <cholmod.h>
 
 void

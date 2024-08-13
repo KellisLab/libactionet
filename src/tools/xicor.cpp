@@ -1,4 +1,4 @@
-#include <tools/xicor.hpp>
+#include "tools/xicor.hpp"
 
 namespace ACTIONet {
 

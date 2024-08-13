@@ -3,9 +3,9 @@
 #define LIBACTIONET_ACTION_DECOMP_HPP
 
 #include "libactionet_config.hpp"
-#include "utils/utils_matrix.hpp"
 #include "action/spa.hpp"
 #include "action/aa.hpp"
+#include "tools/normalization.hpp"
 
 // Exported
 namespace ACTIONet {

@@ -3,7 +3,7 @@
 
 #include "libactionet_config.hpp"
 #include "actionet/network_diffusion.hpp"
-#include "utils_internal/utils_network.hpp"
+#include "utils_internal/utils_graph.hpp"
 #include "action/aa.hpp"
 #include "tools/normalization.hpp"
 

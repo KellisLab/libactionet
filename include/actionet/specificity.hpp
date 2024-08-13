@@ -16,6 +16,6 @@ namespace ACTIONet {
 
     arma::field<arma::mat> compute_feature_specificity(arma::mat &S, arma::uvec sample_assignments, int thread_no = 0);
 
-}
+} // namespace ACTIONet
 
 #endif //LIBACTIONET_SPECIFICITY_HPP

@@ -2,7 +2,6 @@
 #ifndef LIBACTIONET_SIMPLEX_REGRESSION_HPP
 #define LIBACTIONET_SIMPLEX_REGRESSION_HPP
 
-//#include "action.hpp"
 #include "libactionet_config.hpp"
 #include <cblas.h>
 #include <cassert>
