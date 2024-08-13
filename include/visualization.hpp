@@ -3,7 +3,7 @@
 
 #include "libactionet_config.hpp"
 
-#include "visualization/UmapFactory.hpp"
+#include "visualization/umap_structs.hpp"
 #include "visualization/create_xmap.hpp"
 #include "visualization/find_ab.hpp"
 #include "visualization/generate_layout.hpp"

@@ -1,13 +1,11 @@
 ## Primary
-* Review defaults vs base.h and wrappers.
-* Fix threading (RcppThread, mini_thread, inline, OpenMP)
 * Condense redundant SVD functions
 * Remove OpenMP dependency?
 * Resolve missing eigen in n2 library
 * Fix namespace usage in headers
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
-* utils/ -> utils_internal/
+* Update hnswlib
 
 
 ## Secondary
@@ -33,3 +31,4 @@
 * Replace and remove "ParallelFor" in build_network.
 * Update StatsLib
 * Fix duplicate PCG headers (run diff)?
+* Fix threading (RcppThread, mini_thread, inline, OpenMP)

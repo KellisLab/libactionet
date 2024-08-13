@@ -7,5 +7,6 @@
 #include "actionet/annotation.hpp"
 #include "actionet/enrichment.hpp"
 #include "actionet/label_propagation.hpp"
+#include "actionet/specificity.hpp"
 
 #endif

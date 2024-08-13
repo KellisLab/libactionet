@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_UMAPFACTORY_HPP
-#define LIBACTIONET_UMAPFACTORY_HPP
+#ifndef LIBACTIONET_UMAP_STRUCTS_HPP
+#define LIBACTIONET_UMAP_STRUCTS_HPP
 
 #include "libactionet_config.hpp"
 #include "uwot/optimize.h"
@@ -168,4 +168,4 @@ struct UmapFactory {
     }
 };
 
-#endif //LIBACTIONET_UMAPFACTORY_HPP
+#endif //LIBACTIONET_UMAP_STRUCTS_HPP

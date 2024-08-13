@@ -4,6 +4,8 @@
 #include "libactionet_config.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
+// TODO: Make util_internal?
+
 arma::vec rank_vec(arma::vec x, int method = 0);
 
 arma::mat zscore(arma::mat &A, int dim = 0, int thread_no = 1);

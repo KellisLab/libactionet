@@ -1,38 +1,38 @@
 #ifndef BASE_H
 #define BASE_H
 
-#include <errno.h>
-#include <getopt.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
-#include <algorithm>
-#include <atomic>
-#include <cmath>
-#include <ctime>
-#include <map>
-#include <set>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
+//#include <errno.h>
+//#include <getopt.h>
+//#include <limits.h>
+//#include <math.h>
+//#include <stdio.h>
+//#include <string.h>
+//#include <sys/stat.h>
+//#include <sys/types.h>
+//#include <time.h>
+//#include <unistd.h>
+//#include <algorithm>
+//#include <atomic>
+//#include <cmath>
+//#include <ctime>
+//#include <map>
+//#include <set>
+//#include <string>
+//#include <thread>
+//#include <unordered_map>
+//#include <vector>
 
-#include <gradient.h>
-#include <sampler.h>
-#include <tauprng.h>
-#include <mini_thread/mini_thread.h>
-#include "ext/colorspace.h"
-#include <my_utils.h>
-#include <aarand/aarand.hpp>
-#include <hdbscan.hpp>
-#include <pcg_random.hpp>
+//#include <gradient.h>
+//#include <sampler.h>
+//#include <tauprng.h>
+//#include <mini_thread/mini_thread.h>
+//#include "ext/colorspace.h"
+//#include <my_utils.h>
+//#include <aarand/aarand.hpp>
+//#include <hdbscan.hpp>
+//#include <pcg_random.hpp>
 
-using namespace mini_thread;
+//using namespace mini_thread;
 
 //#define STATS_GO_INLINE
 //#define STATS_ENABLE_ARMA_WRAPPERS
@@ -78,24 +78,24 @@ using namespace mini_thread;
 // };
 
 // s_gd2 visualization
-void layout_unweighted(int n, double *X, int m, int *I, int *J, int t_max,
-                       double eps, int seed);
-void layout_weighted(int n, double *X, int m, int *I, int *J, double *V,
-                     int t_max, double eps, int seed);
-void layout_unweighted_convergent(int n, double *X, int m, int *I, int *J,
-                                  int t_max, double eps, double delta,
-                                  int t_maxmax, int seed);
-void layout_weighted_convergent(int n, double *X, int m, int *I, int *J,
-                                double *V, int t_max, double eps, double delta,
-                                int t_maxmax, int seed);
-
-void layout_sparse_unweighted(int n, double *X, int m, int *I, int *J, int p,
-                              int t_max, double eps, int seed);
-void layout_sparse_weighted(int n, double *X, int m, int *I, int *J, double *V,
-                            int p, int t_max, double eps, int seed);
-
-void mds_direct(int n, int kd, double *X, double *d, double *w, int t_max,
-                double *etas, int seed);
+//void layout_unweighted(int n, double *X, int m, int *I, int *J, int t_max,
+//                       double eps, int seed);
+//void layout_weighted(int n, double *X, int m, int *I, int *J, double *V,
+//                     int t_max, double eps, int seed);
+//void layout_unweighted_convergent(int n, double *X, int m, int *I, int *J,
+//                                  int t_max, double eps, double delta,
+//                                  int t_maxmax, int seed);
+//void layout_weighted_convergent(int n, double *X, int m, int *I, int *J,
+//                                double *V, int t_max, double eps, double delta,
+//                                int t_maxmax, int seed);
+//
+//void layout_sparse_unweighted(int n, double *X, int m, int *I, int *J, int p,
+//                              int t_max, double eps, int seed);
+//void layout_sparse_weighted(int n, double *X, int m, int *I, int *J, double *V,
+//                            int p, int t_max, double eps, int seed);
+//
+//void mds_direct(int n, int kd, double *X, double *d, double *w, int t_max,
+//                double *etas, int seed);
 
 namespace ACTIONet
 {
@@ -320,13 +320,13 @@ namespace ACTIONet
 //        sp_mat &S, arma::Col<unsigned long long> sample_assignments);
 
     // Methods for computing feature specificity/discriminative-scores
-    field<mat> compute_feature_specificity_bin(sp_mat &Sb, mat &H, int thread_no);
-    field<mat> compute_feature_specificity(sp_mat &S, mat &H, int thread_no);
-    field<mat> compute_feature_specificity(mat &S, mat &H, int thread_no);
-    field<mat> compute_feature_specificity(sp_mat &S, uvec sample_assignments,
-                                           int thread_no);
-    field<mat> compute_feature_specificity(mat &S, uvec sample_assignments,
-                                           int thread_no);
+//    field<mat> compute_feature_specificity_bin(sp_mat &Sb, mat &H, int thread_no);
+//    field<mat> compute_feature_specificity(sp_mat &S, mat &H, int thread_no);
+//    field<mat> compute_feature_specificity(mat &S, mat &H, int thread_no);
+//    field<mat> compute_feature_specificity(sp_mat &S, uvec sample_assignments,
+//                                           int thread_no);
+//    field<mat> compute_feature_specificity(mat &S, uvec sample_assignments,
+//                                           int thread_no);
 
     // Methods for feature enrichment analysis
 //    field<mat> assess_enrichment(mat &scores, sp_mat &associations, int thread_no);
@@ -345,12 +345,12 @@ namespace ACTIONet
 
 //    vec NetDBSCAN(sp_mat &G, int minPts, double eps, double alpha_val);
 
-    field<vec> run_HDBSCAN(mat &X, int minPoints, int minClusterSize);
+//    field<vec> run_HDBSCAN(mat &X, int minPoints, int minClusterSize);
 
-    mat MWM_hungarian(mat &G);
-    umat MWM_rank1(vec u, vec v, double u_threshold, double v_threshold);
+//    mat MWM_hungarian(mat &G);
+//    umat MWM_rank1(vec u, vec v, double u_threshold, double v_threshold);
 
-    mat Prune_PageRank(mat &U, double density);
+//    mat Prune_PageRank(mat &U, double density);
 
     // Coreset compute_AA_coreset(sp_mat &S, int m);
 
@@ -477,8 +477,8 @@ namespace ACTIONet
     // mat oneHot_encoding(vec batches);
 //    mat assess_label_enrichment(sp_mat &H, mat &M, int thread_no = 0);
 
-    field<mat> compute_fourier_basis(mat &G, int n_basis = -1);
-    field<mat> compute_fourier_basis(sp_mat &G, int n_basis = -1);
+//    field<mat> compute_fourier_basis(mat &G, int n_basis = -1);
+//    field<mat> compute_fourier_basis(sp_mat &G, int n_basis = -1);
 
 } // namespace ACTIONet
 

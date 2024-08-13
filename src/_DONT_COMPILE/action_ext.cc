@@ -20,7 +20,7 @@ void findConsensus(std::vector<arma::mat> S, full_trace &run_trace, int arch_no,
         arma::mat G = 1 + cor(trans(run_trace.indiv_trace[arch_no].H_primary[0]),
                               trans(run_trace.indiv_trace[arch_no].H_primary[ds]));
 
-        arma::mat G_matched = MWM_hungarian(G);
+        arma::mat G_matched = ACTIONet::MWM_hungarian(G);
         arma::uvec perm = arma::index_max(G_matched, 1);
 
         run_trace.indiv_trace[arch_no].C_secondary[ds] =
@@ -58,7 +58,7 @@ void findConsensus(std::vector<arma::mat> S, full_trace &run_trace, int arch_no,
         for (int ds = 1; ds < ds_no; ds++) {
             arma::mat G = 1 + arma::cor(arma::trans(run_trace.indiv_trace[arch_no].H_secondary[0]),
                                         arma::trans(run_trace.indiv_trace[arch_no].H_secondary[ds]));
-            arma::mat G_matched = MWM_hungarian(G);
+            arma::mat G_matched = ACTIONet::MWM_hungarian(G);
             arma::uvec perm = arma::index_max(G_matched, 1);
 
             run_trace.indiv_trace[arch_no].C_secondary[ds] =

@@ -2,7 +2,7 @@
 #define LIBACTIONET_CREATE_XMAP_HPP
 
 #include "libactionet_config.hpp"
-#include "UmapFactory.hpp"
+#include "umap_structs.hpp"
 #include "uwot/gradient.h"
 
 // Functions

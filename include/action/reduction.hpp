@@ -11,7 +11,7 @@
 #define HALKO_ALG 1
 #define FENG_ALG 2
 
-// Functions: private
+// Functions: internal
 arma::field<arma::mat> deflate_reduction(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
 
 // Exported
