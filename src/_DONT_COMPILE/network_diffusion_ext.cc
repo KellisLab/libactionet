@@ -1,7 +1,6 @@
-#include "networkdiffusion_ext_h"
+#include "network_diffusion_ext.h"
 
-arma::mat PR_linsys(arma::sp_mat &G, arma::sp_mat &X, double alpha = 0.85, int thread_no = -1)
-{
+arma::mat PR_linsys(arma::sp_mat &G, arma::sp_mat &X, double alpha, int thread_no) {
     X = arma::normalise(X, 1, 0);
 
     arma::sp_mat P = arma::normalise(G, 1, 0);
@@ -13,9 +12,7 @@ arma::mat PR_linsys(arma::sp_mat &G, arma::sp_mat &X, double alpha = 0.85, int t
     return (PR);
 }
 
-arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, int thread_no = 4,
-                                     double alpha = 0.85)
-{
+arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha) {
     // A common struct that cholmod always needs
     cholmod_common c;
     cholmod_start(&c);
@@ -30,8 +27,7 @@ arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, in
     d(zero_idx).ones();
     arma::sp_mat P = G;
 
-    for (arma::sp_mat::iterator it = P.begin(); it != P.end(); ++it)
-    {
+    for (arma::sp_mat::iterator it = P.begin(); it != P.end(); ++it) {
         (*it) = (*it) / (std::sqrt(d(it.row()) * d(it.col())));
     }
     P = -alpha * P;
@@ -46,8 +42,7 @@ arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, in
     Tj = static_cast<int *>(T->j);
     Tx = static_cast<double *>(T->x);
     int idx = 0;
-    for (arma::sp_mat::const_iterator it = P.begin(); it != P.end(); ++it)
-    {
+    for (arma::sp_mat::const_iterator it = P.begin(); it != P.end(); ++it) {
         Ti[idx] = it.row();
         Tj[idx] = it.col();
         Tx[idx] = (*it);
@@ -74,8 +69,7 @@ arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, in
     Tj = static_cast<int *>(T->j);
     Tx = static_cast<double *>(T->x);
     idx = 0;
-    for (arma::sp_mat::const_iterator it = X0.begin(); it != X0.end(); ++it)
-    {
+    for (arma::sp_mat::const_iterator it = X0.begin(); it != X0.end(); ++it) {
         Ti[idx] = it.row();
         Tj[idx] = it.col();
         Tx[idx] = (*it);
@@ -99,12 +93,11 @@ arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, in
     stdout_printf("Export\n");
     FLUSH;
     T = cholmod_sparse_to_triplet(A_inv_B, &c);
-    Ti = (int *)T->i;
-    Tj = (int *)T->j;
-    Tx = (double *)T->x;
+    Ti = (int *) T->i;
+    Tj = (int *) T->j;
+    Tx = (double *) T->x;
     arma::umat locations(2, T->nnz);
-    for (int k = 0; k < T->nnz; k++)
-    {
+    for (int k = 0; k < T->nnz; k++) {
         locations(0, k) = Ti[k];
         locations(1, k) = Tj[k];
     }

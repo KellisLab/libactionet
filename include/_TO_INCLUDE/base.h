@@ -314,10 +314,10 @@ namespace ACTIONet
                                 arma::Col<unsigned long long> sample_assignments);
 
     // Methods for renormalizing input matrix within and between each class
-    mat renormalize_input_matrix(mat &S,
-                                 arma::Col<unsigned long long> sample_assignments);
-    sp_mat renormalize_input_matrix(
-        sp_mat &S, arma::Col<unsigned long long> sample_assignments);
+//    mat renormalize_input_matrix(mat &S,
+//                                 arma::Col<unsigned long long> sample_assignments);
+//    sp_mat renormalize_input_matrix(
+//        sp_mat &S, arma::Col<unsigned long long> sample_assignments);
 
     // Methods for computing feature specificity/discriminative-scores
     field<mat> compute_feature_specificity_bin(sp_mat &Sb, mat &H, int thread_no);
@@ -329,11 +329,11 @@ namespace ACTIONet
                                            int thread_no);
 
     // Methods for feature enrichment analysis
-    field<mat> assess_enrichment(mat &scores, sp_mat &associations, int thread_no);
+//    field<mat> assess_enrichment(mat &scores, sp_mat &associations, int thread_no);
 
     // Network tools
-    uvec compute_core_number(sp_mat &G);
-    vec compute_archetype_core_centrality(sp_mat &G, uvec sample_assignments);
+//    uvec compute_core_number(sp_mat &G);
+//    vec compute_archetype_core_centrality(sp_mat &G, uvec sample_assignments);
 //    mat compute_network_diffusion(sp_mat &G, sp_mat &X0, int thread_no,
 //                                  double alpha, int max_it);
 //    mat compute_network_diffusion_fast(sp_mat &G, sp_mat &X0, int thread_no,
@@ -343,7 +343,7 @@ namespace ACTIONet
 //    mat compute_network_diffusion_SFMULT(sp_mat &G, sp_mat &X0, double alpha,
 //                                         int max_it);
 
-    vec NetDBSCAN(sp_mat &G, int minPts, double eps, double alpha_val);
+//    vec NetDBSCAN(sp_mat &G, int minPts, double eps, double alpha_val);
 
     field<vec> run_HDBSCAN(mat &X, int minPoints, int minClusterSize);
 
@@ -356,9 +356,9 @@ namespace ACTIONet
 
     // mat NetEnh(mat Adj);
 
-    vec LPA(sp_mat &G, vec labels, double lambda = 0, int iters = 3,
-            double sig_threshold = 3, uvec fixed_labels = uvec(),
-            int thread_no = 0);
+//    vec LPA(sp_mat &G, vec labels, double lambda = 0, int iters = 3,
+//            double sig_threshold = 3, uvec fixed_labels = uvec(),
+//            int thread_no = 0);
 
 //    mat compute_marker_aggregate_stats(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
 //                                       double alpha, int max_it, int thread_no,
@@ -463,8 +463,8 @@ namespace ACTIONet
     //   mat normalize_mat(mat &X, int normalization = 0, int dim = 0);
     //   sp_mat normalize_mat(sp_mat &X, int normalization = 0, int dim = 0);
 //    vec rank_vec(vec x, int method = 0);
-    vec xicor(vec xvec, vec yvec, bool compute_pval = true, int seed = 0);
-    field<mat> XICOR(mat &X, mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
+//    vec xicor(vec xvec, vec yvec, bool compute_pval = true, int seed = 0);
+//    field<mat> XICOR(mat &X, mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
 
 //    sp_mat buildNetwork_bipartite(mat H1, mat H2, double density = 1.0,
 //                                  int thread_no = 0, double M = 16,
@@ -475,7 +475,7 @@ namespace ACTIONet
 //    field<mat> aggregate_genesets_vision(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0, double alpha = 0.85, int thread_no = 0);
 
     // mat oneHot_encoding(vec batches);
-    mat assess_label_enrichment(sp_mat &H, mat &M, int thread_no = 0);
+//    mat assess_label_enrichment(sp_mat &H, mat &M, int thread_no = 0);
 
     field<mat> compute_fourier_basis(mat &G, int n_basis = -1);
     field<mat> compute_fourier_basis(sp_mat &G, int n_basis = -1);

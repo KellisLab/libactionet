@@ -2,7 +2,6 @@
 #define ACTION_EXT_H
 
 #include "action.hpp"
-
 #include "aa_ext.h"
 
 

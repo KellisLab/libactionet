@@ -1,4 +1,4 @@
-#include "utils_internal/utils_graph.hpp"
+#include "utils_internal/utils_network.hpp"
 
 arma::sp_mat normalize_adj(arma::sp_mat &G, int norm_type) {
     arma::vec row_sums = arma::zeros(G.n_rows);

@@ -1,31 +1,6 @@
-#include "label_propagation.hpp"
+#include "actionet/label_propagation.hpp"
 
 namespace ACTIONet {
-
-    arma::mat assess_label_enrichment(arma::sp_mat &H, arma::mat &M, int thread_no) {
-        arma::mat Obs = spmat_mat_product_parallel(H, M, thread_no);
-
-        arma::rowvec p = mean(M, 0);
-        arma::mat Exp = sum(H, 1) * p;
-
-        arma::mat Lambda = Obs - Exp;
-
-        arma::mat Nu = arma::sum(arma::square(H), 1) * p;
-        arma::vec a = arma::vec(arma::max(H, 1));
-
-        arma::mat Lambda_scaled = Lambda;
-        for (int j = 0; j < Lambda_scaled.n_rows; j++) {
-            Lambda_scaled.row(j) *= (a(j) / 3);
-        }
-
-        arma::mat logPvals_upper = arma::square(Lambda) / (2 * (Nu + Lambda_scaled));
-        arma::uvec lidx = arma::find(Lambda <= 0);
-        logPvals_upper(lidx) = arma::zeros(lidx.n_elem);
-        logPvals_upper.replace(arma::datum::nan, 0); // replace each NaN with 0
-
-        return logPvals_upper;
-    }
-
 
     arma::vec LPA(arma::sp_mat &G, arma::vec labels, double lambda, int iters, double sig_threshold,
                   arma::uvec fixed_labels, int thread_no) {

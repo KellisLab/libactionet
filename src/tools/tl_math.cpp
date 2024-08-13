@@ -111,4 +111,3 @@ arma::mat mean_center(arma::mat &A) {
     return A_centered;
 }
 
-

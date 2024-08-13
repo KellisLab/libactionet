@@ -1,8 +1,6 @@
-#include "celltype_annotation_ext_h"
+#include "celltype_annotation_ext.h"
 
-// TODO: Move and include normalize_scores()
-// TODO: Find and move RIN_transform()
-// TODO: Find and include assess_enrichment()
+// NOTE: RIN_transform() removed
 
 double F2z(double F, double d1, double d2) {
     double mu = d2 / (d2 - 2);                                                               // Only valud if d2 > 2
@@ -384,7 +382,7 @@ arma::mat aggregate_genesets_weighted_enrichment(arma::sp_mat &G, arma::sp_mat &
 
     arma::mat marker_stats;
     if (gene_scaling_method >= 0) {
-        arma::field<arma::mat> res = assess_enrichment(T, marker_mat, thread_no);
+        arma::field<arma::mat> res = ACTIONet::assess_enrichment(T, marker_mat, thread_no);
         marker_stats = arma::trans(res(0));
     } else {
         arma::vec w = arma::vec(arma::sqrt(arma::trans(arma::sum(arma::square(marker_mat), 0))));

@@ -1,21 +1,19 @@
-#include "build_network_ext_h"
+#include "build_network_ext.h"
 
 // Compute Jensen-Shannon distance (JSD)
 double computeJSD(const double *pVect1, const double *pVect2, const double *log_vec,
-                  int N)
-{
+                  int N) {
     double half = 0.5;
 
     double sum1 = 0, sum2 = 0;
-    for (size_t i = 0; i < N; i++)
-    {
+    for (size_t i = 0; i < N; i++) {
         double p = pVect1[i];
         double q = pVect2[i];
         double m = (p + q) * half;
 
-        int p_idx = (int)std::floor(p * 1000000.0);
-        int q_idx = (int)std::floor(q * 1000000.0);
-        int m_idx = (int)std::floor(m * 1000000.0);
+        int p_idx = (int) std::floor(p * 1000000.0);
+        int q_idx = (int) std::floor(q * 1000000.0);
+        int m_idx = (int) std::floor(m * 1000000.0);
 
         double lg_p = log_vec[p_idx];
         double lg_q = log_vec[q_idx];
@@ -27,15 +25,13 @@ double computeJSD(const double *pVect1, const double *pVect2, const double *log_
 
     double JS = std::max(half * sum1 - sum2, 0.0);
 
-    return (double)(1.0 - std::sqrt(JS));
+    return (double) (1.0 - std::sqrt(JS));
 }
 
-arma::mat computeFullSim(arma::mat &H, int thread_no)
-{
+arma::mat computeFullSim(arma::mat &H, int thread_no) {
     double log_vec[1000001];
-    for (int i = 0; i <= 1000000; i++)
-    {
-        log_vec[i] = (double)std::log2((double)i / 1000000.0);
+    for (int i = 0; i <= 1000000; i++) {
+        log_vec[i] = (double) std::log2((double) i / 1000000.0);
     }
     log_vec[0] = 0;
 
@@ -47,37 +43,35 @@ arma::mat computeFullSim(arma::mat &H, int thread_no)
 
     arma::mat G = arma::zeros(sample_no, sample_no);
     mini_thread::parallelFor(
-        0, sample_no, [&](size_t i)
-        {
-                  for (int j = 0; j < sample_no; j++)
-                  {
+            0, sample_no, [&](size_t i) {
+                for (int j = 0; j < sample_no; j++) {
                     //use the JSD distance function here
                     G(i, j) = computeJSD(H.colptr(i), H.colptr(j), log_vec, dim);
-                  } },
-        thread_no);
+                }
+            },
+            thread_no);
 
     G = arma::clamp(G, 0.0, 1.0);
 
     return (G);
 }
 
-arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thread_no = 0, double M = 16, double ef_construction = 200,
-                                     double ef = 200, bool mutual_edges_only = true, std::string distance_metric = "jsd")
-{
+arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thread_no = 0, double M = 16,
+                                     double ef_construction = 200,
+                                     double ef = 200, bool mutual_edges_only = true,
+                                     std::string distance_metric = "jsd") {
 
     ef_construction = ef = 5 * std::sqrt(H.n_cols);
 
     double LC = 1.0 / density;
     // verify that a support distance metric has been specified
     //  the following distance metrics are supported in hnswlib: https://github.com/hnswlib/hnswlib#supported-distances
-    if (distance_metrics.find(distance_metric) == distance_metrics.end())
-    {
+    if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
         // invalid distance metric was provided; exit
         throw distMetException;
     }
 
-    if (thread_no <= 0)
-    {
+    if (thread_no <= 0) {
         thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
     }
 
@@ -86,8 +80,7 @@ arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thre
                   distance_metric.c_str(), density, mutual_edges_only ? "TRUE" : "FALSE");
     FLUSH;
 
-    if (distance_metric == "jsd")
-    {
+    if (distance_metric == "jsd") {
         H = arma::clamp(H, 0, 1);
         H = arma::normalise(H, 1, 0);
     }
@@ -129,40 +122,34 @@ arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thre
     std::vector<std::vector<int>> jj(thread_no);
     std::vector<std::vector<double>> vv(thread_no);
 
-    ParallelFor(0, sample_no, thread_no, [&](size_t i, size_t threadId)
+    ParallelFor(0, sample_no, thread_no, [&](size_t i, size_t threadId) {
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> results =
+                appr_alg->searchKStarnn(X.colptr(i), LC);
 
-                {
-                  std::priority_queue<std::pair<float, hnswlib::labeltype>> results =
-                      appr_alg->searchKStarnn(X.colptr(i), LC);
+        while (!results.empty()) {
+            auto &res = results.top();
+            int j = res.second;
 
-                  while (!results.empty())
-                  {
-                    auto &res = results.top();
-                    int j = res.second;
 
-                    
-                    double v = res.first;
-                    ii[threadId].push_back(i);
-                    jj[threadId].push_back(j);
-                    vv[threadId].push_back(v);
+            double v = res.first;
+            ii[threadId].push_back(i);
+            jj[threadId].push_back(j);
+            vv[threadId].push_back(v);
 
-                    results.pop();
-                  } });
+            results.pop();
+        }
+    });
 
     arma::vec values;
     arma::umat locations;
-    for (int threadId = 0; threadId < thread_no; threadId++)
-    {
-        if (threadId == 0)
-        {
+    for (int threadId = 0; threadId < thread_no; threadId++) {
+        if (threadId == 0) {
             values = arma::conv_to<arma::vec>::from(vv[threadId]);
 
             arma::uvec iv = arma::conv_to<arma::uvec>::from(ii[threadId]);
             arma::uvec jv = arma::conv_to<arma::uvec>::from(jj[threadId]);
             locations = arma::trans(arma::join_rows(iv, jv));
-        }
-        else
-        {
+        } else {
             values = arma::join_vert(values, arma::conv_to<arma::vec>::from(vv[threadId]));
 
             arma::uvec iv = arma::conv_to<arma::uvec>::from(ii[threadId]);
@@ -178,8 +165,7 @@ arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thre
     arma::sp_mat::const_iterator it_end = G.end();
 
     double epsilon = 1e-7;
-    for (; it != it_end; ++it)
-    {
+    for (; it != it_end; ++it) {
         double upper_bound = (distance_metric == "jsd") ? 1.0 : max_dist(it.col());
         *it = std::max(epsilon, upper_bound - (*it));
     }
@@ -193,14 +179,10 @@ arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thre
     arma::sp_mat Gt = arma::trans(G);
 
     arma::sp_mat G_sym;
-    if (mutual_edges_only == false)
-    {
+    if (mutual_edges_only == false) {
         G_sym = (G + Gt);
-        G_sym.for_each([](arma::sp_mat::elem_type &val)
-                       { val /= 2.0; });
-    }
-    else
-    { // Default to MNN
+        G_sym.for_each([](arma::sp_mat::elem_type &val) { val /= 2.0; });
+    } else { // Default to MNN
         // stdout_printf("\n\t\tKeeping mutual nearest-neighbors only ... ");
         G_sym = arma::sqrt(G % Gt);
     }
@@ -212,21 +194,19 @@ arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H, double density = 1.0, int thre
     return (G_sym);
 }
 
-arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density, int thread_no, double M, double ef_construction,
-                                    double ef, std::string distance_metric)
-{
+arma::sp_mat
+buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density, int thread_no, double M, double ef_construction,
+                       double ef, std::string distance_metric) {
 
     double LC = 1.0 / density;
     // verify that a support distance metric has been specified
     //  the following distance metrics are supported in hnswlib: https://github.com/hnswlib/hnswlib#supported-distances
-    if (distance_metrics.find(distance_metric) == distance_metrics.end())
-    {
+    if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
         // invalid distance metric was provided; exit
         throw distMetException;
     }
 
-    if (thread_no <= 0)
-    {
+    if (thread_no <= 0) {
         thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
     }
 
@@ -235,8 +215,7 @@ arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density, 
                   distance_metric.c_str(), density);
     FLUSH;
 
-    if (distance_metric == "jsd")
-    {
+    if (distance_metric == "jsd") {
         H1 = arma::clamp(H1, 0, 1);
         H1 = arma::normalise(H1, 1, 0);
 
@@ -271,38 +250,32 @@ arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density, 
     std::vector<std::vector<int>> jj(thread_no);
     std::vector<std::vector<double>> vv(thread_no);
 
-    ParallelFor(0, X2.n_cols, thread_no, [&](size_t j, size_t threadId)
+    ParallelFor(0, X2.n_cols, thread_no, [&](size_t j, size_t threadId) {
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> results =
+                appr_alg->searchKStarnn(X2.colptr(j), LC);
 
-                {
-                  std::priority_queue<std::pair<float, hnswlib::labeltype>> results =
-                      appr_alg->searchKStarnn(X2.colptr(j), LC);
+        while (!results.empty()) {
+            auto &res = results.top();
+            int i = res.second;
+            double v = res.first;
+            ii[threadId].push_back(i);
+            jj[threadId].push_back(j);
+            vv[threadId].push_back(v);
 
-                  while (!results.empty())
-                  {
-                    auto &res = results.top();
-                    int i = res.second;
-                    double v = res.first;
-                    ii[threadId].push_back(i);
-                    jj[threadId].push_back(j);
-                    vv[threadId].push_back(v);
-
-                    results.pop();
-                  } });
+            results.pop();
+        }
+    });
 
     arma::vec values;
     arma::umat locations;
-    for (int threadId = 0; threadId < thread_no; threadId++)
-    {
-        if (threadId == 0)
-        {
+    for (int threadId = 0; threadId < thread_no; threadId++) {
+        if (threadId == 0) {
             values = arma::conv_to<arma::vec>::from(vv[threadId]);
 
             arma::uvec iv = arma::conv_to<arma::uvec>::from(ii[threadId]);
             arma::uvec jv = arma::conv_to<arma::uvec>::from(jj[threadId]);
             locations = arma::trans(arma::join_rows(iv, jv));
-        }
-        else
-        {
+        } else {
             values = arma::join_vert(values, arma::conv_to<arma::vec>::from(vv[threadId]));
 
             arma::uvec iv = arma::conv_to<arma::uvec>::from(ii[threadId]);
@@ -320,8 +293,7 @@ arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density, 
     arma::sp_mat::const_iterator it_end = G.end();
 
     double epsilon = 1e-7;
-    for (; it != it_end; ++it)
-    {
+    for (; it != it_end; ++it) {
         double upper_bound = (distance_metric == "jsd") ? 1.0 : max_dist(it.col());
         *it = std::max(epsilon, upper_bound - (*it));
     }

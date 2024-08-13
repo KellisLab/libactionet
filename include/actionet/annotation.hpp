@@ -3,7 +3,7 @@
 
 #include "libactionet_config.hpp"
 #include "actionet/network_diffusion.hpp"
-#include "utils_internal/utils_graph.hpp"
+#include "utils_internal/utils_network.hpp"
 #include "action/aa.hpp"
 #include "tools/tl_normalization.hpp"
 
@@ -30,6 +30,5 @@ namespace ACTIONet {
                                                   double pre_alpha = 0.15, double post_alpha = 0.85, int thread_no = 0);
 
 }
-
 
 #endif //LIBACTIONET_ANNOTATION_HPP

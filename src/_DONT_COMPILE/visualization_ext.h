@@ -3,15 +3,6 @@
 
 #include "visualization.hpp"
 
-#include "utils_internal/utils_matrix.hpp"
-#include "utils_internal/utils_xmap.hpp"
-#include "utils_internal/utils_graph.hpp"
-
-#include "uwot/coords.h"
-
-#include "visualization/create_xmap.hpp"
-#include "visualization/find_ab.hpp"
-
 // Functions
 arma::mat transform_layout(arma::sp_mat &G, arma::mat &reference_layout, bool presmooth_network,
                            const std::string &method, double min_dist, double spread, double gamma,

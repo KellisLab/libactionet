@@ -1,11 +1,7 @@
-#ifndef CELLTYPE_ANNOTATION_EXT_HPP
-#define CELLTYPE_ANNOTATION_EXT_HPP
+#ifndef LIBACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
+#define LIBACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
 
 #include "actionet.hpp"
-#include "action.hpp"
-#include "utils/utils_matrix.hpp"
-#include "utils/utils_graph.hpp"
-#include "tools/tl_normalization.hpp"
 
 double F2z(double F, double d1, double d2);
 
@@ -59,4 +55,4 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
 arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                                  int network_normalization_method, double alpha, int thread_no);
 
-#endif //CELLTYPE_ANNOTATION_EXT_HPP
+#endif //LIBACTIONET_CELLTYPE_ANNOTATION_EXT_HPP

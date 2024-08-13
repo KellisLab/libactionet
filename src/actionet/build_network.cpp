@@ -1,4 +1,3 @@
-// Construct ACTIONet network
 #include "actionet/build_network.hpp"
 
 // Obtain approximation algorithm

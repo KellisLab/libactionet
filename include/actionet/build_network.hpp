@@ -1,4 +1,4 @@
-// Construct ACTIONet network
+// Construct ACTIONet graph
 #ifndef LIBACTIONET_BUILD_NETWORK_HPP
 #define LIBACTIONET_BUILD_NETWORK_HPP
 

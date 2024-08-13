@@ -1,6 +1,7 @@
-#ifndef CREATE_XMAP_HPP
-#define CREATE_XMAP_HPP
+#ifndef LIBACTIONET_CREATE_XMAP_HPP
+#define LIBACTIONET_CREATE_XMAP_HPP
 
+#include "libactionet_config.hpp"
 #include "UmapFactory.hpp"
 #include "uwot/gradient.h"
 
@@ -13,4 +14,4 @@ void create_pacmap(UmapFactory &umap_factory, double a, double b);
 
 void create_largevis(UmapFactory &umap_factory, double gamma);
 
-#endif
+#endif //LIBACTIONET_CREATE_XMAP_HPP

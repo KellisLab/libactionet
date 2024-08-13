@@ -1,8 +1,8 @@
-#ifndef LIBACTIONet_TL_MATH_HPP
-#define LIBACTIONet_TL_MATH_HPP
+#ifndef LIBACTIONET_TL_MATH_HPP
+#define LIBACTIONET_TL_MATH_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_matrix.hpp"
 
 arma::vec rank_vec(arma::vec x, int method = 0);
 
@@ -14,4 +14,4 @@ arma::mat tzscoret(arma::mat &A);
 
 arma::mat mean_center(arma::mat &A);
 
-#endif //LIBACTIONet_TL_MATH_HPP
+#endif //LIBACTIONET_TL_MATH_HPP

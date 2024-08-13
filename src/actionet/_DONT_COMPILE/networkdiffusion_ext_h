@@ -1,7 +1,0 @@
-#ifndef NETWORKDIFFUSION_EXT_CC_H
-#define NETWORKDIFFUSION_EXT_CC_H
-
-#include "action.hpp"
-#include <cholmod.h>
-
-#endif //NETWORKDIFFUSION_EXT_CC_H
