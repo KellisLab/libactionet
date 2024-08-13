@@ -5,7 +5,7 @@
 
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_xmap.hpp"
-#include "tools/tl_normalization.hpp"
+#include "tools/normalization.hpp"
 
 #include "uwot/coords.h"
 #include "colorspace.h"

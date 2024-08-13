@@ -2,7 +2,7 @@
 #define LIBACTIONET_NETDBSCAN_H
 
 #include "actionet.hpp"
-#include "tools/tl_network.hpp"
+#include "tools/graph_measures.hpp"
 
 // -1: Undefined, 0: Noise, 1...: Cluster IDs
 #define UNDEFINED -1

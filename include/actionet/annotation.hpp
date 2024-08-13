@@ -5,7 +5,11 @@
 #include "actionet/network_diffusion.hpp"
 #include "utils_internal/utils_network.hpp"
 #include "action/aa.hpp"
-#include "tools/tl_normalization.hpp"
+#include "tools/normalization.hpp"
+
+// TODO: Replace and remove with generic mat normalization functions
+// Only found in this module
+arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization = 1);
 
 namespace ACTIONet {
 

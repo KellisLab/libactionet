@@ -6,7 +6,7 @@
 #include "action/spa.hpp"
 #include "action/simplex_regression.hpp"
 #include "utils/utils_matrix.hpp"
-#include "tools/tl_math.hpp"
+#include "utils_internal/utils_stats.hpp"
 
 // Exported
 namespace ACTIONet {

@@ -291,27 +291,27 @@ namespace ACTIONet
 //                         int seed, double learning_rate, int sim2dist);
 
     // Methods for pseudo-bulk construction
-    mat compute_pseudo_bulk_per_archetype(sp_mat &S, mat &H);
-    mat compute_pseudo_bulk_per_archetype(mat &S, mat &H);
-    field<mat> compute_pseudo_bulk_per_archetype_and_ind(
-        sp_mat &S, mat &H, arma::Col<unsigned long long> sample_assignments);
-    field<mat> compute_pseudo_bulk_per_archetype_and_ind(
-        mat &S, mat &H, arma::Col<unsigned long long> sample_assignments);
+//    mat compute_pseudo_bulk_per_archetype(sp_mat &S, mat &H);
+//    mat compute_pseudo_bulk_per_archetype(mat &S, mat &H);
+//    field<mat> compute_pseudo_bulk_per_archetype_and_ind(
+//        sp_mat &S, mat &H, arma::Col<unsigned long long> sample_assignments);
+//    field<mat> compute_pseudo_bulk_per_archetype_and_ind(
+//        mat &S, mat &H, arma::Col<unsigned long long> sample_assignments);
 
-    mat compute_grouped_rowsums(sp_mat &S,
-                                arma::Col<unsigned long long> sample_assignments);
-    mat compute_grouped_rowsums(mat &S,
-                                arma::Col<unsigned long long> sample_assignments);
-
-    mat compute_grouped_rowmeans(sp_mat &S,
-                                 arma::Col<unsigned long long> sample_assignments);
-    mat compute_grouped_rowmeans(mat &S,
-                                 arma::Col<unsigned long long> sample_assignments);
-
-    mat compute_grouped_rowvars(sp_mat &S,
-                                arma::Col<unsigned long long> sample_assignments);
-    mat compute_grouped_rowvars(mat &S,
-                                arma::Col<unsigned long long> sample_assignments);
+//    mat compute_grouped_rowsums(sp_mat &S,
+//                                arma::Col<unsigned long long> sample_assignments);
+//    mat compute_grouped_rowsums(mat &S,
+//                                arma::Col<unsigned long long> sample_assignments);
+//
+//    mat compute_grouped_rowmeans(sp_mat &S,
+//                                 arma::Col<unsigned long long> sample_assignments);
+//    mat compute_grouped_rowmeans(mat &S,
+//                                 arma::Col<unsigned long long> sample_assignments);
+//
+//    mat compute_grouped_rowvars(sp_mat &S,
+//                                arma::Col<unsigned long long> sample_assignments);
+//    mat compute_grouped_rowvars(mat &S,
+//                                arma::Col<unsigned long long> sample_assignments);
 
     // Methods for renormalizing input matrix within and between each class
 //    mat renormalize_input_matrix(mat &S,
@@ -388,27 +388,27 @@ namespace ACTIONet
 
 //    sp_mat LSI(sp_mat &X, double size_factor);
 
-    field<vec> autocorrelation_Moran_parametric(mat G, mat scores,
-                                                int normalization_method = 4,
-                                                int thread_no = 0);
-
-    field<vec> autocorrelation_Moran_parametric(sp_mat G, mat scores,
-                                                int normalization_method = 4,
-                                                int thread_no = 0);
-
-    field<vec> autocorrelation_Moran(mat G, mat scores,
-                                     int normalization_method = 1, int perm_no = 30,
-                                     int thread_no = 0);
-    field<vec> autocorrelation_Moran(sp_mat G, mat scores,
-                                     int normalization_method = 1, int perm_no = 30,
-                                     int thread_no = 0);
-
-    field<vec> autocorrelation_Geary(mat G, mat scores,
-                                     int normalization_method = 1, int perm_no = 30,
-                                     int thread_no = 0);
-    field<vec> autocorrelation_Geary(sp_mat G, mat scores,
-                                     int normalization_method = 1, int perm_no = 30,
-                                     int thread_no = 0);
+//    field<vec> autocorrelation_Moran_parametric(mat G, mat scores,
+//                                                int normalization_method = 4,
+//                                                int thread_no = 0);
+//
+//    field<vec> autocorrelation_Moran_parametric(sp_mat G, mat scores,
+//                                                int normalization_method = 4,
+//                                                int thread_no = 0);
+//
+//    field<vec> autocorrelation_Moran(mat G, mat scores,
+//                                     int normalization_method = 1, int perm_no = 30,
+//                                     int thread_no = 0);
+//    field<vec> autocorrelation_Moran(sp_mat G, mat scores,
+//                                     int normalization_method = 1, int perm_no = 30,
+//                                     int thread_no = 0);
+//
+//    field<vec> autocorrelation_Geary(mat G, mat scores,
+//                                     int normalization_method = 1, int perm_no = 30,
+//                                     int thread_no = 0);
+//    field<vec> autocorrelation_Geary(sp_mat G, mat scores,
+//                                     int normalization_method = 1, int perm_no = 30,
+//                                     int thread_no = 0);
 
 //    sp_mat normalize_adj(sp_mat &G, int norm_type = 1);
 //    mat compute_network_diffusion_Chebyshev(sp_mat &P, mat &X, int thread_no = 0,

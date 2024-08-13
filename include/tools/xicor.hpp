@@ -4,7 +4,7 @@
 #define LIBACTIONET_XICOR_HPP
 
 #include "libactionet_config.hpp"
-#include "tools/tl_math.hpp"
+#include "utils_internal/utils_stats.hpp"
 #include "aarand/aarand.hpp"
 
 namespace ACTIONet {

@@ -1,5 +1,19 @@
 #include "actionet/annotation.hpp"
 
+// TODO: Remove and replace with generic mat normalization functions
+arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization) {
+    arma::sp_mat T;
+    if (normalization == 0) {
+        // No normalization
+        T = S;
+    } else if (normalization == 1) {
+        // LSI normalization
+        T = ACTIONet::LSI(S);
+    }
+
+    return (T);
+}
+
 namespace ACTIONet {
 
     arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat, double alpha,
