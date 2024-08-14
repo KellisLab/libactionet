@@ -1,14 +1,13 @@
 #include <RcppArmadillo.h>
-// #include <ACTIONet.h>
 #include <ACTIONetRTest.h>
 
 //' @export
 
 // [[Rcpp::interfaces(r, cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
-using namespace Rcpp;
-using namespace arma;
-using namespace ACTIONet;
+//using namespace Rcpp;
+//using namespace arma;
+//using namespace ACTIONet;
 
 #define ARMA_USE_CXX11_RNG
 #define DYNSCHED

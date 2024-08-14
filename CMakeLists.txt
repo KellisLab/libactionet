@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
+
 ## Specify macos arm64 compilers
 # set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
 
@@ -50,7 +51,7 @@ find_package(LAPACK REQUIRED)
 # list(APPEND EXTERNAL_LIBS "${LAPACK_LIBRARIES}")
 
 ## Check for CHOLMOD
-find_package(SuiteSparse REQUIRED)
+find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 # find_package(SuiteSparse_config REQUIRED NO_MODULE)
 # include_directories(${SUITESPARSE_INCLUDE_DIRS})
 
@@ -58,10 +59,44 @@ find_package(SuiteSparse REQUIRED)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libactionet STATIC ${SOURCES})
 
+set(LIBACTIONET_BUILD_R 1)
+
+if (LIBACTIONET_BUILD_R)
+    add_definitions(-DLIBACTIONET_BUILD_R)
+
+    # find R headers
+    execute_process(
+            COMMAND bash -c "R CMD config --cppflags | sed s/-I//g"
+            OUTPUT_VARIABLE rInclude
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    # find Rcpp headers
+    execute_process(
+            COMMAND bash -c "Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
+            OUTPUT_VARIABLE rcppInclude
+    )
+
+    # find RcppArmadillo headers
+    execute_process(
+            COMMAND bash -c "Rscript -e 'cat(system.file(\"include\", package=\"RcppArmadillo\"))'"
+            OUTPUT_VARIABLE rcppArmaInclude
+    )
+
+    target_include_directories(libactionet
+            PRIVATE "${rInclude}"
+            PRIVATE "${rcppInclude}"
+            PRIVATE "${rcppArmaInclude}")
+else ()
+    target_include_directories(
+            libactionet
+            PRIVATE "${libactionet_SOURCE_DIR}/include/extern/armadillo"
+    )
+endif ()
 ## Add include headers
 target_include_directories(
         libactionet
-        PRIVATE "${libactionet_SOURCE_DIR}/include/extern/armadillo"
+        #        PRIVATE "${libactionet_SOURCE_DIR}/include/extern/armadillo"
         PRIVATE "${libactionet_SOURCE_DIR}/include/extern/gcem"
         PRIVATE "${libactionet_SOURCE_DIR}/include/extern"
         PUBLIC "${libactionet_SOURCE_DIR}/include"

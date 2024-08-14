@@ -471,7 +471,7 @@ if (TARGET SuiteSparse::CHOLMOD)
   # NOTE If SuiteSparse was compiled as a static library we'll need to link
   # against METIS already during the check. Otherwise, the check can fail due to
   # undefined references even though SuiteSparse was compiled with METIS.
-  find_package (METIS)
+  find_package (METIS QUIET)
 
   if (TARGET METIS::METIS)
     cmake_push_check_state (RESET)

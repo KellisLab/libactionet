@@ -5,15 +5,17 @@
 #define ARMA_DONT_USE_WRAPPER
 #undef ARMA_BLAS_CAPITALS
 #define ARMA_BLAS_UNDERSCORE
+#define ARMA_64BIT_WORD
+//#define ARMA_BLAS_LONG_LONG
 
 // Statslib build configuration
-#define STATS_ENABLE_ARMA_WRAPPERS 1
+#define STATS_ENABLE_ARMA_WRAPPERS
 #define STATS_GO_INLINE
 
-//#define ACTIONET_BUILD_R
+//#define LIBACTIONET_BUILD_R
 
 // Platform specific headers and macros
-#if defined(ACTIONET_BUILD_R)
+#if defined(LIBACTIONET_BUILD_R)
 
     #define stdout_printf Rprintf
     #define stderr_printf REprintf
@@ -22,12 +24,13 @@
     #include <Rinterface.h>
 
     // Use RcppArmadillo for StatsLib
-    #define USE_RCPP_ARMADILLO 1
+    #define USE_RCPP_ARMADILLO
 
     #include <RcppArmadillo.h>
 
 #else
 
+    // TODO: stdio macros
     #define stdout_printf printf
     #define stderr_printf printf
     #define FLUSH fflush(stdout)

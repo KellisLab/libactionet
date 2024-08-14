@@ -9,7 +9,7 @@
 
 #include "tauprng.h"
 
-#include <StatsLib/stats.hpp>`
+#include <StatsLib/stats.hpp>
 
 // NOT THREAD SAFE
 // based on code in the dqsample package
