@@ -8,7 +8,7 @@
 #define ARMA_64BIT_WORD
 //#define ARMA_BLAS_LONG_LONG
 
-// Statslib build configuration
+// StatsLib build configuration
 #define STATS_ENABLE_ARMA_WRAPPERS
 #define STATS_GO_INLINE
 

@@ -59,10 +59,11 @@ find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libactionet STATIC ${SOURCES})
 
+## Build mode for testing R/Python interface
 set(LIBACTIONET_BUILD_R 1)
 
 if (LIBACTIONET_BUILD_R)
-    add_definitions(-DLIBACTIONET_BUILD_R)
+    add_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config headers
 
     # find R headers
     execute_process(
@@ -96,7 +97,6 @@ endif ()
 ## Add include headers
 target_include_directories(
         libactionet
-        #        PRIVATE "${libactionet_SOURCE_DIR}/include/extern/armadillo"
         PRIVATE "${libactionet_SOURCE_DIR}/include/extern/gcem"
         PRIVATE "${libactionet_SOURCE_DIR}/include/extern"
         PUBLIC "${libactionet_SOURCE_DIR}/include"

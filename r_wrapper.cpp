@@ -1,0 +1,2166 @@
+// [[Rcpp::interfaces(r, cpp)]]
+// [[Rcpp::depends(RcppArmadillo)]]
+#include "libactionet_config.hpp"
+#include "action.hpp"
+#include "actionet.hpp"
+#include "visualization.hpp"
+#include "tools.hpp"
+
+//#include <ACTIONetRTest.h>
+//#define ARMA_USE_CXX11_RNG
+//#define DYNSCHED
+
+// TODO: Necessary?
+template<typename T>
+Rcpp::NumericVector arma2vec(const T &x) {
+    return Rcpp::NumericVector(x.begin(), x.end());
+}
+
+// TODO: Necessary?
+// set seed
+// [[Rcpp::export]]
+void set_seed(double seed) {
+    Rcpp::Environment base_env("package:base");
+    Rcpp::Function set_seed_r = base_env["set.seed"];
+    set_seed_r(std::floor(std::fabs(seed)));
+}
+
+//' Computes SVD decomposition
+//'
+//' This is direct implementation of the randomized SVD algorithm:
+//' From: IRLBA R Package
+//'
+//' @param A Input matrix ("sparseMatrix")
+//' @param dim Dimension of SVD decomposition
+//' @param iters Number of iterations (default=5)
+//' @param seed Random seed (default=0)
+//'
+//' @return A named list with U, sigma, and V components
+//'
+//' @examples
+//' A = randn(100, 20)
+//' SVD.out = IRLBA_SVD(A, dim = 2)
+//' U = SVD.out$U
+// [[Rcpp::export]]
+Rcpp::List IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
+    arma::field<arma::mat> SVD_out = ACTIONet::IRLB_SVD(A, dim, iters, seed, verbose);
+
+    Rcpp::List res;
+
+    res["u"] = SVD_out(0);
+    res["d"] = SVD_out(1);
+    res["v"] = SVD_out(2);
+
+    return res;
+}
+
+//' Computes SVD decomposition
+//'
+//' This is direct implementation of the randomized SVD algorithm:
+//' From: IRLBA R Package
+//'
+//' @param A Input matrix ("sparseMatrix")
+//' @param dim Dimension of SVD decomposition
+//' @param iters Number of iterations (default=5)
+//' @param seed Random seed (default=0)
+//'
+//' @return A named list with U, sigma, and V components
+//'
+//' @examples
+//' A = randn(100, 20)
+//' SVD.out = IRLBA_SVD_full(A, dim = 2)
+//' U = SVD.out$U
+// [[Rcpp::export]]
+Rcpp::List IRLB_SVD_full(arma::mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
+    arma::field<arma::mat> SVD_out = ACTIONet::IRLB_SVD(A, dim, iters, seed, verbose);
+
+    Rcpp::List res;
+
+    res["u"] = SVD_out(0);
+    res["d"] = SVD_out(1);
+    res["v"] = SVD_out(2);
+
+    return res;
+}
+
+//' Computes SVD decomposition
+//'
+//' This is direct implementation of the randomized SVD algorithm for sparse
+//' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
+//' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
+//' Beijing, China, Nov. 2018.
+//'
+//' @param A Input matrix ("sparseMatrix")
+//' @param dim Dimension of SVD decomposition
+//' @param iters Number of iterations (default=5)
+//' @param seed Random seed (default=0)
+//'
+//' @return A named list with U, sigma, and V components
+//'
+//' @examples
+//' A = randn(100, 20)
+//' SVD.out = FengSVD(A, dim = 2)
+//' U = SVD.out$U
+// [[Rcpp::export]]
+Rcpp::List FengSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+    arma::field<arma::mat> SVD_out = ACTIONet::FengSVD(A, dim, iters, seed, verbose);
+
+    Rcpp::List res;
+
+    res["u"] = SVD_out(0);
+    res["d"] = SVD_out(1);
+    res["v"] = SVD_out(2);
+
+    return res;
+}
+
+//' Computes SVD decomposition
+//'
+//' This is direct implementation of the randomized SVD algorithm for sparse
+//' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
+//' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
+//' Beijing, China, Nov. 2018.
+//'
+//' @param A Input matrix ("matrix")
+//' @param dim Dimension of SVD decomposition
+//' @param iters Number of iterations (default=5)
+//' @param seed Random seed (default=0)
+//'
+//' @return A named list with U, sigma, and V components
+//'
+//' @examples
+//' A = randn(100, 20)
+//' SVD.out = FengSVD(A, dim = 2)
+//' U = SVD.out$U
+// [[Rcpp::export]]
+Rcpp::List FengSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+    arma::field<arma::mat> SVD_out = ACTIONet::FengSVD(A, dim, iters, seed, verbose);
+
+    Rcpp::List res;
+
+    res["u"] = SVD_out(0);
+    res["d"] = SVD_out(1);
+    res["v"] = SVD_out(2);
+
+    return res;
+}
+
+//' Computes SVD decomposition
+//'
+//' This is direct implementation of the randomized SVD algorithm:
+//' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
+//' randomness: Probabilistic algorithms for constructing approximate matrix
+//' decompositions. Siam Review, 53(2):217-288, 2011.
+//'
+//' @param A Input matrix ("sparseMatrix")
+//' @param dim Dimension of SVD decomposition
+//' @param iters Number of iterations (default=5)
+//' @param seed Random seed (default=0)
+//'
+//' @return A named list with U, sigma, and V components
+//'
+//' @examples
+//' A = randn(100, 20)
+//' SVD.out = HalkoSVD(A, dim = 2)
+//' U = SVD.out$U
+// [[Rcpp::export]]
+Rcpp::List HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+    arma::field<arma::mat> SVD_out = ACTIONet::HalkoSVD(A, dim, iters, seed, verbose);
+
+    Rcpp::List res;
+
+    res["u"] = SVD_out(0);
+    res["d"] = SVD_out(1);
+    res["v"] = SVD_out(2);
+
+    return res;
+}
+
+//' Computes SVD decomposition
+//'
+//' This is direct implementation of the randomized SVD algorithm:
+//' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
+//' randomness: Probabilistic algorithms for constructing approximate matrix
+//' decompositions. Siam Review, 53(2):217-288, 2011.
+//'
+//' @param A Input matrix ("matrix")
+//' @param dim Dimension of SVD decomposition
+//' @param iters Number of iterations (default=5)
+//' @param seed Random seed (default=0)
+//'
+//' @return A named list with U, sigma, and V components
+//'
+//' @examples
+//' A = randn(100, 20)
+//' SVD.out = HalkoSVD(A, dim = 2)
+//' U = SVD.out$U
+// [[Rcpp::export]]
+Rcpp::List HalkoSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+    arma::field<arma::mat> SVD_out = ACTIONet::HalkoSVD(A, dim, iters, seed, verbose);
+
+    Rcpp::List res;
+
+    res["u"] = SVD_out(0);
+    res["d"] = SVD_out(1);
+    res["v"] = SVD_out(2);
+
+    return res;
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param reduced_dim Dimension of the reduced kernel matrix (default=50)
+//' @param iters Number of SVD iterations (default=5)
+//' @param seed Random seed (default=0)
+//' @param reduction_algorithm Kernel reduction algorithm. Currently only ACTION
+//' method (1) is implemented (default=1)
+//' @param SVD_algorithm SVD algorithm to use. Currently supported methods
+//' are Halko (1) and Feng (2) (default=1)
+//'
+//' @return A named list with S_r, V, lambda, and exp_var. \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' reduction.out = reduce(S, reduced_dim = 50)
+//' S_r = reduction.out$S_r
+// [[Rcpp::export]]
+Rcpp::List reduce_kernel(arma::sp_mat &S, int reduced_dim = 50, int iter = 5, int seed = 0,
+                         int SVD_algorithm = 0, bool prenormalize = false, int verbose = 1) {
+
+    arma::field<arma::mat> reduction =
+            ACTIONet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
+
+    Rcpp::List res;
+    res["V"] = reduction(0);
+
+    arma::vec sigma = reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    double epsilon = 0.01 / std::sqrt(reduction(2).n_rows);
+    arma::mat V = arma::round(reduction(2) / epsilon) * epsilon;
+
+    for (int i = 0; i < V.n_cols; i++) {
+        arma::vec v = V.col(i) * sigma(i);
+        V.col(i) = v;
+    }
+    V = arma::trans(V);
+    res["S_r"] = V.eval();
+
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile
+//'
+//' @param S Input matrix ("matrix")
+//' @param reduced_dim Dimension of the reduced kernel matrix (default=50)
+//' @param iters Number of SVD iterations (default=5)
+//' @param seed Random seed (default=0)
+//' @param reduction_algorithm Kernel reduction algorithm. Currently only ACTION
+//' method (1) is implemented (default=1)
+//' @param SVD_algorithm SVD algorithm to use. Currently supported methods are
+//' Halko (1) and Feng (2) (default=1)
+//'
+//' @return A named list with S_r, V, lambda, and exp_var. \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' reduction.out = reduce(S, reduced_dim = 50)
+//' S_r = reduction.out$S_r
+// [[Rcpp::export]]
+Rcpp::List reduce_kernel_full(arma::mat &S, int reduced_dim = 50, int iter = 5, int seed = 0, int SVD_algorithm = 0,
+                              bool prenormalize = false, int verbose = 1) {
+
+    arma::field<arma::mat> reduction =
+            ACTIONet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
+
+    Rcpp::List res;
+    res["V"] = reduction(0);
+
+    arma::vec sigma = reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    double epsilon = 0.01 / std::sqrt(reduction(2).n_rows);
+    arma::mat V = arma::round(reduction(2) / epsilon) * epsilon;
+
+    for (int i = 0; i < V.n_cols; i++) {
+        arma::vec v = V.col(i) * sigma(i);
+        V.col(i) = v;
+    }
+    V = arma::trans(V);
+    res["S_r"] = V.eval();
+
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+//' Solves min_{X} (|| AX - B ||) s.t. simplex constraint
+//'
+//' @param A Input matrix
+//' @param B Input matrix
+//'
+//' @return X Solution
+//'
+//' @examples
+//' C = ACTION.out$C[[10]]
+//' A = S_r %*% C
+//' B = S_r
+//' H = run_simplex_regression(A, B)
+// [[Rcpp::export]]
+arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX = false) {
+    arma::mat X = ACTIONet::run_simplex_regression(A, B, computeXtX);
+
+    return X;
+}
+
+// [[Rcpp::export]]
+// arma::mat run_simplex_regression_FW(arma::mat &A, arma::mat &B, int max_iter = -1, double min_diff = 0.01)
+// {
+//   arma::mat X = ACTIONet::run_simplex_regression_FW(A, B, max_iter, min_diff);
+
+//   return X;
+// }
+
+//' Runs Successive Projection Algorithm (SPA) to solve separable NMF
+//'
+//' @param A Input matrix
+//' @param k Number of columns to select
+//'
+//' @return A named list with entries 'selected_columns' and 'norms'
+//' @examples
+//' H = run_SPA(S_r, 10)
+// [[Rcpp::export]]
+Rcpp::List run_SPA(arma::mat &A, int k) {
+    ACTIONet::SPA_results res = ACTIONet::run_SPA(A, k);
+    arma::uvec selected_columns = res.selected_columns;
+
+    arma::vec cols(k);
+    for (int i = 0; i < k; i++) {
+        cols[i] = selected_columns[i] + 1;
+    }
+
+    Rcpp::List out;
+    out["selected_columns"] = cols;
+    out["norms"] = res.column_norms;
+
+    return out;
+}
+
+//' Runs multi-level ACTION decomposition method
+//'
+//' @param S_r Reduced kernel matrix
+//' @param k_min Minimum number of archetypes to consider (default=2)
+//' @param k_max Maximum number of archetypes to consider, or "depth" of
+//' decomposition (default=30)
+//' @param thread_no Number of parallel threads (default = 0)
+//' @param max_it,min_delta Convergence parameters for archetypal analysis
+//'
+//' @return A named list with entries 'C' and 'H', each a list for different
+//' values of k ' @examples ' ACTION.out = run_ACTION(S_r, k_max = 10) ' H8 =
+//' ACTION.out$H[[8]] ' cell.assignments = apply(H8, 2, which.max)
+// [[Rcpp::export]]
+Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int thread_no = 0, int max_it = 100,
+                      double min_delta = 1e-6, int normalization = 1) {
+
+    ACTIONet::ACTION_results trace =
+            ACTIONet::run_ACTION(S_r, k_min, k_max, thread_no, max_it, min_delta, normalization);
+
+    Rcpp::List res;
+
+    Rcpp::List C(k_max);
+    for (int i = k_min; i <= k_max; i++) {
+        arma::mat cur_C = trace.C[i];
+        C[i - 1] = cur_C;
+    }
+    res["C"] = C;
+
+    Rcpp::List H(k_max);
+    for (int i = k_min; i <= k_max; i++) {
+        arma::mat cur_H = trace.H[i];
+        H[i - 1] = cur_H;
+    }
+    res["H"] = H;
+
+    return res;
+}
+
+//' Runs basic archetypal analysis
+//'
+//' @param A Inpu matrix
+//' @param W0 Starting archetypes
+//' @param max_it,min_delta Convergence parameters for archetypal analysis
+//'
+//' @return A named list with entries 'C' and 'H', each a list for different
+//' values of k ' @examples ' S_r = t(reducedDims(ace)$ACTION) ' SPA.out =
+//' run_SPA(S_r, 10) ' W0 = S_r[, SPA.out$selected_columns] ' AA.out =
+//' run_AA(S_r, W0) ' H = AA.out$H ' cell.assignments = apply(H, 2, which.max)
+// [[Rcpp::export]]
+Rcpp::List run_AA(arma::mat &A, arma::mat &W0, int max_it = 100, double min_delta = 1e-6) {
+
+    arma::field<arma::mat> res = ACTIONet::run_AA(A, W0, max_it, min_delta);
+
+    Rcpp::List out;
+    out["C"] = res(0);
+    out["H"] = res(1);
+    out["W"] = A * res(0);
+
+    return out;
+}
+
+//' Filters multi-level archetypes and concatenate filtered archetypes.
+//' (Pre-ACTIONet archetype processing)
+//'
+//' @param C_trace,H_trace Output of ACTION
+//' @param min_specificity_z_threshold Defines the stringency of pruning 
+//' nonspecific archetypes. The larger the value, the more archetypes will be
+//' filtered out (default=-1)
+//'
+//' @return A named list: \itemize{
+//' \item selected_archs: List of final archetypes that passed the
+//' filtering/pruning step.
+//' \item C_stacked,H_stacked: Horizontal/Vertical 
+//' concatenation of filtered C and H matrices, respectively.
+//' }
+//' 
+//' @examples
+//' S = logcounts(sce)
+//' reduction.out = reduce(S, reduced_dim = 50)
+//' S_r = reduction.out$S_r
+//' ACTION.out = run_ACTION(S_r, k_max = 10)
+//' reconstruction.out = reconstruct_archetypes(S, ACTION.out$C, ACTION.out$H)
+// [[Rcpp::export]]
+Rcpp::List prune_archetypes(const Rcpp::List &C_trace, const Rcpp::List &H_trace,
+                            double min_specificity_z_threshold = -3, int min_cells = 3) {
+    int n_list = H_trace.size();
+    arma::field<arma::mat> C_trace_vec(n_list + 1);
+    arma::field<arma::mat> H_trace_vec(n_list + 1);
+    for (int i = 0; i < n_list; i++) {
+        if (Rf_isNull(H_trace[i])) {
+            continue;
+        }
+        C_trace_vec[i + 1] = (Rcpp::as<arma::mat>(C_trace[i]));
+        H_trace_vec[i + 1] = (Rcpp::as<arma::mat>(H_trace[i]));
+    }
+
+    ACTIONet::multilevel_archetypal_decomposition results =
+            ACTIONet::prune_archetypes(C_trace_vec, H_trace_vec, min_specificity_z_threshold, min_cells);
+
+    Rcpp::List out_list;
+
+    for (int i = 0; i < results.selected_archs.n_elem; i++)
+        results.selected_archs[i]++;
+    out_list["selected_archs"] = results.selected_archs;
+
+    out_list["C_stacked"] = results.C_stacked;
+    out_list["H_stacked"] = results.H_stacked;
+
+    return out_list;
+}
+
+//' Identifies and aggregates redundant archetypes into equivalent classes
+//' (Post-ACTIONet archetype processing)
+//'
+//' @param G Adjacency matrix of the ACTIONet graph
+//' @param S_r Reduced kernel profile
+//' @param archetypes Archetype profile (S*C)
+//' @param C_stacked,H_stacked Output of reconstruct_archetypes()
+//' @param minPoints, minClusterSize, outlier_threshold HDBSCAN parameters
+//' @param reduced_dim Kernel reduction
+//'
+//' @return A named list: \itemize{
+//' \item archetype_groups: Equivalent classes of archetypes (non-redundant)
+//' \item C_unified,H_unified: C and H matrices of unified archetypes
+//' \item sample_assignments: Assignment of samples/cells to unified archetypes
+//' }
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+// [[Rcpp::export]]
+Rcpp::List unify_archetypes(arma::mat &S_r, arma::mat C_stacked, arma::mat H_stacked, double backbone_density = 0.5,
+                            double resolution = 1.0, int min_cluster_size = 3, int thread_no = 0,
+                            int normalization = 0) {
+
+    ACTIONet::unification_results results =
+            ACTIONet::unify_archetypes(S_r, C_stacked, H_stacked, backbone_density,
+                                       resolution, min_cluster_size, thread_no, normalization);
+
+    Rcpp::List out_list;
+
+    for (int i = 0; i < results.selected_archetypes.n_elem; i++)
+        results.selected_archetypes[i]++;
+    out_list["selected_archetypes"] = results.selected_archetypes;
+
+    out_list["C_unified"] = results.C_unified;
+    out_list["H_unified"] = results.H_unified;
+
+    for (int i = 0; i < results.assigned_archetypes.n_elem; i++)
+        results.assigned_archetypes[i]++;
+
+    out_list["assigned_archetypes"] = results.assigned_archetypes;
+    out_list["arch_membership_weights"] = results.arch_membership_weights;
+
+    out_list["ontology"] = results.dag_adj;
+    out_list["ontology_node_attributes"] = results.dag_node_annotations;
+
+    return out_list;
+}
+
+//' Builds an interaction network from the multi-level archetypal decompositions
+//'
+//' @param H_stacked Output of the prune_archetypes() function.
+//' @param density Overall density of constructed graph. The higher the density, 
+//' the more edges are retained (default = 1.0).
+//' @param thread_no Number of parallel threads (default = 0).
+//' @param mutual_edges_only Symmetrization strategy for nearest-neighbor edges.
+//' If it is true, only mutual nearest-neighbors are returned (default=TRUE).
+//'
+//' @return G Adjacency matrix of the ACTIONet graph.
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+// [[Rcpp::export]]
+arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
+                          double density = 1.0, int thread_no = 0, bool mutual_edges_only = true, int k = 10) {
+
+    // TODO: Add as options in interface
+    double M = 16, ef_construction = 200, ef = 50;
+    arma::sp_mat G = ACTIONet::buildNetwork(H, algorithm, distance_metric, density, thread_no, M, ef_construction, ef,
+                                            mutual_edges_only, k);
+
+    return G;
+}
+
+//' Performs stochastic force-directed layout on the input graph (ACTIONet)
+//'
+//' @param G Adjacency matrix of the ACTIONet graph
+//' @param S_r Reduced kernel matrix (is used for reproducible initialization).
+//' @param compactness_level A value between 0-100, indicating the compactness
+//' of ACTIONet layout (default=50)
+//' @param n_epochs Number of epochs for SGD algorithm (default=100).
+//' @param thread_no Number of threads (default = 0).
+//'
+//' @return A named list \itemize{
+//' \item coordinates 2D coordinates of vertices.
+//' \item coordinates_3D 3D coordinates of vertices.
+//' \item colors De novo color of nodes inferred from their 3D embedding.
+//' }
+//'
+//' @examples
+//'	G = buildNetwork(prune.out$H_stacked)
+//'	vis.out = layoutNetwrok(G, S_r)
+// [[Rcpp::export]]
+Rcpp::List layoutNetwork(arma::sp_mat &G, arma::mat &initial_position, const std::string &method = "umap",
+                         bool presmooth_network = false, double min_dist = 1, double spread = 1, double gamma = 1.0,
+                         unsigned int n_epochs = 500, int thread_no = 0, int seed = 0, double learning_rate = 1.0,
+                         int sim2dist = 2) {
+
+    arma::field<arma::mat> res =
+            ACTIONet::layoutNetwork_xmap(G, initial_position, presmooth_network, method, min_dist, spread, gamma,
+                                         n_epochs, thread_no, seed, learning_rate, sim2dist);
+
+    Rcpp::List out_list;
+    out_list["coordinates"] = res(0);
+    out_list["coordinates_3D"] = res(1);
+    out_list["colors"] = res(2);
+
+    return out_list;
+}
+
+//' Aggregate matrix within groups
+//'
+//' @param S matrix of type "dMatrix"
+//' @param sample_assignments Vector of column groupings. Group labels must be continuous integers or coercible to such.
+//'
+//' @return S matrix with columns of values aggregated within each group of sample_assignments
+//'
+// [[Rcpp::export]]
+mat compute_grouped_rowsums(sp_mat &S,
+                            arma::Col<unsigned long long> sample_assignments) {
+    mat pb = ACTIONet::compute_grouped_rowsums(S, sample_assignments);
+
+    return pb;
+}
+
+//' Aggregate matrix within groups
+//'
+//' @param S matrix
+//' @param sample_assignments Vector of column groupings. Group labels must be continuous integers or coercible to such.
+//'
+//' @return S matrix with columns of values aggregated within each group of sample_assignments
+//'
+// [[Rcpp::export]]
+mat compute_grouped_rowsums_full(mat &S,
+                                 arma::Col<unsigned long long> sample_assignments) {
+    mat pb = ACTIONet::compute_grouped_rowsums(S, sample_assignments);
+
+    return pb;
+}
+
+//' Average matrix within groups
+//'
+//' @param S matrix of type "dMatrix"
+//' @param sample_assignments Vector of column groupings. Group labels must be continuous integers or coercible to such.
+//'
+//' @return S matrix with columns of values average within each group of sample_assignments
+//'
+// [[Rcpp::export]]
+mat compute_grouped_rowmeans(sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
+    mat pb = ACTIONet::compute_grouped_rowmeans(S, sample_assignments);
+
+    return pb;
+}
+
+//' Average matrix within groups
+//'
+//' @param S matrix
+//' @param sample_assignments Vector of column groupings. Group labels must be continuous integers or coercible to such.
+//'
+//' @return S matrix with columns of values average within each group of sample_assignments
+//'
+// [[Rcpp::export]]
+mat compute_grouped_rowmeans_full(mat &S, arma::Col<unsigned long long> sample_assignments) {
+    mat pb = ACTIONet::compute_grouped_rowmeans(S, sample_assignments);
+
+    return pb;
+}
+
+// [[Rcpp::export]]
+mat compute_grouped_rowvars(sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
+    mat pb = ACTIONet::compute_grouped_rowvars(S, sample_assignments);
+
+    return pb;
+}
+
+// [[Rcpp::export]]
+mat compute_grouped_rowvars_full(mat &S, arma::Col<unsigned long long> sample_assignments) {
+    mat pb = ACTIONet::compute_grouped_rowvars(S, sample_assignments);
+
+    return pb;
+}
+
+// [[Rcpp::export]]
+mat compute_pseudo_bulk_per_archetype(sp_mat &S, mat &H) {
+    mat pb = ACTIONet::compute_pseudo_bulk_per_archetype(S, H);
+
+    return pb;
+}
+
+// [[Rcpp::export]]
+mat compute_pseudo_bulk_per_archetype_full(mat &S,
+                                           mat &H) {
+    mat pb = ACTIONet::compute_pseudo_bulk_per_archetype(S, H);
+
+    return pb;
+}
+
+// [[Rcpp::export]]
+arma::field<arma::mat> compute_pseudo_bulk_per_archetype_and_ind(
+        sp_mat &S, mat &H,
+        arma::Col<unsigned long long> individuals) {
+    arma::field<arma::mat> pbs_list =
+            ACTIONet::compute_pseudo_bulk_per_archetype_and_ind(S, H, individuals);
+
+    return pbs_list;
+}
+
+// [[Rcpp::export]]
+arma::field<arma::mat> compute_pseudo_bulk_per_archetype_and_ind_full(
+        mat &S, mat &H,
+        arma::Col<unsigned long long> individuals) {
+    arma::field<arma::mat> pbs_list =
+            ACTIONet::compute_pseudo_bulk_per_archetype_and_ind(S, H, individuals);
+
+    return pbs_list;
+}
+
+//' Renormalized input matrix to minimize differences in means
+//'
+//' @param S Input matrix
+//' @param sample_assignments Any primary grouping - typically based on cell
+//' type/state (it has to be in {1, ..., k1})
+//'
+//' @return A list with the first entry being the renormalized input matrix
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+//' S.norm = renormalize_input_matrix(S, cell.clusters)
+// [[Rcpp::export]]
+sp_mat renormalize_input_matrix(
+        sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
+    sp_mat S_norm = ACTIONet::renormalize_input_matrix(S, sample_assignments);
+
+    return (S_norm);
+}
+
+//' Renormalized input matrix to minimize differences in means
+//'
+//' @param S Input matrix ("matrix" type)
+//' @param sample_assignments Any primary grouping - typically based on cell
+//' type/state (it has to be in {1, ..., k1})
+//'
+//' @return A list with the first entry being the renormalized input matrix
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+//' S.norm = renormalize_input_matrix(S, cell.clusters)
+// [[Rcpp::export]]
+mat renormalize_input_matrix_full(
+        mat &S, arma::Col<unsigned long long> sample_assignments) {
+    mat S_norm = ACTIONet::renormalize_input_matrix(S, sample_assignments);
+
+    return (S_norm);
+}
+
+//' Compute feature specificity (from archetype footprints and binary input)
+//'
+//' @param S Input matrix (sparseMatrix - binary)
+//' @param H A soft membership matrix - Typically H_unified from the unify_archetypes() function.
+//'
+//' @return A list with the over/under-logPvals
+//'
+//' @examples
+//'	logPvals.list = compute_archetype_feature_specificity_bin(S.bin, unification.out$H_unified)
+//' specificity.scores = logPvals.list$upper_significance
+// [[Rcpp::export]]
+Rcpp::List compute_archetype_feature_specificity_bin(sp_mat &S, mat &H, int thread_no = 0) {
+    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity_bin(S, H, thread_no);
+
+    Rcpp::List out_list;
+    out_list["archetypes"] = res(0);
+    out_list["upper_significance"] = res(1);
+    out_list["lower_significance"] = res(2);
+
+    return (out_list);
+}
+
+//' Compute feature specificity (from archetype footprints)
+//'
+//' @param S Input matrix (sparseMatrix)
+//' @param H A soft membership matrix - Typically H_unified from the unify_archetypes() function.
+//'
+//' @return A list with the over/under-logPvals
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+//' S.norm = renormalize_input_matrix(S, cell.clusters)
+//' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_unified)
+//' specificity.scores = logPvals.list$upper_significance
+// [[Rcpp::export]]
+Rcpp::List compute_archetype_feature_specificity(sp_mat &S, mat &H, int thread_no = 0) {
+    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, H, thread_no);
+
+    Rcpp::List out_list;
+    out_list["archetypes"] = res(0);
+    out_list["upper_significance"] = res(1);
+    out_list["lower_significance"] = res(2);
+
+    return (out_list);
+}
+
+//' Compute feature specificity (from archetype footprints)
+//'
+//' @param S Input matrix ("matrix" type)
+//' @param H A soft membership matrix - Typically H_unified from the unify_archetypes() function.
+//'
+//' @return A list with the over/under-logPvals
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+//' S.norm = renormalize_input_matrix(S, cell.clusters)
+//' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_unified)
+//' specificity.scores = logPvals.list$upper_significance
+// [[Rcpp::export]]
+Rcpp::List compute_archetype_feature_specificity_full(mat &S, mat &H, int thread_no = 0) {
+    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, H, thread_no);
+
+    Rcpp::List out_list;
+    out_list["archetypes"] = res(0);
+    out_list["upper_significance"] = res(1);
+    out_list["lower_significance"] = res(2);
+
+    return (out_list);
+}
+
+//' Compute feature specificity (from cluster assignments)
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param sample_assignments Vector of cluster assignments
+//'
+//' @return A list with the over/under-logPvals
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+//' S.norm = renormalize_input_matrix(S, cell.clusters)
+//' logPvals.list = compute_cluster_feature_specificity(S.norm, cell.clusters)
+//' specificity.scores = logPvals.list$upper_significance
+// [[Rcpp::export]]
+Rcpp::List compute_cluster_feature_specificity(sp_mat &S, uvec sample_assignments, int thread_no = 0) {
+    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, sample_assignments, thread_no);
+
+    Rcpp::List out_list;
+    out_list["average_profile"] = res(0);
+    out_list["upper_significance"] = res(1);
+    out_list["lower_significance"] = res(2);
+
+    return (out_list);
+}
+
+//' Compute feature specificity (from cluster assignments)
+//'
+//' @param S Input matrix ("matrix")
+//' @param sample_assignments Vector of cluster assignments
+//'
+//' @return A list with the over/under-logPvals
+//'
+//' @examples
+//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//'	G = buildNetwork(prune.out$H_stacked)
+//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' cell.clusters = unification.out$sample_assignments
+//' S.norm = renormalize_input_matrix(S, cell.clusters)
+//' logPvals.list = compute_cluster_feature_specificity(S.norm, cell.clusters)
+//' specificity.scores = logPvals.list$upper_significance
+// [[Rcpp::export]]
+Rcpp::List compute_cluster_feature_specificity_full(mat &S, uvec sample_assignments, int thread_no = 0) {
+    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, sample_assignments, thread_no);
+
+    Rcpp::List out_list;
+    out_list["average_profile"] = res(0);
+    out_list["upper_significance"] = res(1);
+    out_list["lower_significance"] = res(2);
+
+    return (out_list);
+}
+
+//' Compute coreness of graph vertices
+//'
+//' @param G Input graph
+//'
+//' @return cn core-number of each graph node
+//'
+//' @examples
+//' G = colNets(ace)$ACTIONet
+//' cn = compute_core_number(G)
+// [[Rcpp::export]]
+uvec compute_core_number(sp_mat &G) {
+    uvec core_num = ACTIONet::compute_core_number(G);
+
+    return (core_num);
+}
+
+//' Compute coreness of subgraph vertices induced by each archetype
+//'
+//' @param G Input graph
+//' @param sample_assignments Archetype discretization (output of unify_archetypes())
+//'
+//' @return cn core-number of each graph node
+//'
+//' @examples
+//' G = colNets(ace)$ACTIONet
+//' assignments = ace$archetype.assignment
+//' connectivity = compute_core_number(G, assignments)
+// [[Rcpp::export]]
+vec compute_archetype_core_centrality(sp_mat &G, uvec sample_assignments) {
+    vec conn = ACTIONet::compute_archetype_core_centrality(G, sample_assignments);
+
+    return (conn);
+}
+
+//' Computes network diffusion over a given network, starting with an arbitrarty 
+//' set of initial scores
+//'
+//' @param G Input graph
+//' @param X0 Matrix of initial values per diffusion (ncol(G) == nrow(G) == ncol(X0))
+//' @param thread_no Number of parallel threads (default=0)
+//' @param alpha Random-walk depth ( between [0, 1] )
+//' @param max_it PageRank iterations
+//'
+//' @return Matrix of diffusion scores
+//'
+//' @examples
+//' G = colNets(ace)$ACTIONet
+//' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
+//' smoothed.expression = compute_network_diffusion(G, gene.expression)
+// [[Rcpp::export]]
+mat compute_network_diffusion_fast(sp_mat &G, sp_mat &X0, int thread_no = 0,
+                                   double alpha = 0.85, int max_it = 3) {
+    mat Diff =
+            ACTIONet::compute_network_diffusion_fast(G, X0, thread_no, alpha, max_it);
+
+    return (Diff);
+}
+
+/*
+mat compute_network_diffusion_SFMULT(sp_mat &G, sp_mat &X0, double alpha = 0.85, int max_it = 3)
+{
+  mat Diff =
+      ACTIONet::compute_network_diffusion_SFMULT(G, X0, alpha, max_it);
+
+  return (Diff);
+}
+*/
+
+//' Computes network diffusion over a given network, starting with an arbitrarty
+//' set of initial scores (direct approach)
+//'
+//' @param G Input graph
+//' @param X0 Matrix of initial values per diffusion (ncol(G) == nrow(G) == ncol(X0))
+//' @param thread_no Number of parallel threads (default=0)
+//' @param alpha Random-walk depth ( between [0, 1] ) ' @param max_it PageRank iterations
+//'
+//' @return Matrix of diffusion scores
+//'
+//' @examples
+//' G = colNets(ace)$ACTIONet
+//' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
+//' smoothed.expression = compute_network_diffusion_direct(G, gene.expression)
+// [[Rcpp::export]]
+mat compute_network_diffusion_direct(sp_mat &G, sp_mat &X0, int thread_no = 0,
+                                     double alpha = 0.85) {
+    mat Diff =
+            ACTIONet::compute_network_diffusion_direct(G, X0, thread_no, alpha);
+
+    return (Diff);
+}
+
+//' Computes feature enrichment wrt a given annotation
+//'
+//' @param scores Specificity scores of features
+//' @param associations Binary matrix of annotations
+//' @param L Length of the top-ranked scores to scan
+//'
+//' @return Matrix of log-pvalues
+//'
+//' @examples
+//' data("gProfilerDB_human")
+//' G = colNets(ace)$ACTIONet
+//' associations = gProfilerDB_human$SYMBOL$REAC
+//' common.genes = intersect(rownames(ace), rownames(associations))
+//' specificity_scores = rowFactors(ace)[["H_unified_upper_significance"]]
+//' logPvals = compute_feature_specificity(
+//' specificity_scores[common.genes, ], annotations[common.genes, ]
+//' )
+//' rownames(logPvals) = colnames(specificity_scores)
+//' colnames(logPvals) = colnames(annotations)
+// [[Rcpp::export]]
+Rcpp::List assess_enrichment(mat &scores, sp_mat &associations, int thread_no = 0) {
+    arma::field<arma::mat> res = ACTIONet::assess_enrichment(scores, associations, thread_no);
+
+    Rcpp::List out_list;
+    out_list["logPvals"] = res(0);
+    out_list["thresholds"] = res(1);
+
+    return (out_list);
+}
+
+//' Computes disjoint clusters for vertices of G.
+//' (It uses an adjusted DBSCAN procedure)
+//'
+//' @param G Adjacency matrix of the input graph
+//' @param minPts, eps DBSCAN parameters
+//' @param alpha Diffusion parameter for initial node ordering
+//'
+//' @return Matrix of log-pvalues
+//'
+//' @examples
+//' G = colNets(ace)$ACTIONet
+//' clusters = NetDBSCAN(G)
+// [[Rcpp::export]]
+vec NetDBSCAN(SEXP G, int minPts = 10, double eps = 0.5, double alpha = 0.85) {
+    sp_mat Adj;
+    if (Rf_isS4(G)) {
+        Adj = as<arma::sp_mat>(G);
+    } else {
+        Adj = sp_mat(as<arma::mat>(G));
+    }
+
+    vec clusters = ACTIONet::NetDBSCAN(Adj, minPts, eps, alpha);
+
+    return (clusters);
+}
+
+//' Clusters data points using the hierarchical DBSCAN algorithm.
+//'
+//' @param X Input data matrix with each row being a data point
+//'
+//' @return A list with \itemize{
+//' \item labels
+//' \item membershipProbabilities
+//' \item outlierScores
+//' }
+//'
+//' @examples
+//' S_r = t(reducedDims(ace)[["S_r"]])
+//' W_r = S_r %*% trace$pruning.out$C_stacked
+//' X = Matrix::t(W_r)
+//' HDBSCAN.out = run_HDBSCAN(X)
+//' clusters = HDBSCAN.out$labels
+// [[Rcpp::export]]
+Rcpp::List run_HDBSCAN(mat &X, int minPoints = 5, int minClusterSize = 5) {
+    field <vec> res = ACTIONet::run_HDBSCAN(X, minPoints, minClusterSize);
+
+    Rcpp::List out_list;
+    out_list["labels"] = res(0);
+    out_list["membershipProbabilities"] = res(1);
+    out_list["outlierScores"] = res(2);
+
+    return (out_list);
+}
+
+//' Computes the maximum-weight bipartite graph matching
+//'
+//' @param G Adjacency matrix of the input graph
+//'
+//' @return G_matched An adjacency matrix with a maximum of one nonzero entry on
+//' rows/columns
+//'
+//' @examples
+//' G_matched = MWM_hungarian(G)
+// [[Rcpp::export]]
+mat MWM_hungarian(mat &G) {
+    mat G_matched = ACTIONet::MWM_hungarian(G);
+
+    return G_matched;
+}
+
+// [[Rcpp::export]]
+mat sgd2_layout_weighted(sp_mat &G, mat S_r, int t_max = 30, double eps = .01,
+                         int seed = 0) {
+    int n = S_r.n_cols;
+    G.diag().zeros();
+
+    int m = G.n_nonzero;
+    int *I = new int[m];
+    int *J = new int[m];
+    double *V = new double[m];
+
+    sp_mat::const_iterator it = G.begin();
+    sp_mat::const_iterator it_end = G.end();
+    int idx = 0;
+    for (; it != it_end; ++it) {
+        I[idx] = it.row();
+        J[idx] = it.col();
+        V[idx] = (*it);
+        idx++;
+    }
+
+    mat X(2, n);
+    X = S_r.rows(0, 1);
+    layout_weighted(n, X.memptr(), m, I, J, V, t_max, eps, seed);
+
+    delete[] I;
+    delete[] J;
+    delete[] V;
+
+    return (trans(X));
+}
+
+// [[Rcpp::export]]
+mat sgd2_layout_weighted_convergent(sp_mat &G, mat S_r, int t_max = 30,
+                                    double eps = 0.01, double delta = 0.03,
+                                    int t_maxmax = 200, int seed = 0) {
+    int n = S_r.n_cols;
+    G.diag().zeros();
+
+    int m = G.n_nonzero;
+    int *I = new int[m];
+    int *J = new int[m];
+    double *V = new double[m];
+
+    sp_mat::const_iterator it = G.begin();
+    sp_mat::const_iterator it_end = G.end();
+    int idx = 0;
+    for (; it != it_end; ++it) {
+        I[idx] = it.row();
+        J[idx] = it.col();
+        V[idx] = (*it);
+        idx++;
+    }
+
+    mat X(2, n);
+    X = S_r.rows(0, 1);
+    layout_weighted_convergent(n, X.memptr(), m, I, J, V, t_max, eps, delta,
+                               t_maxmax, seed);
+
+    delete[] I;
+    delete[] J;
+    delete[] V;
+
+    return (trans(X));
+}
+
+// [[Rcpp::export]]
+mat sgd2_layout_sparse_weighted(sp_mat &G, mat S_r, int p = 200, int t_max = 30,
+                                double eps = 0.01, int seed = 0) {
+    int n = S_r.n_cols;
+    G.diag().zeros();
+
+    int m = G.n_nonzero;
+    int *I = new int[m];
+    int *J = new int[m];
+    double *V = new double[m];
+
+    sp_mat::const_iterator it = G.begin();
+    sp_mat::const_iterator it_end = G.end();
+    int idx = 0;
+    for (; it != it_end; ++it) {
+        I[idx] = it.row();
+        J[idx] = it.col();
+        V[idx] = (*it);
+        idx++;
+    }
+
+    mat X(2, n);
+    X = S_r.rows(0, 1);
+    layout_sparse_weighted(n, X.memptr(), m, I, J, V, p, t_max, eps, seed);
+
+    delete[] I;
+    delete[] J;
+    delete[] V;
+
+    return (trans(X));
+}
+
+//' Computes a coreset for archetypal analysis
+//' Ref: Coresets for Archetypal Analysis:
+//' (http://papers.neurips.cc/paper/8945-coresets-for-archetypal-analysis)
+//'
+//' @param S Input matrix (e.g., gene x cell)
+//' @param m Number of samples (or 0, to be automatically identified)
+//' @param seed Random seed
+//'
+//' @return clusters Assignment vector of samples to clusters
+//'
+//' @examples
+//' coreset = compute_AA_coreset(S, 1000)
+// [[Rcpp::export]]
+Rcpp::List compute_AA_coreset(sp_mat &S, int m = 0) {
+    ACTIONet::Coreset coreset = ACTIONet::compute_AA_coreset(S, m);
+
+    Rcpp::List out_list;
+    out_list["S_coreset"] = coreset.S_coreset;
+    out_list["w_coreset"] = coreset.w_coreset;
+
+    uvec index = coreset.index + 1;
+    out_list["index"] = index;
+
+    return (out_list);
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile and prior
+//' SVD
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param U Left singular vectors
+//' @param s signular values
+//' @param V Right singular vectors
+//'
+//' @return A named list with S_r, V, lambda, and exp_var.
+//' \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing 
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' irlba.out = irlba::irlba(S, nv = 50)
+//' red.out = SVD2ACTIONred_full(S, irlba.out$u, as.matrix(irlba.out$d), irlba.out$v)
+//' Sr = red.out$S_r
+// [[Rcpp::export]]
+Rcpp::List SVD2ACTIONred(sp_mat &S, mat u, vec d, mat v) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> reduction = ACTIONet::SVD2ACTIONred(S, SVD_results);
+
+    Rcpp::List res;
+    res["V"] = reduction(0);
+
+    vec sigma = reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile and prior
+//' SVD
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param U Left singular vectors
+//' @param s signular values
+//' @param V Right singular vectors
+//'
+//' @return A named list with S_r, V, lambda, and exp_var.
+//' \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing 
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' irlba.out = irlba::irlba(S, nv = 50)
+//' red.out = SVD2ACTIONred_full(S, irlba.out$u, as.matrix(irlba.out$d), irlba.out$v)
+//' Sr = red.out$S_r
+// [[Rcpp::export]]
+Rcpp::List SVD2ACTIONred_full(mat &S, mat u, vec d, mat v) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> reduction = ACTIONet::SVD2ACTIONred(S, SVD_results);
+
+    Rcpp::List res;
+    res["V"] = reduction(0);
+
+    vec sigma = reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile and prior
+//' SVD
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param U Left singular vectors
+//' @param s signular values
+//' @param V Right singular vectors
+//'
+//' @return A named list with S_r, V, lambda, and exp_var.
+//' \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' irlba.out = irlba::prcomp_irlba(S, n = 50, retx = TRUE, center = T)
+//' red.out = PCA2ACTIONred_full(S, irlba.out$x, irlba.out$rotation, as.matrix(irlba.out$sdev))
+//' Sr = red.out$S_r
+// [[Rcpp::export]]
+Rcpp::List PCA2ACTIONred(sp_mat &S, mat x, vec sdev, mat rotation) {
+    arma::field<arma::mat> SVD_results(3);
+
+    vec d = sdev * sqrt(x.n_rows - 1);
+    mat U = x;
+    for (int i = 0; i < U.n_cols; i++) {
+        U.col(i) /= d(i);
+    }
+
+    SVD_results(0) = U;
+    SVD_results(1) = d;
+    SVD_results(2) = rotation;
+
+    arma::field<arma::mat> reduction = ACTIONet::PCA2ACTIONred(S, SVD_results);
+
+    Rcpp::List res;
+    res["V"] = reduction(0);
+
+    vec sigma = reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile and prior
+//' SVD
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param U Left singular vectors
+//' @param s signular values
+//' @param V Right singular vectors
+//'
+//' @return A named list with S_r, V, lambda, and exp_var.
+//' \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing 
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' irlba.out = irlba::prcomp_irlba(S, n = 50, retx = TRUE, center = T)
+//' red.out = PCA2ACTIONred_full(S, irlba.out$x, irlba.out$rotation, as.matrix(irlba.out$sdev))
+//' Sr = red.out$S_r
+// [[Rcpp::export]]
+Rcpp::List PCA2ACTIONred_full(mat &S, mat x, vec sdev, mat rotation) {
+    arma::field<arma::mat> SVD_results(3);
+
+    vec d = sdev * sqrt(x.n_rows - 1);
+    mat U = x;
+    for (int i = 0; i < U.n_cols; i++) {
+        U.col(i) /= d(i);
+    }
+
+    SVD_results(0) = U;
+    SVD_results(1) = d;
+    SVD_results(2) = rotation;
+
+    arma::field<arma::mat> reduction = ACTIONet::PCA2ACTIONred(S, SVD_results);
+
+    Rcpp::List res;
+    res["V"] = reduction(0);
+
+    vec sigma = reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List PCA2SVD(sp_mat &S, mat x, vec sdev, mat rotation) {
+    arma::field<arma::mat> PCA_results(3);
+    vec d = sdev * sqrt(x.n_rows - 1);
+
+    mat U = x;
+    for (int i = 0; i < U.n_cols; i++) {
+        U.col(i) /= d(i);
+    }
+    PCA_results(0) = U;
+    PCA_results(1) = d;
+    PCA_results(2) = rotation;
+
+    arma::field<arma::mat> SVD_results = ACTIONet::PCA2SVD(S, PCA_results);
+
+    Rcpp::List res;
+    res["u"] = SVD_results(0);
+    res["d"] = SVD_results(1);
+    res["v"] = SVD_results(2);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List PCA2SVD_full(mat &S, mat x, vec sdev, mat rotation) {
+    arma::field<arma::mat> PCA_results(3);
+    vec d = sdev * sqrt(x.n_rows - 1);
+
+    mat U = x;
+    for (int i = 0; i < U.n_cols; i++) {
+        U.col(i) /= d(i);
+    }
+    PCA_results(0) = U;
+    PCA_results(1) = d;
+    PCA_results(2) = rotation;
+
+    arma::field<arma::mat> SVD_results = ACTIONet::PCA2SVD(S, PCA_results);
+
+    Rcpp::List res;
+    res["u"] = SVD_results(0);
+    res["d"] = SVD_results(1);
+    res["v"] = SVD_results(2);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List SVD2PCA(sp_mat &S, mat u, vec d, mat v) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> PCA_results = ACTIONet::SVD2PCA(S, SVD_results);
+
+    Rcpp::List res;
+    vec s = PCA_results(1).col(0);
+
+    mat X = PCA_results(0);
+    for (int i = 0; i < X.n_cols; i++) {
+        X.col(i) *= s(i);
+    }
+    res["x"] = X;
+    res["rotation"] = PCA_results(2);
+    res["sdev"] = s / sqrt(X.n_rows - 1);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List SVD2PCA_full(mat &S, mat u, vec d, mat v) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> PCA_results = ACTIONet::SVD2PCA(S, SVD_results);
+
+    Rcpp::List res;
+    vec s = PCA_results(1).col(0);
+
+    mat X = PCA_results(0);
+    for (int i = 0; i < X.n_cols; i++) {
+        X.col(i) *= s(i);
+    }
+    res["x"] = X;
+    res["rotation"] = PCA_results(2);
+    res["sdev"] = s / sqrt(X.n_rows - 1);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List perturbedSVD(mat u, vec d, mat v, mat A, mat B) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+
+    Rcpp::List res;
+    res["u"] = perturbed_SVD(0);
+    res["d"] = perturbed_SVD(1).col(0);
+    res["v"] = perturbed_SVD(2);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+// mat computeFullSim(mat &H, int thread_no = 0)
+// {
+//   mat G = ACTIONet::computeFullSim(H, thread_no);
+
+//   return (G);
+// }
+
+// [[Rcpp::export]]
+Rcpp::List run_subACTION(mat &S_r, mat &W_parent, mat &H_parent, int kk, int k_min,
+                         int k_max, int thread_no, int max_it = 50,
+                         double min_delta = 1e-16) {
+    ACTIONet::ACTION_results trace =
+            ACTIONet::run_subACTION(S_r, W_parent, H_parent, kk - 1, k_min, k_max,
+                                    thread_no, max_it, min_delta);
+
+    Rcpp::List res;
+
+    Rcpp::List C(k_max);
+    for (int i = k_min; i <= k_max; i++) {
+        C[i - 1] = trace.C[i];
+    }
+    res["C"] = C;
+
+    Rcpp::List H(k_max);
+    for (int i = k_min; i <= k_max; i++) {
+        H[i - 1] = trace.H[i];
+    }
+    res["H"] = H;
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List deflate_reduction(mat &old_S_r, mat &old_V, mat &old_A, mat &old_B,
+                             vec &old_sigma, mat &A, mat &B) {
+    arma::field<arma::mat> SVD_results(5);
+
+    SVD_results(0) = old_V;
+    SVD_results(1) = old_sigma;
+    SVD_results(2) = old_S_r;
+    for (int i = 0; i < old_sigma.n_elem; i++) {
+        SVD_results(2).col(i) /= old_sigma(i);
+    }
+    SVD_results(3) = old_A;
+    SVD_results(4) = old_B;
+
+    arma::field<arma::mat> deflated_reduction =
+            ACTIONet::deflate_reduction(SVD_results, A, B);
+
+    Rcpp::List res;
+    res["V"] = deflated_reduction(0);
+
+    vec sigma = deflated_reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = deflated_reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = deflated_reduction(3);
+    res["B"] = deflated_reduction(4);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List orthogonalize_batch_effect(sp_mat &S, mat &old_S_r, mat &old_V, mat &old_A,
+                                      mat &old_B, vec &old_sigma, mat &design) {
+    arma::field<arma::mat> SVD_results(5);
+
+    SVD_results(0) = old_V;
+    SVD_results(1) = old_sigma;
+    SVD_results(2) = old_S_r;
+    for (int i = 0; i < old_sigma.n_elem; i++) {
+        SVD_results(2).col(i) /= old_sigma(i);
+    }
+    SVD_results(3) = old_A;
+    SVD_results(4) = old_B;
+
+    arma::field<arma::mat> orthogonalized_reduction =
+            ACTIONet::orthogonalize_batch_effect(S, SVD_results, design);
+
+    Rcpp::List res;
+    res["V"] = orthogonalized_reduction(0);
+
+    vec sigma = orthogonalized_reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = orthogonalized_reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = orthogonalized_reduction(3);
+    res["B"] = orthogonalized_reduction(4);
+
+    return res;
+}
+
+//[[Rcpp::export]]
+Rcpp::List orthogonalize_batch_effect_full(mat &S, mat &old_S_r, mat &old_V,
+                                           mat &old_A, mat &old_B, vec &old_sigma,
+                                           mat &design) {
+    arma::field<arma::mat> SVD_results(5);
+
+    SVD_results(0) = old_V;
+    SVD_results(1) = old_sigma;
+    SVD_results(2) = old_S_r;
+    for (int i = 0; i < old_sigma.n_elem; i++) {
+        SVD_results(2).col(i) /= old_sigma(i);
+    }
+    SVD_results(3) = old_A;
+    SVD_results(4) = old_B;
+
+    arma::field<arma::mat> orthogonalized_reduction =
+            ACTIONet::orthogonalize_batch_effect(S, SVD_results, design);
+
+    Rcpp::List res;
+    res["V"] = orthogonalized_reduction(0);
+
+    vec sigma = orthogonalized_reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = orthogonalized_reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = orthogonalized_reduction(3);
+    res["B"] = orthogonalized_reduction(4);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List orthogonalize_basal(sp_mat &S, mat &old_S_r, mat &old_V, mat &old_A,
+                               mat &old_B, vec &old_sigma, mat &basal) {
+    arma::field<arma::mat> SVD_results(5);
+
+    SVD_results(0) = old_V;
+    SVD_results(1) = old_sigma;
+    SVD_results(2) = old_S_r;
+    for (int i = 0; i < old_sigma.n_elem; i++) {
+        SVD_results(2).col(i) /= old_sigma(i);
+    }
+    SVD_results(3) = old_A;
+    SVD_results(4) = old_B;
+
+    arma::field<arma::mat> orthogonalized_reduction =
+            ACTIONet::orthogonalize_basal(S, SVD_results, basal);
+
+    Rcpp::List res;
+    res["V"] = orthogonalized_reduction(0);
+
+    vec sigma = orthogonalized_reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = orthogonalized_reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = orthogonalized_reduction(3);
+    res["B"] = orthogonalized_reduction(4);
+
+    return res;
+}
+
+//[[Rcpp::export]]
+Rcpp::List orthogonalize_basal_full(mat &S, mat &old_S_r, mat &old_V,
+                                    mat &old_A, mat &old_B, vec &old_sigma,
+                                    mat &basal) {
+    arma::field<arma::mat> SVD_results(5);
+
+    SVD_results(0) = old_V;
+    SVD_results(1) = old_sigma;
+    SVD_results(2) = old_S_r;
+    for (int i = 0; i < old_sigma.n_elem; i++) {
+        SVD_results(2).col(i) /= old_sigma(i);
+    }
+    SVD_results(3) = old_A;
+    SVD_results(4) = old_B;
+
+    arma::field<arma::mat> orthogonalized_reduction =
+            ACTIONet::orthogonalize_basal(S, SVD_results, basal);
+
+    Rcpp::List res;
+    res["V"] = orthogonalized_reduction(0);
+
+    vec sigma = orthogonalized_reduction(1).col(0);
+    res["sigma"] = sigma;
+
+    mat V = orthogonalized_reduction(2);
+    for (int i = 0; i < V.n_cols; i++) {
+        V.col(i) *= sigma(i);
+    }
+    res["S_r"] = trans(V);
+
+    res["A"] = orthogonalized_reduction(3);
+    res["B"] = orthogonalized_reduction(4);
+
+    return res;
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+umat MWM_rank1(vec u, vec v, double u_threshold = 0, double v_threshold = 0) {
+    umat pairs = ACTIONet::MWM_rank1(u, v, u_threshold, v_threshold);
+
+    pairs = pairs + 1;
+
+    return (pairs);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat NetEnh(mat A) {
+    mat A_enh = ACTIONet::NetEnh(A);
+
+    return (A_enh);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::NumericVector run_LPA(sp_mat &G, vec labels, double lambda = 1, int iters = 3, double sig_threshold = 3,
+                            Nullable <IntegerVector> fixed_labels_ = R_NilValue, int thread_no = 0) {
+    uvec fixed_labels_vec;
+    if (fixed_labels_.isNotNull()) {
+        NumericVector fixed_labels(fixed_labels_);
+        fixed_labels_vec.set_size(fixed_labels.size());
+        for (int i = 0; i < fixed_labels.size(); i++) {
+            fixed_labels_vec(i) = fixed_labels(i) - 1;
+        }
+    }
+
+    mat new_labels = ACTIONet::LPA(G, labels, lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
+    // vec labels_out = arma::conv_to<arma::vec>::from(new_labels);
+
+    return (arma2vec(new_labels));
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat compute_marker_aggregate_stats(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85, int max_it = 5,
+                                   int thread_no = 0, bool ignore_baseline_expression = false) {
+    mat stats = ACTIONet::compute_marker_aggregate_stats(G, S, marker_mat, alpha, max_it, thread_no,
+                                                         ignore_baseline_expression);
+
+    return (stats);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+sp_mat LSI(sp_mat &X, double size_factor = 100000) {
+    sp_mat TFIDF = ACTIONet::LSI(X, size_factor);
+
+    return (TFIDF);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(sp_mat &G, sp_mat &S, sp_mat &marker_mat, double alpha = 0.85,
+                                                      int max_it = 5, int perm_no = 100, int thread_no = 0,
+                                                      int normalization = 1) {
+    mat stats = ACTIONet::compute_marker_aggregate_stats_TFIDF_sum_smoothed(G, S, marker_mat, alpha, max_it, perm_no,
+                                                                            thread_no, normalization);
+
+    return (stats);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List
+autocorrelation_Geary(sp_mat G, mat scores, int normalization_method = 1, int perm_no = 30, int thread_no = 0) {
+    field <vec> out = ACTIONet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
+
+    Rcpp::List res;
+    res["Geary_C"] = out[0];
+    res["zscore"] = out[1];
+    res["mu"] = out[2];
+    res["sigma"] = out[3];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List
+autocorrelation_Geary_full(mat G, mat scores, int normalization_method = 1, int perm_no = 30, int thread_no = 0) {
+    field <vec> out = ACTIONet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
+
+    Rcpp::List res;
+    res["Geary_C"] = out[0];
+    res["zscore"] = out[1];
+    res["mu"] = out[2];
+    res["sigma"] = out[3];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List
+autocorrelation_Moran(sp_mat G, mat scores, int normalization_method = 1, int perm_no = 30, int thread_no = 0) {
+    field <vec> out = ACTIONet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
+
+    Rcpp::List res;
+    res["Moran_I"] = out[0];
+    res["zscore"] = out[1];
+    res["mu"] = out[2];
+    res["sigma"] = out[3];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List
+autocorrelation_Moran_full(mat G, mat scores, int normalization_method = 1, int perm_no = 30, int thread_no = 0) {
+    field <vec> out = ACTIONet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
+
+    Rcpp::List res;
+    res["Moran_I"] = out[0];
+    res["zscore"] = out[1];
+    res["mu"] = out[2];
+    res["sigma"] = out[3];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+vec spmat_vec_product(sp_mat &A, vec &x) {
+    vec res = ACTIONet::spmat_vec_product(A, x);
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat spmat_mat_product(sp_mat &A, mat &B) {
+    mat res = ACTIONet::spmat_mat_product(A, B);
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+sp_mat spmat_spmat_product(sp_mat &A, sp_mat &B) {
+    sp_mat res = ACTIONet::spmat_spmat_product(A, B);
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat spmat_mat_product_parallel(sp_mat &A, mat &B, int thread_no) {
+    mat res = ACTIONet::spmat_mat_product_parallel(A, B, thread_no);
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat mat_mat_product_parallel(mat &A, mat &B, int thread_no) {
+    mat res = ACTIONet::mat_mat_product_parallel(A, B, thread_no);
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat transform_layout(sp_mat &G, mat reference_coordinates, const std::string &method = "umap",
+                     bool presmooth_network = false,
+                     double min_dist = 1, double spread = 1, double gamma = 1.0, unsigned int n_epochs = 500,
+                     int thread_no = 0, int seed = 0, double learning_rate = 1.0, int sim2dist = 2) {
+    mat coors = ACTIONet::transform_layout(G, reference_coordinates, presmooth_network, method, min_dist, spread, gamma,
+                                           n_epochs, thread_no, seed, learning_rate, sim2dist);
+
+    return (coors);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+sp_mat normalize_adj2(sp_mat &G, int norm_type = 0) {
+    sp_mat P = ACTIONet::normalize_adj(G, norm_type);
+
+    return (P);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat compute_network_diffusion_Chebyshev(sp_mat &P, mat &X0, int thread_no = 0, double alpha = 0.85, int max_it = 5,
+                                        double res_threshold = 1e-8) {
+    if (P.n_rows != X0.n_rows) {
+        fprintf(stderr, "Dimnsion mismatch: P (%dx%d) and X0 (%dx%d)\n", P.n_rows, P.n_cols, X0.n_rows, X0.n_cols);
+        return (mat());
+    }
+    mat X = ACTIONet::compute_network_diffusion_Chebyshev(P, X0, thread_no, alpha, max_it, res_threshold);
+
+    return (X);
+}
+
+//' Computes network diffusion over a given network, starting with an arbitrarty 
+//'set of initial scores
+//'
+//' @param G Input graph
+//' @param X0 Matrix of initial values per diffusion (ncol(G) == nrow(G) == ncol(X0))
+//' @param thread_no Number of parallel threads (default=0)
+//' @param alpha Random-walk depth ( between [0, 1] ) ' @param max_it PageRank iterations
+//'
+//' @return Matrix of diffusion scores
+//'
+//' @examples
+//' G = colNets(ace)$ACTIONet
+//' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
+//' smoothed.expression = compute_network_diffusion_approx(G, gene.expression)
+// [[Rcpp::export]]
+mat compute_network_diffusion_approx(sp_mat &G, mat &X0, int thread_no = 0, double alpha = 0.85, int max_it = 5,
+                                     double res_threshold = 1e-8, int norm_type = 0) {
+    if (G.n_rows != X0.n_rows) {
+        stderr_printf("Dimension mismatch: G (%dx%d) and X0 (%dx%d)\n", G.n_rows, G.n_cols, X0.n_rows, X0.n_cols);
+        return (mat());
+    }
+
+    sp_mat P = normalize_adj(G, norm_type);
+    mat X = ACTIONet::compute_network_diffusion_Chebyshev(P, X0, thread_no, alpha, max_it, res_threshold);
+
+    return (X);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat compute_marker_aggregate_stats_nonparametric(mat &S, sp_mat &marker_mat, int thread_no = 0) {
+    mat X = ACTIONet::compute_marker_aggregate_stats_nonparametric(S, marker_mat, thread_no);
+    return (X);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat compute_markers_eigengene(mat &S, sp_mat &marker_mat, int normalization = 0, int thread_no = 0) {
+    mat X = ACTIONet::compute_markers_eigengene(S, marker_mat, normalization, thread_no);
+    return (X);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+vec sweepcut(sp_mat &A, vec s, int min_size = 5, int max_size = -1) {
+    vec cond = ACTIONet::sweepcut(A, s, min_size, max_size);
+
+    return (cond);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat
+aggregate_genesets_mahalanobis_2archs(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0,
+                                      int expression_normalization_method = 0, int gene_scaling_method = 0,
+                                      double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
+    mat stats = ACTIONet::aggregate_genesets_mahalanobis_2archs(G, S, marker_mat, network_normalization_method,
+                                                                expression_normalization_method, gene_scaling_method,
+                                                                pre_alpha, post_alpha, thread_no);
+
+    return (stats);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat aggregate_genesets_mahalanobis_2gmm(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0,
+                                        int expression_normalization_method = 0, int gene_scaling_method = 0,
+                                        double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
+    mat stats = ACTIONet::aggregate_genesets_mahalanobis_2gmm(G, S, marker_mat, network_normalization_method,
+                                                              expression_normalization_method, gene_scaling_method,
+                                                              pre_alpha, post_alpha, thread_no);
+
+    return (stats);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat
+aggregate_genesets_weighted_enrichment(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0,
+                                       int expression_normalization_method = 0, int gene_scaling_method = 3,
+                                       double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
+    mat stats = ACTIONet::aggregate_genesets_weighted_enrichment(G, S, marker_mat, network_normalization_method,
+                                                                 expression_normalization_method, gene_scaling_method,
+                                                                 pre_alpha, post_alpha, thread_no);
+
+    return (stats);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat aggregate_genesets_weighted_enrichment_permutation(sp_mat &G, sp_mat &S, sp_mat &marker_mat,
+                                                       int network_normalization_method = 0,
+                                                       int expression_normalization_method = 0,
+                                                       int gene_scaling_method = 3, double pre_alpha = 0.85,
+                                                       double post_alpha = 0.85, int thread_no = 0, int perm_no = 30) {
+    mat stats = ACTIONet::aggregate_genesets_weighted_enrichment_permutation(G, S, marker_mat,
+                                                                             network_normalization_method,
+                                                                             expression_normalization_method,
+                                                                             gene_scaling_method, pre_alpha, post_alpha,
+                                                                             thread_no, perm_no);
+
+    return (stats);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List recursiveNMU(mat M, int dim = 100, int max_SVD_iter = 1000, int max_iter_inner = 100) {
+    arma::field<arma::mat> stats = ACTIONet::recursiveNMU(M, dim, max_SVD_iter, max_iter_inner);
+
+    Rcpp::List res;
+    res["W"] = stats[0];
+    res["H"] = trans(stats[1]);
+    res["factor_weights"] = stats[2];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List recursiveNMU_mine(mat M, int dim = 100, int max_SVD_iter = 1000, int max_iter_inner = 100) {
+    arma::field<arma::mat> stats = ACTIONet::recursiveNMU_mine(M, dim, max_SVD_iter, max_iter_inner);
+
+    Rcpp::List res;
+    res["W"] = stats[0];
+    res["H"] = trans(stats[1]);
+    res["factor_weights"] = stats[2];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat normalize_mat(mat &X, int normalization = 0) {
+    mat X_norm = ACTIONet::normalize_mat(X, normalization);
+
+    return (X_norm);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+sp_mat normalize_spmat(sp_mat &X, int normalization = 0) {
+    sp_mat X_norm = ACTIONet::normalize_mat(X, normalization);
+
+    return (X_norm);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+vec xicor(vec xvec, vec yvec, bool compute_pval = true, int seed = 0) {
+    vec res = ACTIONet::xicor(xvec, yvec, compute_pval, seed);
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List XICOR(mat &X, mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0) {
+    arma::field<arma::mat> out = ACTIONet::XICOR(X, Y, compute_pval, seed, thread_no);
+
+    Rcpp::List res;
+    res["XI"] = out(0);
+    res["Z"] = out(1);
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat znormalize_mat(mat &A, int norm_method = 1, int thread_no = 0) {
+    mat Z = ACTIONet::normalize_scores(A, norm_method, thread_no);
+
+    return (Z);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+sp_mat buildNetwork_bipartite(mat H1, mat H2, double density = 1.0,
+                              int thread_no = 0, double M = 16,
+                              double ef_construction = 200,
+                              double ef = 200,
+                              string distance_metric = "jsd") {
+    sp_mat G = ACTIONet::buildNetwork_bipartite(H1, H2, density,
+                                                thread_no, M,
+                                                ef_construction,
+                                                ef,
+                                                distance_metric);
+
+    return (G);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List
+aggregate_genesets(sp_mat &G, sp_mat &S, sp_mat &marker_mat, int network_normalization_method = 0, double alpha = 0.85,
+                   int thread_no = 0) {
+    arma::field<arma::mat> stats = ACTIONet::aggregate_genesets_vision(G, S, marker_mat, network_normalization_method,
+                                                                       alpha, thread_no);
+
+    Rcpp::List res;
+
+    res["stats_norm_smoothed"] = stats[0];
+    res["stats_norm"] = stats[1];
+    res["stats"] = stats[2];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+mat assess_label_enrichment(sp_mat &G, mat &M, int thread_no = 0) {
+    mat logPvals = ACTIONet::assess_label_enrichment(G, M, thread_no);
+
+    return (logPvals);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List autocorrelation_Moran_parametric_full(mat G, mat scores,
+                                                 int normalization_method = 4,
+                                                 int thread_no = 0) {
+    field <vec> out = ACTIONet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
+
+    Rcpp::List res;
+    res["stat"] = out[0];
+    res["zscore"] = out[1];
+    res["mu"] = out[2];
+    res["sigma"] = out[3];
+
+    return (res);
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::List autocorrelation_Moran_parametric(sp_mat G, mat scores,
+                                            int normalization_method = 4,
+                                            int thread_no = 0) {
+
+    field <vec> out = ACTIONet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
+
+    Rcpp::List res;
+    res["stat"] = out[0];
+    res["zscore"] = out[1];
+    res["mu"] = out[2];
+    res["sigma"] = out[3];
+
+    return (res);
+}
