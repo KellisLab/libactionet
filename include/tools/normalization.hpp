@@ -6,9 +6,9 @@
 
 namespace ACTIONet {
 
-    arma::mat normalize_mat(arma::mat &X, int normalization, int dim);
+    arma::mat normalize_mat(arma::mat &X, int normalization, int dim = 0);
 
-    arma::sp_mat normalize_mat(arma::sp_mat &X, int normalization, int dim);
+    arma::sp_mat normalize_mat(arma::sp_mat &X, int normalization, int dim = 0);
 
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);
 

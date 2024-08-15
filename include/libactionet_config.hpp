@@ -39,5 +39,13 @@
 
 #endif
 
+#if defined(LIBACTIONET_PLATFORM_APPLE)
+
+//  #include <Accelerate.h>
+    #include <cblas.h>
+
+#else
+    #include <cblas.h>
+#endif
 
 #endif //LIBACTIONET_CONFIG_HPP

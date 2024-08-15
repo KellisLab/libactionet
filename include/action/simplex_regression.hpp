@@ -3,7 +3,7 @@
 #define LIBACTIONET_SIMPLEX_REGRESSION_HPP
 
 #include "libactionet_config.hpp"
-#include <cblas.h>
+//#include <cblas.h>
 #include <cassert>
 
 //Functions: private

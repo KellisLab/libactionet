@@ -1,17 +1,16 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.18)
 
-
-## Specify macos arm64 compilers
-# set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
+# Specify macos arm64 compilers
+#set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
 
 ## Specify macos x86 Rosetta2 compilers
 # set(USE_GCC "/usr/local/Cellar/gcc/14.1.0_1/bin/")
 # string(APPEND CMAKE_CXX_FLAGS_RELEASE " -arch x86_64")
 # string(APPEND CMAKE_CC_FLAGS_RELEASE " -arch x86_64")
 
-## Set compiler
-# set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
-# set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
+# Set compiler
+#set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
+#set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
 
 project(libactionet)
 list(APPEND CMAKE_MODULE_PATH "${libactionet_SOURCE_DIR}/cmake")
@@ -37,27 +36,41 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #ENDMACRO()
 
 #add_compile_options(-w)
-# add_compile_options(-O3)
-
-# ########### Third-party dependencies
-## Check for BLAS/LAPACK
-find_package(BLAS REQUIRED)
-# message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
-#add_definitions("-DEIGEN_USE_BLAS") # Keep for future Eigen use
-# list(APPEND EXTERNAL_LIBS "${BLAS_LIBRARIES}")
-
-find_package(LAPACK REQUIRED)
-# message(STATUS "BLAS_COMPILER_FLAGS: ${BLAS_COMPILER_FLAGS}")
-# list(APPEND EXTERNAL_LIBS "${LAPACK_LIBRARIES}")
-
-## Check for CHOLMOD
-find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
-# find_package(SuiteSparse_config REQUIRED NO_MODULE)
-# include_directories(${SUITESPARSE_INCLUDE_DIRS})
+#add_compile_options(-O3)
 
 ## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-add_library(libactionet STATIC ${SOURCES})
+add_library(libactionet
+        STATIC ${SOURCES}
+        r_wrapper.cpp # Test Rcpp wrappers
+)
+
+## Check for BLAS. Platform dependent.
+if (APPLE)
+    message("Using macOS build configuration.")
+    add_definitions(-DLIBACTIONET_PLATFORM_APPLE)
+
+    set(BLA_VENDOR Apple)
+    find_package(BLAS REQUIRED)
+
+    add_compile_options(-flax-vector-conversions -framework Accelerate)
+#    TODO: Probably unneeded. Suppress deprecation warnings.
+    add_definitions(-DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64)
+
+    target_include_directories(
+            libactionet
+            PRIVATE "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers"
+    )
+elseif (UNIX)
+    #    set(BLA_VENDOR Apple)
+    find_package(BLAS REQUIRED)
+endif ()
+
+## Check for LAPACK
+find_package(LAPACK REQUIRED)
+
+## Check for CHOLMOD
+find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 
 ## Build mode for testing R/Python interface
 set(LIBACTIONET_BUILD_R 1)

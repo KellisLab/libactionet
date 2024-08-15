@@ -21,6 +21,10 @@ namespace ACTIONet {
                                  int network_normalization_method = 0, int expression_normalization_method = 0,
                                  int gene_scaling_method = 0, double post_alpha = 0.85, int thread_no = 0);
 
+    arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+                                                     int network_normalization_method = 0, double alpha = 0.85,
+                                                     int thread_no = 0);
+
     arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                                     int network_normalization_method = 0,
                                                     int expression_normalization_method = 0,
