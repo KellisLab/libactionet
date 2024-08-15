@@ -1,13 +1,9 @@
-// [[Rcpp::interfaces(r, cpp)]]
-// [[Rcpp::depends(RcppArmadillo)]]
 #include "libactionet_config.hpp"
 #include "action.hpp"
 #include "actionet.hpp"
 #include "visualization.hpp"
 #include "tools.hpp"
 
-// [[Rcpp::depends(RcppArmadillo)]]
-// [[Rcpp::export]]
 Rcpp::List
 run_ACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, double lambda = 1, int AA_iters = 50,
                int Opt_iters = 0, int thread_no = 0) {
@@ -71,7 +67,6 @@ run_ACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, doubl
 //' @return A named list with entries 'selected_columns' and 'norms'
 //' @examples
 //' H = run_SPA(S_r, 10)
-// [[Rcpp::export]]
 Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
     ACTIONet::SPA_results res = run_SPA_rows_sparse(A, k);
     arma::uvec selected_columns = res.selected_columns;
@@ -100,7 +95,6 @@ Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
 //' @return A named list with entries 'C' and 'H', each a list for different
 //' values of k ' @examples ' ACTION.out = run_ACTION_plus(S_r, k_max = 10) ' H8
 //' = ACTION.out$H[[8]] ' cell.assignments = apply(H8, 2, which.max)
-// [[Rcpp::export]]
 Rcpp::List run_ACTION_plus(arma::mat &S_r, int k_min = 2, int k_max = 30, int max_it = 100, double min_delta = 1e-6,
                            int max_trial = 3) {
 
@@ -134,7 +128,6 @@ Rcpp::List run_ACTION_plus(arma::mat &S_r, int k_min = 2, int k_max = 30, int ma
 //'
 //' @return A named list with entries 'C' and 'H', each a list for different
 //' values of k ' @examples ' ACTION.out = run_online_ACTION(S_r, k_max = 10)
-// [[Rcpp::export]]
 Rcpp::List
 run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> samples, int k_min = 2, int k_max = 30, int thread_no = 0) {
 
@@ -182,7 +175,6 @@ run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> samples, int k_min = 2
 //' values of k
 //'
 //' @examples ACTION.out = run_weighted_ACTION(S_r, w, k_max = 20)
-// [[Rcpp::export]]
 Rcpp::List run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min = 2, int k_max = 30, int thread_no = 0,
                                int max_it = 50, double min_delta = 1e-16) {
 
@@ -219,7 +211,6 @@ Rcpp::List run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min = 2, int k
 //' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
-// [[Rcpp::export]]
 arma::sp_mat renormalize_input_matrix(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
 
     arma::sp_mat S_norm = renormalize_input_matrix(S, sample_assignments);
@@ -227,7 +218,6 @@ arma::sp_mat renormalize_input_matrix(arma::sp_mat &S, arma::Col<unsigned long l
     return (S_norm);
 }
 
-// [[Rcpp::export]]
 arma::mat renormalize_input_matrix_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
 
     arma::mat S_norm = renormalize_input_matrix(S, sample_assignments);
@@ -245,7 +235,6 @@ arma::mat renormalize_input_matrix_full(arma::mat &S, arma::Col<unsigned long lo
 //' @examples
 //'	logPvals.list = compute_archetype_feature_specificity_bin(S.bin, unification.out$H_unified)
 //' specificity.scores = logPvals.list$upper_significance
-// [[Rcpp::export]]
 Rcpp::List compute_archetype_feature_specificity_bin(arma::sp_mat &S, arma::mat &H, int thread_no = 0) {
 
     arma::field<arma::mat> res = compute_feature_specificity_bin(S, H, thread_no);
@@ -272,7 +261,6 @@ Rcpp::List compute_archetype_feature_specificity_bin(arma::sp_mat &S, arma::mat 
 //' G = colNets(ace)$ACTIONet
 //' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
 //' smoothed.expression = compute_network_diffusion_direct(G, gene.expression)
-// [[Rcpp::export]]
 arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, int thread_no = 0, double alpha = 0.85) {
     arma::mat Diff = compute_network_diffusion_direct(G, X0, thread_no, alpha);
 
@@ -291,7 +279,6 @@ arma::mat compute_network_diffusion_direct(arma::sp_mat &G, arma::sp_mat &X0, in
 //' @examples
 //' G = colNets(ace)$ACTIONet
 //' clusters = NetDBSCAN(G)
-// [[Rcpp::export]]
 arma::vec NetDBSCAN(SEXP G, int minPts = 10, double eps = 0.5, double alpha = 0.85) {
     arma::sp_mat Adj;
     if (Rf_isS4(G)) {
@@ -321,7 +308,6 @@ arma::vec NetDBSCAN(SEXP G, int minPts = 10, double eps = 0.5, double alpha = 0.
 //' X = Matrix::t(W_r)
 //' HDBSCAN.out = run_HDBSCAN(X)
 //' clusters = HDBSCAN.out$labels
-// [[Rcpp::export]]
 Rcpp::List run_HDBSCAN(arma::mat &X, int minPoints = 5, int minClusterSize = 5) {
     arma::field<arma::vec> res = run_HDBSCAN(X, minPoints, minClusterSize);
 
@@ -345,7 +331,6 @@ Rcpp::List run_HDBSCAN(arma::mat &X, int minPoints = 5, int minClusterSize = 5) 
 //'
 //' @examples
 //' coreset = compute_AA_coreset(S, 1000)
-// [[Rcpp::export]]
 Rcpp::List compute_AA_coreset(arma::sp_mat &S, int m = 0) {
     ACTIONet::Coreset coreset = compute_AA_coreset(S, m);
 
@@ -380,7 +365,6 @@ Rcpp::List compute_AA_coreset(arma::sp_mat &S, int m = 0) {
 //' irlba.out = irlba::irlba(S, nv = 50)
 //' red.out = SVD2ACTIONred_full(S, irlba.out$u, as.matrix(irlba.out$d), irlba.out$v)
 //' Sr = red.out$S_r
-// [[Rcpp::export]]
 Rcpp::List SVD2ACTIONred(arma::sp_mat &S, arma::mat u, arma::vec d, arma::mat v) {
     if (1 < d.n_cols)
         d = d.diag();
@@ -410,7 +394,6 @@ Rcpp::List SVD2ACTIONred(arma::sp_mat &S, arma::mat u, arma::vec d, arma::mat v)
     return res;
 }
 
-// [[Rcpp::export]]
 Rcpp::List SVD2ACTIONred_full(arma::mat &S, arma::mat u, arma::vec d, arma::mat v) {
     if (1 < d.n_cols)
         d = d.diag();
@@ -461,7 +444,6 @@ Rcpp::List SVD2ACTIONred_full(arma::mat &S, arma::mat u, arma::vec d, arma::mat 
 //' irlba.out = irlba::prcomp_irlba(S, n = 50, retx = TRUE, center = T)
 //' red.out = PCA2ACTIONred_full(S, irlba.out$x, irlba.out$rotation, as.matrix(irlba.out$sdev))
 //' Sr = red.out$S_r
-// [[Rcpp::export]]
 Rcpp::List PCA2ACTIONred(arma::sp_mat &S, arma::mat x, arma::vec sdev, arma::mat rotation) {
     arma::field<arma::mat> SVD_results(3);
 
@@ -494,7 +476,6 @@ Rcpp::List PCA2ACTIONred(arma::sp_mat &S, arma::mat x, arma::vec sdev, arma::mat
     return res;
 }
 
-// [[Rcpp::export]]
 Rcpp::List PCA2ACTIONred_full(arma::mat &S, arma::mat x, arma::vec sdev, arma::mat rotation) {
     arma::field<arma::mat> SVD_results(3);
 
@@ -527,7 +508,6 @@ Rcpp::List PCA2ACTIONred_full(arma::mat &S, arma::mat x, arma::vec sdev, arma::m
     return res;
 }
 
-// [[Rcpp::export]]
 Rcpp::List run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_parent, int kk, int k_min, int k_max,
                          int thread_no, int max_it = 50, double min_delta = 1e-16) {
     ACTIONet::ACTION_results trace =
@@ -550,7 +530,6 @@ Rcpp::List run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_paren
     return res;
 }
 
-// [[Rcpp::export]]
 Rcpp::List deflate_reduction(arma::mat &old_S_r, arma::mat &old_V, arma::mat &old_A, arma::mat &old_B,
                              arma::vec &old_sigma, arma::mat &A, arma::mat &B) {
     arma::field<arma::mat> SVD_results(5);
@@ -583,14 +562,12 @@ Rcpp::List deflate_reduction(arma::mat &old_S_r, arma::mat &old_V, arma::mat &ol
     return res;
 }
 
-// [[Rcpp::export]]
 arma::mat NetEnh(arma::mat A) {
     arma::mat A_enh = NetEnh(A);
 
     return (A_enh);
 }
 
-// [[Rcpp::export]]
 arma::mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                                             double alpha = 0.85, int max_it = 5, int perm_no = 100,
                                                             int thread_no = 0, int normalization = 1) {
@@ -601,7 +578,6 @@ arma::mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(arma::sp_mat &G, arm
     return (stats);
 }
 
-// [[Rcpp::export]]
 arma::mat transform_layout(arma::sp_mat &G, arma::mat reference_coordinates, const std::string &method = "umap",
                            bool presmooth_network = false, double min_dist = 1, double spread = 1, double gamma = 1.0,
                            unsigned int n_epochs = 500, int thread_no = 0, int seed = 0, double learning_rate = 1.0,
@@ -613,26 +589,22 @@ arma::mat transform_layout(arma::sp_mat &G, arma::mat reference_coordinates, con
     return (coors);
 }
 
-// [[Rcpp::export]]
 arma::mat compute_marker_aggregate_stats_nonparametric(arma::mat &S, arma::sp_mat &marker_mat, int thread_no = 0) {
     arma::mat X = compute_marker_aggregate_stats_nonparametric(S, marker_mat, thread_no);
     return (X);
 }
 
-// [[Rcpp::export]]
 arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int normalization = 0, int thread_no = 0) {
     arma::mat X = compute_markers_eigengene(S, marker_mat, normalization, thread_no);
     return (X);
 }
 
-// [[Rcpp::export]]
 arma::vec sweepcut(arma::sp_mat &A, arma::vec s, int min_size = 5, int max_size = -1) {
     arma::vec cond = sweepcut(A, s, min_size, max_size);
 
     return (cond);
 }
 
-// [[Rcpp::export]]
 arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density = 1.0, int thread_no = 0, double M = 16,
                                     double ef_construction = 200, double ef = 200, std::string distance_metric = "jsd") {
     arma::sp_mat G = buildNetwork_bipartite(H1, H2, density, thread_no, M, ef_construction, ef, distance_metric);
@@ -640,7 +612,6 @@ arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density =
     return (G);
 }
 
-// [[Rcpp::export]]
 Rcpp::List recursiveNMU(arma::mat M, int dim = 100, int max_SVD_iter = 1000, int max_iter_inner = 100) {
     arma::field<arma::mat> stats = recursiveNMU(M, dim, max_SVD_iter, max_iter_inner);
 
@@ -652,7 +623,6 @@ Rcpp::List recursiveNMU(arma::mat M, int dim = 100, int max_SVD_iter = 1000, int
     return (res);
 }
 
-// [[Rcpp::export]]
 Rcpp::List recursiveNMU_mine(arma::mat M, int dim = 100, int max_SVD_iter = 1000, int max_iter_inner = 100) {
     arma::field<arma::mat> stats = recursiveNMU_mine(M, dim, max_SVD_iter, max_iter_inner);
 
@@ -664,7 +634,6 @@ Rcpp::List recursiveNMU_mine(arma::mat M, int dim = 100, int max_SVD_iter = 1000
     return (res);
 }
 
-// [[Rcpp::export]]
 arma::mat aggregate_genesets_weighted_enrichment_permutation(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                                              int network_normalization_method = 0,
                                                              int expression_normalization_method = 0,
@@ -679,7 +648,6 @@ arma::mat aggregate_genesets_weighted_enrichment_permutation(arma::sp_mat &G, ar
     return (stats);
 }
 
-// [[Rcpp::export]]
 arma::mat aggregate_genesets_weighted_enrichment(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                                  int network_normalization_method = 0,
                                                  int expression_normalization_method = 0, int gene_scaling_method = 3,
