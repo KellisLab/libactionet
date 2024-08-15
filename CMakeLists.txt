@@ -72,8 +72,8 @@ find_package(LAPACK REQUIRED)
 ## Check for CHOLMOD
 find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 
-## Build mode for testing R/Python interface
-set(LIBACTIONET_BUILD_R 1)
+## Build mode for testing R interface
+# set(LIBACTIONET_BUILD_R 1)
 
 if (LIBACTIONET_BUILD_R)
     add_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config headers
