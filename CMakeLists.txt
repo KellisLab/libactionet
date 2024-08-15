@@ -35,14 +35,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #    SET(${return_list} ${dir_list})
 #ENDMACRO()
 
-#add_compile_options(-w)
+add_compile_options(-w)
 #add_compile_options(-O3)
 
 ## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libactionet
         STATIC ${SOURCES}
-        r_wrapper.cpp # Test Rcpp wrappers
+        # r_wrapper.cpp # Test Rcpp wrappers
 )
 
 ## Check for BLAS. Platform dependent.
