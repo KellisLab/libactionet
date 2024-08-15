@@ -42,7 +42,7 @@ add_compile_options(-w)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libactionet
         STATIC ${SOURCES}
-         r_wrapper.cpp # Test Rcpp wrappers
+#         r_wrapper.cpp # Test Rcpp wrappers
 )
 
 ## Check for BLAS. Platform dependent.
