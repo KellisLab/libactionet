@@ -1,0 +1,46 @@
+#!/bin/sh
+
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+cd "${SCRIPT_DIR}"/.. || exit
+
+UNAME=$(uname -s)
+if [ ${UNAME} = "Linux" ]
+then
+    echo "configure: Configuring for Linux."
+    NPROC=$(nproc)
+elif [ ${UNAME} = "Darwin" ]
+then
+    echo "configure: Configuring for macOS."
+    NPROC=$(sysctl -n hw.logicalcpu)
+fi
+
+: "${R_HOME=`R RHOME`}"
+if test -z "${R_HOME}"; then
+  echo "Could not find R_HOME."
+  exit 1
+fi
+CC=$("${R_HOME}/bin/R" CMD config CC)
+CXX=$("${R_HOME}/bin/R" CMD config CXX)
+CFLAGS=$("${R_HOME}/bin/R" CMD config CFLAGS)
+CXXFLAGS=$("${R_HOME}/bin/R" CMD config CXXFLAGS)
+CPPFLAGS=$("${R_HOME}/bin/R" CMD config CPPFLAGS)
+LDFLAGS=$("${R_HOME}/bin/R" CMD config LDFLAGS)
+RBLAS_LIBS=$("${R_HOME}/bin/R" CMD config BLAS_LIBS)
+RLAPACK_LIBS=$("${R_HOME}/bin/R" CMD config LAPACK_LIBS)
+
+echo "Staring configure -------------------------------------------"
+#R_HOME=
+mkdir -p build && cd build || exit
+# arch -x86_64 /usr/local/bin/cmake -S ../libactionet-test \
+cmake -S .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS:bool=OFF \
+  -DCMAKE_POSITION_INDEPENDENT_CODE:bool=ON \
+  -DLIBACTIONET_BUILD_R=1 \
+  -DR_HOME="${R_HOME}"
+#  -DBLAS_LIBS="${RBLAS_LIBS}" \
+#  -DLAPACK_LIBS="${RLAPACK_LIBS}"
+
+echo "Staring make -------------------------------------------"
+#echo ${MAKE} -j${NPROC}
+#${MAKE} -j${NPROC}

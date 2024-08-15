@@ -42,19 +42,19 @@ add_compile_options(-w)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libactionet
         STATIC ${SOURCES}
-        # r_wrapper.cpp # Test Rcpp wrappers
+         r_wrapper.cpp # Test Rcpp wrappers
 )
 
 ## Check for BLAS. Platform dependent.
 if (APPLE)
-    message("Using macOS build configuration.")
+    message("cmake: Configuring for macOS.")
     add_definitions(-DLIBACTIONET_PLATFORM_APPLE)
 
     set(BLA_VENDOR Apple)
     find_package(BLAS REQUIRED)
 
     add_compile_options(-flax-vector-conversions -framework Accelerate)
-#    TODO: Probably unneeded. Suppress deprecation warnings.
+    #    TODO: Probably unneeded. Suppress deprecation warnings.
     add_definitions(-DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64)
 
     target_include_directories(
@@ -76,24 +76,30 @@ find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 # set(LIBACTIONET_BUILD_R 1)
 
 if (LIBACTIONET_BUILD_R)
+    message("cmake: Configuring for R library.")
+    if (NOT DEFINED R_HOME)
+        message(FATAL_ERROR "R_HOME not defined.")
+    else ()
+        message("Using R found at ${R_HOME}")
+    endif ()
     add_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config headers
 
     # find R headers
     execute_process(
-            COMMAND bash -c "R CMD config --cppflags | sed s/-I//g"
+            COMMAND bash -c "${R_HOME}/bin/R CMD config --cppflags | sed s/-I//g"
             OUTPUT_VARIABLE rInclude
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
     # find Rcpp headers
     execute_process(
-            COMMAND bash -c "Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
+            COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
             OUTPUT_VARIABLE rcppInclude
     )
 
     # find RcppArmadillo headers
     execute_process(
-            COMMAND bash -c "Rscript -e 'cat(system.file(\"include\", package=\"RcppArmadillo\"))'"
+            COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"RcppArmadillo\"))'"
             OUTPUT_VARIABLE rcppArmaInclude
     )
 
@@ -129,3 +135,8 @@ target_link_libraries(
         ${LAPACK_LIBRARIES}
         ${BLAS_LIBRARIES}
 )
+
+message("LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
+message("LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
+message("BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
+message("BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
