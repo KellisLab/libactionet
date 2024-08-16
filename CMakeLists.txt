@@ -12,8 +12,8 @@ cmake_minimum_required(VERSION 3.18)
 #set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
 #set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
 
-project(libactionet)
-list(APPEND CMAKE_MODULE_PATH "${libactionet_SOURCE_DIR}/cmake")
+project(actionet)
+list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
 
 # list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/Cellar/)
 
@@ -40,7 +40,7 @@ add_compile_options(-w)
 
 ## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-add_library(libactionet
+add_library(actionet
         STATIC ${SOURCES}
 #         r_wrapper.cpp # Test Rcpp wrappers
 )
@@ -58,7 +58,7 @@ if (APPLE)
     add_definitions(-DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64)
 
     target_include_directories(
-            libactionet
+            actionet
             PRIVATE "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers"
     )
 elseif (UNIX)
@@ -103,37 +103,37 @@ if (LIBACTIONET_BUILD_R)
             OUTPUT_VARIABLE rcppArmaInclude
     )
 
-    target_include_directories(libactionet
+    target_include_directories(actionet
             PRIVATE "${rInclude}"
             PRIVATE "${rcppInclude}"
             PRIVATE "${rcppArmaInclude}")
 else ()
     target_include_directories(
-            libactionet
-            PRIVATE "${libactionet_SOURCE_DIR}/include/extern/armadillo"
+            actionet
+            PRIVATE "${actionet_SOURCE_DIR}/include/extern/armadillo"
     )
 endif ()
 ## Add include headers
 target_include_directories(
-        libactionet
-        PRIVATE "${libactionet_SOURCE_DIR}/include/extern/gcem"
-        PRIVATE "${libactionet_SOURCE_DIR}/include/extern"
-        PUBLIC "${libactionet_SOURCE_DIR}/include"
+        actionet
+        PRIVATE "${actionet_SOURCE_DIR}/include/extern/gcem"
+        PRIVATE "${actionet_SOURCE_DIR}/include/extern"
+        PRIVATE "${actionet_SOURCE_DIR}/include"
 )
-#include_directories("${libactionet_SOURCE_DIR}/../../inst/include")
+#include_directories("${actionet_SOURCE_DIR}/../../inst/include")
 
 ## [Dirty] Add all header files in the directory for testing/
 #HEADER_DIRECTORIES(header_list)
 #include_directories(${header_list})
 
-target_compile_options(libactionet PUBLIC ${LAPACK_LINKER_FLAGS})
-target_compile_options(libactionet PUBLIC ${BLAS_LINKER_FLAGS})
+target_compile_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS})
+target_compile_options(actionet PUBLIC ${BLAS_LINKER_FLAGS})
 
 target_link_libraries(
-        libactionet PUBLIC
-        SuiteSparse::CHOLMOD
-        ${LAPACK_LIBRARIES}
-        ${BLAS_LIBRARIES}
+        actionet
+        PUBLIC SuiteSparse::CHOLMOD
+        PUBLIC ${LAPACK_LIBRARIES}
+        PUBLIC ${BLAS_LIBRARIES}
 )
 
 #message("LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
