@@ -1,18 +1,11 @@
-#ifndef ACTIONET_UTILS_XMAP_HPP
-#define ACTIONET_UTILS_XMAP_HPP
+#ifndef ACTIONET_CREATE_XMAP_HPP
+#define ACTIONET_CREATE_XMAP_HPP
 
 #include "libactionet_config.hpp"
 #include "utils_internal/umap_structs.hpp"
 
 // Functions
-//void create_umap(UmapFactory &umap_factory, double a, double b, double gamma, bool approx_pow);
-//
-//void create_tumap(UmapFactory &umap_factory);
-//
-//void create_pacmap(UmapFactory &umap_factory, double a, double b);
-//
-//void create_largevis(UmapFactory &umap_factory, double gamma);
-
+// These functions must be header only because the ass grad student code in uwot will break linking otherwise.
 void create_umap(UmapFactory &umap_factory, double a, double b, double gamma, bool approx_pow) {
     if (approx_pow) {
         const uwot::apumap_gradient gradient(a, b, gamma);
@@ -38,4 +31,4 @@ void create_largevis(UmapFactory &umap_factory, double gamma) {
     umap_factory.create(gradient);
 }
 
-#endif //ACTIONET_UTILS_XMAP_HPP
+#endif //ACTIONET_CREATE_XMAP_HPP

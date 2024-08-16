@@ -1,7 +1,7 @@
 #include "visualization/generate_layout.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/create_xmap.hpp"
 #include "utils_internal/utils_stats.hpp"
-#include "utils_internal/utils_xmap.hpp"
 #include "utils_internal/find_ab.hpp"
 #include "tools/normalization.hpp"
 #include "uwot/coords.h"
