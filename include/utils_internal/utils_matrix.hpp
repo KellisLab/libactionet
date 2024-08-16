@@ -1,9 +1,8 @@
 // Internal helpers for core matrix operations
-#ifndef LIBACTIONET_UTILS_MATRIX_HPP
-#define LIBACTIONET_UTILS_MATRIX_HPP
+#ifndef ACTIONET_UTILS_MATRIX_HPP
+#define ACTIONET_UTILS_MATRIX_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_parallel.hpp"
 #include <cholmod.h>
 
 void
@@ -24,4 +23,4 @@ arma::mat spmat_mat_product_parallel(arma::sp_mat &A, arma::mat &B, int thread_n
 
 arma::mat mat_mat_product_parallel(arma::mat &A, arma::mat &B, int thread_no);
 
-#endif //LIBACTIONET_UTILS_MATRIX_HPP
+#endif //ACTIONET_UTILS_MATRIX_HPP

@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_ACTION_HPP
-#define LIBACTIONET_ACTION_HPP
+#ifndef ACTIONET_ACTION_HPP
+#define ACTIONET_ACTION_HPP
 
 #include "libactionet_config.hpp"
 #include "action/aa.hpp"
@@ -11,4 +11,4 @@
 #include "action/spa.hpp"
 #include "action/svd.hpp"
 
-#endif //LIBACTIONET_ACTION_HPP
+#endif //ACTIONET_ACTION_HPP

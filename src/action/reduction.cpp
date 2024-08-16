@@ -1,6 +1,8 @@
 #include "action/reduction.hpp"
+#include "action/svd.hpp"
 
 arma::field<arma::mat> deflate_reduction(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B) {
+
     stdout_printf("\tDeflating reduction ... ");
     FLUSH;
 

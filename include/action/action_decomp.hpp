@@ -1,11 +1,8 @@
 // Main ACTION decomposition
-#ifndef LIBACTIONET_ACTION_DECOMP_HPP
-#define LIBACTIONET_ACTION_DECOMP_HPP
+#ifndef ACTIONET_ACTION_DECOMP_HPP
+#define ACTIONET_ACTION_DECOMP_HPP
 
 #include "libactionet_config.hpp"
-#include "action/spa.hpp"
-#include "action/aa.hpp"
-#include "tools/normalization.hpp"
 
 // Exported
 namespace ACTIONet {
@@ -24,4 +21,4 @@ namespace ACTIONet {
 } // namespace ACTIONet
 
 
-#endif //LIBACTIONET_ACTION_DECOMP_HPP
+#endif //ACTIONET_ACTION_DECOMP_HPP

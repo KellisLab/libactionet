@@ -1,25 +1,8 @@
 // Singular value decomposition (SVD) algorithms
-#ifndef LIBACTIONET_SVD_HPP
-#define LIBACTIONET_SVD_HPP
+#ifndef ACTIONET_SVD_HPP
+#define ACTIONET_SVD_HPP
 
 #include "libactionet_config.hpp"
-
-//#include <cblas.h>
-
-//// Functions: private
-//void orthog(double *X, double *Y, double *T, int xm, int xn, int yn);
-//
-//void convtests(int Bsz, int n, double tol, double svtol, double Smax, double *svratio, double *residuals, int *k,
-//               int *converged, double S);
-//
-//arma::mat randNorm(int l, int m, int seed);
-//
-//arma::field<arma::mat> eigSVD(arma::mat A);
-//
-//// Functions: internal
-//void gram_schmidt(arma::mat &A);
-//
-//arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res);
 
 // Exported
 namespace ACTIONet {
@@ -50,4 +33,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_SVD_HPP
+#endif //ACTIONET_SVD_HPP

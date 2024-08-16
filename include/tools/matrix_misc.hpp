@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_MATRIX_MISC_HPP
-#define LIBACTIONET_MATRIX_MISC_HPP
+#ifndef ACTIONET_MATRIX_MISC_HPP
+#define ACTIONET_MATRIX_MISC_HPP
 
 #include "libactionet_config.hpp"
 
@@ -20,4 +20,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_MATRIX_MISC_HPP
+#endif //ACTIONET_MATRIX_MISC_HPP

@@ -1,11 +1,8 @@
 // Orthogonalization method for batch correction
-#ifndef LIBACTIONET_ORTHOGONALIZATION_HPP
-#define LIBACTIONET_ORTHOGONALIZATION_HPP
+#ifndef ACTIONET_ORTHOGONALIZATION_HPP
+#define ACTIONET_ORTHOGONALIZATION_HPP
 
 #include "libactionet_config.hpp"
-
-#include "action/svd.hpp"
-#include "action/reduction.hpp"
 
 namespace ACTIONet {
 
@@ -21,4 +18,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_ORTHOGONALIZATION_HPP
+#endif //ACTIONET_ORTHOGONALIZATION_HPP

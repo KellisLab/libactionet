@@ -1,10 +1,8 @@
 // Network imputation using PageRank
-#ifndef LIBACTIONET_NETWORK_DIFFUSION_HPP
-#define LIBACTIONET_NETWORK_DIFFUSION_HPP
+#ifndef ACTIONET_NETWORK_DIFFUSION_HPP
+#define ACTIONET_NETWORK_DIFFUSION_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_matrix.hpp"
-#include <cholmod.h>
 
 // Exported
 namespace ACTIONet {
@@ -24,4 +22,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_NETWORK_DIFFUSION_HPP
+#endif //ACTIONET_NETWORK_DIFFUSION_HPP

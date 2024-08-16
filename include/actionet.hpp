@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_ACTIONET_HPP
-#define LIBACTIONET_ACTIONET_HPP
+#ifndef ACTIONET_ACTIONET_HPP
+#define ACTIONET_ACTIONET_HPP
 
 #include "libactionet_config.hpp"
 #include "actionet/build_network.hpp"
@@ -9,4 +9,4 @@
 #include "actionet/label_propagation.hpp"
 #include "actionet/specificity.hpp"
 
-#endif //LIBACTIONET_ACTIONET_HPP
+#endif //ACTIONET_ACTIONET_HPP

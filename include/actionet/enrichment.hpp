@@ -1,8 +1,7 @@
-#ifndef LIBACTIONET_ENRICHMENT_HPP
-#define LIBACTIONET_ENRICHMENT_HPP
+#ifndef ACTIONET_ENRICHMENT_HPP
+#define ACTIONET_ENRICHMENT_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_matrix.hpp"
 
 namespace ACTIONet {
 
@@ -12,4 +11,4 @@ namespace ACTIONet {
     
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_ENRICHMENT_HPP
+#endif //ACTIONET_ENRICHMENT_HPP

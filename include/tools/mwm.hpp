@@ -1,13 +1,12 @@
 // Maximum weight matching algorithm implementations
-#ifndef LIBACTIONET_MWM_HPP
-#define LIBACTIONET_MWM_HPP
+#ifndef ACTIONET_MWM_HPP
+#define ACTIONET_MWM_HPP
 
 #include "libactionet_config.hpp"
 
 // Functions: private
 double MWM_driver(int n, int m, int nedges, double *vv1, double *vv2, double *weight, double *out1, double *out2,
                   int *noutedges);
-
 
 // Exported
 namespace ACTIONet {
@@ -20,4 +19,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_MWM_HPP
+#endif //ACTIONET_MWM_HPP

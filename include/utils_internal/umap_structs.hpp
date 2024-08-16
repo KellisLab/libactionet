@@ -1,9 +1,11 @@
-#ifndef LIBACTIONET_UMAP_STRUCTS_HPP
-#define LIBACTIONET_UMAP_STRUCTS_HPP
+#ifndef ACTIONET_UMAP_STRUCTS_HPP
+#define ACTIONET_UMAP_STRUCTS_HPP
 
 #include "libactionet_config.hpp"
 #include "uwot/optimize.h"
 #include "uwot/rng.h"
+#include "uwot/sampler.h"
+#include "uwot/update.h"
 #include "uwot/epoch.h"
 #include "uwot/rparallel.h"
 
@@ -168,4 +170,4 @@ struct UmapFactory {
     }
 };
 
-#endif //LIBACTIONET_UMAP_STRUCTS_HPP
+#endif //ACTIONET_UMAP_STRUCTS_HPP

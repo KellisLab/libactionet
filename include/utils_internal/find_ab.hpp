@@ -1,8 +1,8 @@
-#ifndef LIBACTIONET_FIND_AB_HPP
-#define LIBACTIONET_FIND_AB_HPP
+#ifndef ACTIONET_FIND_AB_HPP
+#define ACTIONET_FIND_AB_HPP
 
 #include <vector>
-#include <utility>
+#include <cmath>
 
 // From umappp "https://github.com/LTLA/umappp/blob/master/include/umappp/find_ab.hpp"
 template<typename Float>
@@ -103,4 +103,4 @@ find_ab(Float spread, Float min_dist, Float grid = 300, Float limit = 0.5, int i
     return std::make_pair(a, b);
 }
 
-#endif //LIBACTIONET_FIND_AB_HPP
+#endif //ACTIONET_FIND_AB_HPP

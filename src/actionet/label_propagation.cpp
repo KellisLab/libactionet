@@ -1,4 +1,7 @@
 #include "actionet/label_propagation.hpp"
+#include "actionet/enrichment.hpp"
+#include "utils_internal/utils_graph.hpp"
+#include "utils_internal/utils_misc.hpp"
 
 namespace ACTIONet {
 

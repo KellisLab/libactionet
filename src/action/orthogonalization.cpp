@@ -1,4 +1,7 @@
 #include "action/orthogonalization.hpp"
+#include "utils_internal/utils_decomp.hpp"
+#include "action/reduction.hpp"
+
 
 namespace ACTIONet {
 

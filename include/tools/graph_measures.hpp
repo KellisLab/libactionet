@@ -1,6 +1,6 @@
 // Tools for graph operations
-#ifndef LIBACTIONET_GRAPH_MEASURES_HPP
-#define LIBACTIONET_GRAPH_MEASURES_HPP
+#ifndef ACTIONET_GRAPH_MEASURES_HPP
+#define ACTIONET_GRAPH_MEASURES_HPP
 
 #include "libactionet_config.hpp"
 
@@ -14,4 +14,4 @@ namespace ACTIONet {
 
 }  // namespace ACTIONet
 
-#endif //LIBACTIONET_GRAPH_MEASURES_HPP
+#endif //ACTIONET_GRAPH_MEASURES_HPP

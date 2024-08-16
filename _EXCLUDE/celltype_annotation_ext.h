@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
-#define LIBACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
+#ifndef ACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
+#define ACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
 
 #include "actionet.hpp"
 
@@ -55,4 +55,4 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
 arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                                  int network_normalization_method, double alpha, int thread_no);
 
-#endif //LIBACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
+#endif //ACTIONET_CELLTYPE_ANNOTATION_EXT_HPP

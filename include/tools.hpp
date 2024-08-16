@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_TOOLS_HPP
-#define LIBACTIONET_TOOLS_HPP
+#ifndef ACTIONET_TOOLS_HPP
+#define ACTIONET_TOOLS_HPP
 
 #include "libactionet_config.hpp"
 #include "tools/normalization.hpp"
@@ -9,4 +9,4 @@
 #include "tools/xicor.hpp"
 #include "tools/matrix_misc.hpp"
 
-#endif //LIBACTIONET_TOOLS_HPP
+#endif //ACTIONET_TOOLS_HPP

@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_NETDBSCAN_H
-#define LIBACTIONET_NETDBSCAN_H
+#ifndef ACTIONET_NETDBSCAN_H
+#define ACTIONET_NETDBSCAN_H
 
 #include "actionet.hpp"
 #include "tools/graph_measures.hpp"
@@ -10,4 +10,4 @@
 
 arma::vec NetDBSCAN(arma::sp_mat &G, int minPts, double eps = 0.5, double alpha_val = 0.85);
 
-#endif //LIBACTIONET_NETDBSCAN_H
+#endif //ACTIONET_NETDBSCAN_H

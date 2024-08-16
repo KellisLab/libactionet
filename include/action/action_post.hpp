@@ -1,12 +1,8 @@
 // Postprocess ACTION output
-#ifndef LIBACTIONET_ACTION_POST_HPP
-#define LIBACTIONET_ACTION_POST_HPP
+#ifndef ACTIONET_ACTION_POST_HPP
+#define ACTIONET_ACTION_POST_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_stats.hpp"
-#include "action/spa.hpp"
-#include "action/simplex_regression.hpp"
-#include "tools/normalization.hpp"
 
 // Exported
 namespace ACTIONet {
@@ -44,4 +40,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_ACTION_POST_HPP
+#endif //ACTIONET_ACTION_POST_HPP

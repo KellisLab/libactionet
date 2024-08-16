@@ -1,12 +1,9 @@
 // Computes Xi correlation coefficient for vectors and matrices
 // S.Chatterjee, A new coefficient of correlation (2019) (https://doi.org/10.48550/arXiv.1909.10140)
-#ifndef LIBACTIONET_XICOR_HPP
-#define LIBACTIONET_XICOR_HPP
+#ifndef ACTIONET_XICOR_HPP
+#define ACTIONET_XICOR_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_parallel.hpp"
-#include "utils_internal/utils_misc.hpp"
-#include "aarand/aarand.hpp"
 
 namespace ACTIONet {
 
@@ -16,4 +13,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_XICOR_HPP
+#endif //ACTIONET_XICOR_HPP

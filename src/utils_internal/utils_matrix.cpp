@@ -1,4 +1,5 @@
 #include "utils_internal/utils_matrix.hpp"
+#include "utils_internal/utils_parallel.hpp"
 
 // Mat-vec product (Ax)
 void dsdmult(char transpose, int n_rows, int n_cols, const void *A, const double *x, double *out,

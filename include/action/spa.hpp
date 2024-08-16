@@ -1,6 +1,6 @@
 // Successive projection algorithm (SPA)
-#ifndef LIBACTIONET_SPA_HPP
-#define LIBACTIONET_SPA_HPP
+#ifndef ACTIONET_SPA_HPP
+#define ACTIONET_SPA_HPP
 
 #include "libactionet_config.hpp"
 
@@ -18,4 +18,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_SPA_HPP
+#endif //ACTIONET_SPA_HPP

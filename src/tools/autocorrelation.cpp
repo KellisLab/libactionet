@@ -1,4 +1,7 @@
 #include "tools/autocorrelation.hpp"
+#include "tools/normalization.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_matrix.hpp"
 
 namespace ACTIONet {
 

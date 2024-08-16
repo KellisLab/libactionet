@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_BUILD_NETWORK_EXT_H
-#define LIBACTIONET_BUILD_NETWORK_EXT_H
+#ifndef ACTIONET_BUILD_NETWORK_EXT_H
+#define ACTIONET_BUILD_NETWORK_EXT_H
 
 #include "actionet.hpp"
 #include "RcppPerpendicular.h"
@@ -75,4 +75,4 @@ arma::sp_mat buildNetwork_KstarNN_v2(arma::mat H_stacked, double density, int th
 arma::sp_mat buildNetwork_bipartite(arma::mat H1, arma::mat H2, double density = 1.0, int thread_no = 0, double M = 16,
                                     double ef_construction = 200, double ef = 200, std::string distance_metric = "jsd");
 
-#endif //LIBACTIONET_BUILD_NETWORK_EXT_H
+#endif //ACTIONET_BUILD_NETWORK_EXT_H

@@ -1,5 +1,8 @@
 // Network imputation using PageRank
 #include "actionet/network_diffusion.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_matrix.hpp"
+#include <cholmod.h>
 
 namespace ACTIONet {
 

@@ -1,11 +1,8 @@
 // Label propagation algorithm (LPA)
-#ifndef LIBACTIONET_LABEL_PROPAGATION_HPP
-#define LIBACTIONET_LABEL_PROPAGATION_HPP
+#ifndef ACTIONET_LABEL_PROPAGATION_HPP
+#define ACTIONET_LABEL_PROPAGATION_HPP
 
 #include "libactionet_config.hpp"
-#include "actionet/enrichment.hpp"
-#include "utils_internal/utils_graph.hpp"
-#include "utils_internal/utils_misc.hpp"
 
 namespace ACTIONet {
 
@@ -14,4 +11,4 @@ namespace ACTIONet {
 
 }
 
-#endif //LIBACTIONET_LABEL_PROPAGATION_HPP
+#endif //ACTIONET_LABEL_PROPAGATION_HPP

@@ -1,8 +1,7 @@
-#ifndef LIBACTIONET_NORMALIZATION_HPP
-#define LIBACTIONET_NORMALIZATION_HPP
+#ifndef ACTIONET_NORMALIZATION_HPP
+#define ACTIONET_NORMALIZATION_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_stats.hpp"
 
 namespace ACTIONet {
 
@@ -17,4 +16,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_NORMALIZATION_HPP
+#endif //ACTIONET_NORMALIZATION_HPP

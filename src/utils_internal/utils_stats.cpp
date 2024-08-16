@@ -1,4 +1,5 @@
 #include "utils_internal/utils_stats.hpp"
+#include "utils_internal/utils_parallel.hpp"
 
 arma::mat zscore(arma::mat &A, int dim, int thread_no) {
     int N = A.n_cols;

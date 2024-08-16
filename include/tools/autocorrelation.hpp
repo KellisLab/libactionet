@@ -1,8 +1,7 @@
-#ifndef LIBACTIONET_AUTOCORRELATION_HPP
-#define LIBACTIONET_AUTOCORRELATION_HPP
+#ifndef ACTIONET_AUTOCORRELATION_HPP
+#define ACTIONET_AUTOCORRELATION_HPP
 
 #include "libactionet_config.hpp"
-#include "tools/normalization.hpp"
 
 // Exported
 namespace ACTIONet {
@@ -32,4 +31,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_AUTOCORRELATION_HPP
+#endif //ACTIONET_AUTOCORRELATION_HPP

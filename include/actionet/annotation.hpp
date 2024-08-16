@@ -1,11 +1,7 @@
-#ifndef LIBACTIONET_ANNOTATION_HPP
-#define LIBACTIONET_ANNOTATION_HPP
+#ifndef ACTIONET_ANNOTATION_HPP
+#define ACTIONET_ANNOTATION_HPP
 
 #include "libactionet_config.hpp"
-#include "actionet/network_diffusion.hpp"
-#include "utils_internal/utils_graph.hpp"
-#include "action/aa.hpp"
-#include "tools/normalization.hpp"
 
 // TODO: Replace and remove with generic mat normalization functions
 // Only found in this module
@@ -39,4 +35,4 @@ namespace ACTIONet {
 
 }
 
-#endif //LIBACTIONET_ANNOTATION_HPP
+#endif //ACTIONET_ANNOTATION_HPP

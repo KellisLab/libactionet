@@ -1,4 +1,4 @@
-#define LIBACTIONET_BUILD_R
+#define ACTIONET_BUILD_R
 
 // [[Rcpp::interfaces(r, cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]

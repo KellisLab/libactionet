@@ -1,5 +1,5 @@
-#ifndef LIBACTIONET_CONFIG_HPP
-#define LIBACTIONET_CONFIG_HPP
+#ifndef ACTIONET_CONFIG_HPP
+#define ACTIONET_CONFIG_HPP
 
 // Armadillo build configuration
 #define ARMA_DONT_USE_WRAPPER
@@ -50,4 +50,4 @@
     #include <cblas.h>
 #endif
 
-#endif //LIBACTIONET_CONFIG_HPP
+#endif //ACTIONET_CONFIG_HPP

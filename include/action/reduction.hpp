@@ -1,9 +1,8 @@
 // Main interface for reduction/decomposition algorithms
-#ifndef LIBACTIONET_REDUCTION_HPP
-#define LIBACTIONET_REDUCTION_HPP
+#ifndef ACTIONET_REDUCTION_HPP
+#define ACTIONET_REDUCTION_HPP
 
 #include "libactionet_config.hpp"
-#include "action/svd.hpp"
 
 // SVD algorithm options
 #define FULL_SVD -1
@@ -34,4 +33,4 @@ namespace ACTIONet {
     arma::field<arma::mat> SVD2PCA(arma::mat &S, arma::field<arma::mat> SVD_results);
 }
 
-#endif //LIBACTIONET_REDUCTION_HPP
+#endif //ACTIONET_REDUCTION_HPP

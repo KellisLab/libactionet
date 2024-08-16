@@ -1,4 +1,10 @@
 #include "actionet/annotation.hpp"
+#include "action/aa.hpp"
+#include "actionet/network_diffusion.hpp"
+#include "tools/normalization.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_matrix.hpp"
+#include "utils_internal/utils_graph.hpp"
 
 // TODO: Remove and replace with generic mat normalization functions
 arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization) {

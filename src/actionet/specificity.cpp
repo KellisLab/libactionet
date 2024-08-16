@@ -1,4 +1,5 @@
 #include "actionet/specificity.hpp"
+#include "utils_internal/utils_matrix.hpp"
 
 namespace ACTIONet {
 

@@ -1,4 +1,7 @@
 #include "tools/xicor.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_misc.hpp"
+#include "aarand/aarand.hpp"
 
 namespace ACTIONet {
 

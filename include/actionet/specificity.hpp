@@ -1,8 +1,7 @@
-#ifndef LIBACTIONET_SPECIFICITY_HPP
-#define LIBACTIONET_SPECIFICITY_HPP
+#ifndef ACTIONET_SPECIFICITY_HPP
+#define ACTIONET_SPECIFICITY_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/utils_matrix.hpp"
 
 // Exported
 namespace ACTIONet {
@@ -18,4 +17,4 @@ namespace ACTIONet {
 
 } // namespace ACTIONet
 
-#endif //LIBACTIONET_SPECIFICITY_HPP
+#endif //ACTIONET_SPECIFICITY_HPP
