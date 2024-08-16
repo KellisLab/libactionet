@@ -1,4 +1,5 @@
 // Singular value decomposition (SVD) algorithms
+#include "action/svd-priv.hpp"
 #include "action/svd.hpp"
 
 inline void StdNorm(double *v, int n, std::mt19937_64 engine) {
