@@ -1,6 +1,9 @@
+#define LIBACTIONET_BUILD_R
+
 // [[Rcpp::interfaces(r, cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 #include "libactionet_config.hpp"
+#include "Rcpp.h"
 #include "action.hpp"
 #include "actionet.hpp"
 #include "visualization.hpp"
@@ -328,14 +331,6 @@ arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX = f
     return X;
 }
 
-// [[Rcpp::export]]
-// arma::mat run_simplex_regression_FW(arma::mat &A, arma::mat &B, int max_iter = -1, double min_diff = 0.01)
-// {
-//   arma::mat X = ACTIONet::run_simplex_regression_FW(A, B, max_iter, min_diff);
-
-//   return X;
-// }
-
 //' Runs Successive Projection Algorithm (SPA) to solve separable NMF
 //'
 //' @param A Input matrix
@@ -426,17 +421,17 @@ Rcpp::List run_AA(arma::mat &A, arma::mat &W0, int max_it = 100, double min_delt
 //' (Pre-ACTIONet archetype processing)
 //'
 //' @param C_trace,H_trace Output of ACTION
-//' @param min_specificity_z_threshold Defines the stringency of pruning 
+//' @param min_specificity_z_threshold Defines the stringency of pruning
 //' nonspecific archetypes. The larger the value, the more archetypes will be
 //' filtered out (default=-1)
 //'
 //' @return A named list: \itemize{
 //' \item selected_archs: List of final archetypes that passed the
 //' filtering/pruning step.
-//' \item C_stacked,H_stacked: Horizontal/Vertical 
+//' \item C_stacked,H_stacked: Horizontal/Vertical
 //' concatenation of filtered C and H matrices, respectively.
 //' }
-//' 
+//'
 //' @examples
 //' S = logcounts(sce)
 //' reduction.out = reduce(S, reduced_dim = 50)
