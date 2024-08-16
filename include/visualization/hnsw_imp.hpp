@@ -1,5 +1,5 @@
-#ifndef ACTIONET_UTILS_HNSW_HPP
-#define ACTIONET_UTILS_HNSW_HPP
+#ifndef ACTIONET_HNSW_IMP_HPP
+#define ACTIONET_HNSW_IMP_HPP
 
 #include "libactionet_config.hpp"
 #include "hnsw/hnswlib.h"
@@ -37,7 +37,6 @@ class invalidNNApproach : public std::exception {
 } nnApproachException;
 
 // Functions: Must be header only. hnsw is allergic to implementation. Will break linking.
-
 // Obtain approximation algorithm
 hnswlib::HierarchicalNSW<float> *
 getApproximationAlgo(std::string distance_metric, arma::mat H, double M, double ef_construction) {
@@ -58,4 +57,4 @@ getApproximationAlgo(std::string distance_metric, arma::mat H, double M, double 
     return (appr_alg);
 }
 
-#endif //ACTIONET_UTILS_HNSW_HPP
+#endif //ACTIONET_HNSW_IMP_HPP

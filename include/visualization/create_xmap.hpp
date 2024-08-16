@@ -2,7 +2,7 @@
 #define ACTIONET_CREATE_XMAP_HPP
 
 #include "libactionet_config.hpp"
-#include "utils_internal/umap_structs.hpp"
+#include "umap_structs.hpp"
 
 // Functions
 // These functions must be header only because the ass grad student code in uwot will break linking otherwise.
