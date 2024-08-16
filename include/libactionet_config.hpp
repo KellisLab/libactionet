@@ -5,7 +5,7 @@
 #define ARMA_DONT_USE_WRAPPER
 #undef ARMA_BLAS_CAPITALS
 #define ARMA_BLAS_UNDERSCORE
-#define ARMA_64BIT_WORD
+//#define ARMA_64BIT_WORD
 //#define ARMA_BLAS_LONG_LONG
 
 // StatsLib build configuration
@@ -26,6 +26,7 @@
     // Use RcppArmadillo for StatsLib
     #define USE_RCPP_ARMADILLO
 
+    #define ARMA_32BIT_WORD
     #include <RcppArmadillo.h>
 
 #else
