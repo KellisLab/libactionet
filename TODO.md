@@ -1,15 +1,21 @@
 ## Primary
-* Rcpp wrappers
 * pybind 11 wrappers
 * Condense redundant SVD functions
-* Remove OpenMP dependency?
 * Update hnswlib
+* Automatically link R BLAS/LAPACK
+* Eliminate external cholmod dependency
+* Split colorspace from generate_layout.
 
 ## Secondary
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
+* Compile to macOS
+  * Arm64 and x86
+  * Figure out cblas dependency
 * zscore is multithreaded???
-
+* Remove OpenMP dependency?
+  * May not even be there anymore
+  
 ## Done
 * Automate link SuiteSparse on unix/macos
 * Upgrade Armadillo
@@ -30,3 +36,4 @@
 * Fix defaults (Source -> header)
 * Fix namespace usage in headers
 * Consistent header guards
+* Rcpp wrappers
