@@ -1,5 +1,4 @@
 #include "utils_internal/utils_xmap.hpp"
-#include "uwot/gradient.h"
 
 void create_umap(UmapFactory &umap_factory, double a, double b, double gamma, bool approx_pow) {
     if (approx_pow) {

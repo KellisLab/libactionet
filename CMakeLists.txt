@@ -75,7 +75,7 @@ find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 
 # ########### Interface test
 ## Build mode for testing R interface
-set(TEST_BUILD_R 0)
+set(TEST_BUILD_R 1)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(

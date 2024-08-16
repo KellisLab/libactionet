@@ -1,4 +1,5 @@
 #include "utils_internal/utils_hnsw.hpp"
+#include "hnsw/space_js.h"
 
 // Obtain approximation algorithm
 hnswlib::HierarchicalNSW<float> *

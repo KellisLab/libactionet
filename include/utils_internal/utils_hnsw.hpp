@@ -3,7 +3,6 @@
 
 #include "libactionet_config.hpp"
 #include "hnsw/hnswlib.h"
-#include "hnsw/space_js.h"
 
 // Structs: private
 struct AddWorker {

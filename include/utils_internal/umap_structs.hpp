@@ -2,10 +2,7 @@
 #define ACTIONET_UMAP_STRUCTS_HPP
 
 #include "libactionet_config.hpp"
-#include "uwot/optimize.h"
 #include "uwot/rng.h"
-#include "uwot/sampler.h"
-#include "uwot/update.h"
 #include "uwot/epoch.h"
 #include "uwot/rparallel.h"
 
