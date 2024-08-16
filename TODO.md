@@ -7,6 +7,7 @@
 * Split colorspace from generate_layout.
 
 ## Secondary
+* Cleanup unused code and comments
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
 * Compile to macOS
