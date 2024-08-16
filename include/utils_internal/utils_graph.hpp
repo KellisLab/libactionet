@@ -5,6 +5,6 @@
 
 // TODO: Move to tools?
 // Normalize adjacency matrix
-arma::sp_mat normalize_adj(arma::sp_mat &G, int norm_type = 1);
+//arma::sp_mat normalize_adj(arma::sp_mat &G, int norm_type = 1);
 
 #endif //ACTIONET_UTILS_GRAPH_H

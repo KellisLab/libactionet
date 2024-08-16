@@ -9,6 +9,8 @@ namespace ACTIONet {
 
     arma::sp_mat normalize_mat(arma::sp_mat &X, int normalization, int dim = 0);
 
+    arma::sp_mat normalize_adj(arma::sp_mat &G, int norm_type = 1);
+
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);
 
     // TODO: TF-IDF normalization (change name)

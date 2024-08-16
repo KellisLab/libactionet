@@ -42,7 +42,7 @@ add_compile_options(-w)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(actionet
         STATIC ${SOURCES}
-        #        r_wrapper.cpp # Test Rcpp wrappers
+#                r_wrapper.cpp # Test Rcpp wrappers
 )
 
 ## Check for BLAS. Platform dependent.
@@ -75,14 +75,16 @@ find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 
 # ########### Interface test
 ## Build mode for testing R interface
-#set(LIBACTIONET_BUILD_R 1)
-#if (LIBACTIONET_BUILD_R)
-#    execute_process(
-#            COMMAND bash -c "R RHOME"
-#            OUTPUT_VARIABLE R_HOME
-#            OUTPUT_STRIP_TRAILING_WHITESPACE
-#    )
-#endif ()
+set(TEST_BUILD_R 0)
+if (TEST_BUILD_R)
+    set(LIBACTIONET_BUILD_R 1)
+    execute_process(
+            COMMAND bash -c "R RHOME"
+            OUTPUT_VARIABLE R_HOME
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    target_sources(actionet PRIVATE r_wrapper.cpp) # Test Rcpp wrappers
+endif ()
 
 if (LIBACTIONET_BUILD_R)
     message("cmake: Configuring for R library.")

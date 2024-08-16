@@ -1246,7 +1246,7 @@ arma::mat compute_network_diffusion_approx(arma::sp_mat &G, arma::mat &X0, int t
         return (arma::mat());
     }
 
-    arma::sp_mat P = normalize_adj(G, norm_type);
+    arma::sp_mat P = ACTIONet::normalize_adj(G, norm_type);
     arma::mat X = ACTIONet::compute_network_diffusion_Chebyshev(P, X0, thread_no, alpha, max_it, res_threshold);
 
     return (X);
