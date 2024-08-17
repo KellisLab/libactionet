@@ -1,10 +1,10 @@
 // Network imputation using PageRank
-#include "actionet/network_diffusion.hpp"
+#include "network/network_diffusion.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include <cholmod.h>
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat compute_network_diffusion(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha, int max_it) {
         thread_no = std::min(thread_no, (int) X0.n_cols);
@@ -145,4 +145,4 @@ namespace ACTIONet {
         return (mScore);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

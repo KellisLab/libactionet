@@ -4,7 +4,7 @@
 
 #include "libactionet_config.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::vec LPA(arma::sp_mat &G, arma::vec labels, double lambda = 0, int iters = 3, double sig_threshold = 3,
                   arma::uvec fixed_labels = arma::uvec(), int thread_no = 0);

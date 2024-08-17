@@ -1,7 +1,7 @@
 #ifndef ACTIONET_BUILD_NETWORK_EXT_H
 #define ACTIONET_BUILD_NETWORK_EXT_H
 
-#include "actionet.hpp"
+#include "network.hpp"
 #include "RcppPerpendicular.h"
 
 // Functions (inline)

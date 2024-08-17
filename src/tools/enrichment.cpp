@@ -1,8 +1,8 @@
-#include "actionet/enrichment.hpp"
+#include "tools/enrichment.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat assess_label_enrichment(arma::sp_mat &H, arma::mat &M, int thread_no) {
         arma::mat Obs = spmat_mat_product_parallel(H, M, thread_no);
@@ -117,4 +117,4 @@ namespace ACTIONet {
         return (output);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

@@ -18,7 +18,7 @@ arma::sp_mat smoothKNN(arma::sp_mat &D, int max_iter = 64, double epsilon = 1e-6
                        int thread_no = 0);
 
 // Exported functions
-namespace ACTIONet {
+namespace actionet {
 
     // Generate (U/t-U/PaC)MAP layout
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_position,
@@ -27,6 +27,6 @@ namespace ACTIONet {
                                               unsigned int n_epochs = 500, int thread_no = 0, int seed = 0,
                                               double learning_rate = 1.0, int sim2dist = 2);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_GENERATE_LAYOUT_HPP

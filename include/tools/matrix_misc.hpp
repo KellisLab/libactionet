@@ -4,7 +4,7 @@
 #include "libactionet_config.hpp"
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat compute_grouped_rowsums(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments);
 
@@ -18,6 +18,6 @@ namespace ACTIONet {
 
     arma::mat compute_grouped_rowvars(arma::mat &S, arma::Col<unsigned long long> sample_assignments);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_MATRIX_MISC_HPP

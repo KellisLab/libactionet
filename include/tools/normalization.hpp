@@ -3,7 +3,7 @@
 
 #include "libactionet_config.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat normalize_mat(arma::mat &X, int normalization, int dim = 0);
 
@@ -16,6 +16,6 @@ namespace ACTIONet {
     // TODO: TF-IDF normalization (change name)
     arma::sp_mat LSI(arma::sp_mat &S, double size_factor = 100000);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_NORMALIZATION_HPP

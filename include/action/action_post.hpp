@@ -5,7 +5,7 @@
 #include "libactionet_config.hpp"
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     // To store the output of prune_archetypes()
     struct multilevel_archetypal_decomposition {
@@ -38,6 +38,6 @@ namespace ACTIONet {
     unify_archetypes(arma::mat &S_r, arma::mat &C_stacked, arma::mat &H_stacked, double backbone_density,
                      double resolution, int min_cluster_size, int thread_no, int normalization);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_ACTION_POST_HPP

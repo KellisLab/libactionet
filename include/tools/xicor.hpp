@@ -5,12 +5,12 @@
 
 #include "libactionet_config.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval = true, int seed = 0);
 
     arma::field<arma::mat> XICOR(arma::mat &X, arma::mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_XICOR_HPP

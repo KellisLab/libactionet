@@ -14,11 +14,11 @@ arma::field<arma::mat> deflate_reduction(arma::field<arma::mat> SVD_results, arm
     stdout_printf("done\n");
     FLUSH;
 
-    arma::field<arma::mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A, B);
     return (perturbed_SVD);
 }
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> reduce_kernel(arma::sp_mat &S, int dim, int iter, int seed, int SVD_algorithm,
                                          bool prenormalize, int verbose) {
@@ -213,4 +213,4 @@ namespace ACTIONet {
         return perturbed_SVD;
     }
 
-} // namespace ACTIONet
+} // namespace actionet

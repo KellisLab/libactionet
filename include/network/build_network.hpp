@@ -13,7 +13,7 @@ buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 16, double ef
                  bool mutual_edges_only = true, std::string distance_metric = "jsd");
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     // build_network
     // Construct network

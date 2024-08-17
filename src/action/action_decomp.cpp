@@ -4,7 +4,7 @@
 #include "tools/normalization.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     ACTION_results run_ACTION(arma::mat &S_r, int k_min, int k_max, int thread_no, int max_it, double min_delta,
                               int normalization) {
@@ -65,4 +65,4 @@ namespace ACTIONet {
         return trace;
     }
 
-} // namespace ACTIONet
+} // namespace actionet

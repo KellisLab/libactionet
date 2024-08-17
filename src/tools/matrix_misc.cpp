@@ -1,6 +1,6 @@
 #include "tools/matrix_misc.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat compute_grouped_rowsums(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
 
@@ -111,4 +111,4 @@ namespace ACTIONet {
         return (pb);
     }
 
-}  // namespace ACTIONet
+}  // namespace actionet

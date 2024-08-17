@@ -1,6 +1,6 @@
 #include "libactionet_config.hpp"
 #include "action.hpp"
-#include "actionet.hpp"
+#include "network.hpp"
 #include "visualization.hpp"
 #include "tools.hpp"
 
@@ -68,7 +68,7 @@ run_ACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, doubl
 //' @examples
 //' H = run_SPA(S_r, 10)
 Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
-    ACTIONet::SPA_results res = run_SPA_rows_sparse(A, k);
+    actionet::SPA_results res = run_SPA_rows_sparse(A, k);
     arma::uvec selected_columns = res.selected_columns;
 
     arma::vec cols(k);
@@ -332,7 +332,7 @@ Rcpp::List run_HDBSCAN(arma::mat &X, int minPoints = 5, int minClusterSize = 5) 
 //' @examples
 //' coreset = compute_AA_coreset(S, 1000)
 Rcpp::List compute_AA_coreset(arma::sp_mat &S, int m = 0) {
-    ACTIONet::Coreset coreset = compute_AA_coreset(S, m);
+    actionet::Coreset coreset = compute_AA_coreset(S, m);
 
     Rcpp::List out_list;
     out_list["S_coreset"] = coreset.S_coreset;
@@ -510,7 +510,7 @@ Rcpp::List PCA2ACTIONred_full(arma::mat &S, arma::mat x, arma::vec sdev, arma::m
 
 Rcpp::List run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_parent, int kk, int k_min, int k_max,
                          int thread_no, int max_it = 50, double min_delta = 1e-16) {
-    ACTIONet::ACTION_results trace =
+    actionet::ACTION_results trace =
             run_subACTION(S_r, W_parent, H_parent, kk - 1, k_min, k_max, thread_no, max_it, min_delta);
 
     Rcpp::List res;

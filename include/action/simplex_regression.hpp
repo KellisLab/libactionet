@@ -6,11 +6,11 @@
 #include "libactionet_config.hpp"
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     // Simplex regression for AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
     arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX = false);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_SIMPLEX_REGRESSION_HPP

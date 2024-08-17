@@ -121,7 +121,7 @@ double MWM_driver(int n, int m, int nedges, double *vv1, double *vv2, double *we
     return ret;
 }
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat MWM_hungarian(arma::mat &G) {
         int n = G.n_rows;
@@ -226,4 +226,4 @@ namespace ACTIONet {
         return subs;
     }
 
-}  // namespace ACTIONet
+}  // namespace actionet

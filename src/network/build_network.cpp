@@ -1,7 +1,6 @@
-#include "actionet/build_network.hpp"
-#include "visualization/hnsw_imp.hpp"
+#include "network/build_network.hpp"
+#include "network/hnsw_imp.hpp"
 #include "utils_internal/utils_parallel.hpp"
-//#include  <set>
 
 // Argument options
 // allowed distance metrics for hnswlib
@@ -259,7 +258,7 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
     return (G_sym);
 }
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::sp_mat
     buildNetwork(arma::mat H, std::string algorithm, std::string distance_metric, double density, int thread_no,
@@ -291,4 +290,4 @@ namespace ACTIONet {
         return (G);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

@@ -21,7 +21,7 @@ arma::field<arma::mat> SVD2ACTIONred(arma::sp_mat &S, arma::field<arma::mat> SVD
     arma::mat A = arma::join_rows(a1, a2);
     arma::mat B = arma::join_rows(b1, b2);
 
-    arma::field<arma::mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A, B);
 
     return perturbed_SVD;
 }
@@ -47,14 +47,14 @@ arma::field<arma::mat> SVD2ACTIONred(arma::mat &S, arma::field<arma::mat> SVD_re
     arma::mat A = arma::join_rows(a1, a2);
     arma::mat B = arma::join_rows(b1, b2);
 
-    arma::field<arma::mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A, B);
 
     return perturbed_SVD;
 }
 
 arma::field<arma::mat> PCA2ACTIONred(arma::sp_mat &S, arma::field<arma::mat> PCA_results) {
     stdout_printf("Reverting column-centering ... ");
-    arma::field<arma::mat> SVD_results = ACTIONet::PCA2SVD(S, PCA_results);
+    arma::field<arma::mat> SVD_results = actionet::PCA2SVD(S, PCA_results);
     stdout_printf("done\n");
     FLUSH;
 
@@ -64,7 +64,7 @@ arma::field<arma::mat> PCA2ACTIONred(arma::sp_mat &S, arma::field<arma::mat> PCA
 
 arma::field<arma::mat> PCA2ACTIONred(arma::mat &S, arma::field<arma::mat> PCA_results) {
     stdout_printf("Reverting column-centering ... ");
-    arma::field<arma::mat> SVD_results = ACTIONet::PCA2SVD(S, PCA_results);
+    arma::field<arma::mat> SVD_results = actionet::PCA2SVD(S, PCA_results);
     stdout_printf("done\n");
     FLUSH;
 
@@ -79,7 +79,7 @@ arma::field<arma::mat> ACTIONred2SVD(arma::field<arma::mat> SVD_results) {
     arma::mat A = -1 * SVD_results(3); // Reverting
     arma::mat B = SVD_results(4);
 
-    arma::field<arma::mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A, B);
 
     return perturbed_SVD;
 }

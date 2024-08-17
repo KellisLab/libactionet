@@ -3,7 +3,7 @@
 #include "utils_internal/utils_misc.hpp"
 #include "aarand/aarand.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval, int seed) {
         arma::vec out(2);
@@ -100,4 +100,4 @@ namespace ACTIONet {
         return (out);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

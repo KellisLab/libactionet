@@ -5,7 +5,7 @@
 #include "libactionet_config.hpp"
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     // To store the output of run_SPA()
     struct SPA_results {
@@ -16,6 +16,6 @@ namespace ACTIONet {
     // Solves separable NMF problem
     SPA_results run_SPA(arma::mat &A, int k);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_SPA_HPP

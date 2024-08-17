@@ -1,6 +1,6 @@
-#include "tools/graph_measures.hpp"
+#include "network/network_measures.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::uvec compute_core_number(arma::sp_mat &G) {
         unsigned int i, j = 0;
@@ -179,4 +179,4 @@ namespace ACTIONet {
         return (conn);
     }
 
-}  // namespace ACTIONet
+}  // namespace actionet

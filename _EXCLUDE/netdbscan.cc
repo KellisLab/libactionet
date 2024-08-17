@@ -8,10 +8,10 @@ arma::vec NetDBSCAN(arma::sp_mat &G, int minPts, double eps, double alpha_val) {
     // Process vertices in a particular order to give higher priority to the
     // inner, the most well-connected vertices
     stdout_printf("Ordering vertices ... ");
-    arma::vec cn = arma::conv_to<arma::vec>::from(ACTIONet::compute_core_number(G));
+    arma::vec cn = arma::conv_to<arma::vec>::from(actionet::compute_core_number(G));
     arma::sp_mat X0(G.n_rows, 1);
     X0.col(0) = cn;
-    arma::mat pr = ACTIONet::compute_network_diffusion(G, X0, 1, alpha_val, 3);
+    arma::mat pr = actionet::compute_network_diffusion(G, X0, 1, alpha_val, 3);
     arma::uvec perm = arma::sort_index(pr.col(0), "descend");
     stdout_printf("done\n");
 

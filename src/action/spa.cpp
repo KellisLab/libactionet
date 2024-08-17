@@ -1,7 +1,7 @@
 // Successive projection algorithm (SPA)
 #include "action/spa.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     SPA_results run_SPA(arma::mat &A, int k) {
         SPA_results res;
@@ -66,4 +66,4 @@ namespace ACTIONet {
         return res;
     }
 
-} // namespace ACTIONet
+} // namespace actionet

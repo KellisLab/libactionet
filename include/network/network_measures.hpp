@@ -1,10 +1,10 @@
 // Tools for graph operations
-#ifndef ACTIONET_GRAPH_MEASURES_HPP
-#define ACTIONET_GRAPH_MEASURES_HPP
+#ifndef ACTIONET_NETWORK_MEASURES_HPP
+#define ACTIONET_NETWORK_MEASURES_HPP
 
 #include "libactionet_config.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::uvec compute_core_number(arma::sp_mat &G);
 
@@ -12,6 +12,6 @@ namespace ACTIONet {
 
     arma::vec compute_archetype_core_centrality(arma::sp_mat &G, arma::uvec sample_assignments);
 
-}  // namespace ACTIONet
+}  // namespace actionet
 
-#endif //ACTIONET_GRAPH_MEASURES_HPP
+#endif //ACTIONET_NETWORK_MEASURES_HPP

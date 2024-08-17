@@ -6,7 +6,7 @@
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_stats.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     multilevel_archetypal_decomposition prune_archetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
                                                          double min_specificity_z_threshold, int min_cells) {
@@ -163,4 +163,4 @@ namespace ACTIONet {
         return (output);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

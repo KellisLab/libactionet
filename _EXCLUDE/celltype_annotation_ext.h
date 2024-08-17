@@ -1,7 +1,7 @@
 #ifndef ACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
 #define ACTIONET_CELLTYPE_ANNOTATION_EXT_HPP
 
-#include "actionet.hpp"
+#include "network.hpp"
 
 double F2z(double F, double d1, double d2);
 

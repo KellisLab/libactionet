@@ -1,5 +1,5 @@
-#ifndef ACTIONET_ANNOTATION_HPP
-#define ACTIONET_ANNOTATION_HPP
+#ifndef ACTIONET_MARKER_STATS_HPP
+#define ACTIONET_MARKER_STATS_HPP
 
 #include "libactionet_config.hpp"
 
@@ -7,7 +7,7 @@
 // Only found in this module
 arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization = 1);
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                              double alpha = 0.85, int max_it = 5, int thread_no = 0,
@@ -35,4 +35,4 @@ namespace ACTIONet {
 
 }
 
-#endif //ACTIONET_ANNOTATION_HPP
+#endif //ACTIONET_MARKER_STATS_HPP

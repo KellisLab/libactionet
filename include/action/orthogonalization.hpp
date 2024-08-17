@@ -4,7 +4,7 @@
 
 #include "libactionet_config.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat>
     orthogonalize_batch_effect(arma::sp_mat &S, arma::field<arma::mat> SVD_results, arma::mat &design);
@@ -16,6 +16,6 @@ namespace ACTIONet {
 
     arma::field<arma::mat> orthogonalize_basal(arma::mat &S, arma::field<arma::mat> SVD_results, arma::mat &basal);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_ORTHOGONALIZATION_HPP

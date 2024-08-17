@@ -14,7 +14,7 @@
 arma::field<arma::mat> deflate_reduction(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     // Entry-points to compute a reduced kernel matrix
     arma::field<arma::mat> reduce_kernel(arma::sp_mat &S, int dim, int iter = 5, int seed = 0,

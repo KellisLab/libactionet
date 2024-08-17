@@ -4,7 +4,7 @@
 #include "utils_internal/utils_decomp.hpp"
 #include <cholmod.h>
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B) {
         int n = A.n_rows;
@@ -932,4 +932,4 @@ namespace ACTIONet {
         return (orient_SVD(results));
     }
 
-} // namespace ACTIONet
+} // namespace actionet

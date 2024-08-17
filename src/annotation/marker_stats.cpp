@@ -1,6 +1,6 @@
-#include "actionet/annotation.hpp"
+#include "annotation/marker_stats.hpp"
 #include "action/aa.hpp"
-#include "actionet/network_diffusion.hpp"
+#include "network/network_diffusion.hpp"
 #include "tools/normalization.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
@@ -13,13 +13,13 @@ arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization) {
         T = S;
     } else if (normalization == 1) {
         // LSI normalization
-        T = ACTIONet::LSI(S);
+        T = actionet::LSI(S);
     }
 
     return (T);
 }
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat, double alpha,
                                              int max_it, int thread_no, bool ignore_baseline_expression) {
@@ -173,7 +173,7 @@ namespace ACTIONet {
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
             stdout_printf("Smoothing geneset scores ... ");
-            marker_stats_smoothed = ACTIONet::compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no,
+            marker_stats_smoothed = actionet::compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no,
                                                                                   alpha);
             stdout_printf("done\n");
             FLUSH;
@@ -370,4 +370,4 @@ namespace ACTIONet {
         return (marker_stats_smoothed);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

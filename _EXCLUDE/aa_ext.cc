@@ -17,11 +17,11 @@ arma::field<arma::mat> run_weighted_AA(arma::mat &A, arma::mat &W0, arma::vec w,
     for (int i = 0; i < N; i++) {
         A_scaled.col(i) *= w[i];
     }
-    decomposition = ACTIONet::run_AA(A_scaled, W0, max_it, min_delta);
+    decomposition = actionet::run_AA(A_scaled, W0, max_it, min_delta);
 
     arma::mat C = decomposition(0);
     arma::mat weighted_archs = A_scaled * C;
-    arma::mat H = ACTIONet::run_simplex_regression(weighted_archs, A, false);
+    arma::mat H = actionet::run_simplex_regression(weighted_archs, A, false);
     decomposition(1) = H;
 
     return (decomposition);
@@ -29,7 +29,7 @@ arma::field<arma::mat> run_weighted_AA(arma::mat &A, arma::mat &W0, arma::vec w,
 
 arma::field<arma::mat> Online_update_AA(arma::mat &Xt, arma::mat &D, arma::mat &A, arma::mat &B) {
     // Compute archetype coefficients using the last learned dictionary
-    arma::mat Ct = ACTIONet::run_simplex_regression(D, Xt, false);
+    arma::mat Ct = actionet::run_simplex_regression(D, Xt, false);
 
     // Just in case!
     Ct = arma::clamp(Ct, 0, 1);
@@ -76,7 +76,7 @@ arma::field<arma::mat> run_online_AA(arma::mat &X, arma::mat &D0, arma::field<ar
         arma::mat Xt = X.cols(idx);
 
         // Compute archetype coefficients using the last learned dictionary
-        Ct = ACTIONet::run_simplex_regression(Dt, Xt, false);
+        Ct = actionet::run_simplex_regression(Dt, Xt, false);
         Ct_T = arma::trans(Ct);
 
         // Update sufficient statistics
@@ -118,7 +118,7 @@ run_AA_with_prior(arma::mat &A, arma::mat &W0, arma::mat &W_prior, int max_it, d
 
     for (int it = 0; it < max_it; it++) {
         arma::mat combined_W = join_rows(W, W_prior);
-        arma::mat combined_H = ACTIONet::run_simplex_regression(combined_W, A, true);
+        arma::mat combined_H = actionet::run_simplex_regression(combined_W, A, true);
 
         H = combined_H.rows(arma::span(0, k - 1));
 
@@ -143,7 +143,7 @@ run_AA_with_prior(arma::mat &A, arma::mat &W0, arma::mat &W_prior, int max_it, d
                             b.memptr(), 1);
 
                 // No matching signature for `IRLB_SVD`. Likely old or bug.
-                C.col(i) = ACTIONet::IRLB_SVD(A, b, false);
+                C.col(i) = actionet::IRLB_SVD(A, b, false);
 
                 arma::vec w_new = A * C.col(i);
                 arma::vec delta = (w - w_new);

@@ -2,7 +2,7 @@
 #include "action/aa.hpp"
 #include "action/simplex_regression.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double min_delta) {
         int sample_no = A.n_cols;
@@ -21,7 +21,7 @@ namespace ACTIONet {
             arma::mat C_old = C;
             arma::mat H_old = H;
             double A_norm = arma::norm(A, "fro");
-            H = ACTIONet::run_simplex_regression(W, A, true);
+            H = actionet::run_simplex_regression(W, A, true);
             // H = run_simplex_regression_FW(W, A, 30);
 
             arma::mat R = A - W * H;
@@ -44,7 +44,7 @@ namespace ACTIONet {
                                 (1.0 / norm_sq), R.memptr(), R.n_rows, h.memptr(), 1, 1,
                                 b.memptr(), 1);
 
-                    C.col(i) = ACTIONet::run_simplex_regression(A, b, false);
+                    C.col(i) = actionet::run_simplex_regression(A, b, false);
 
                     arma::vec w_new = A * C.col(i);
                     arma::vec delta = (w - w_new);
@@ -76,4 +76,4 @@ namespace ACTIONet {
         return decomposition;
     }
 
-} // namespace ACTIONet
+} // namespace actionet

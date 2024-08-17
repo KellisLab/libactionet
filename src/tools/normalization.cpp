@@ -1,7 +1,7 @@
 #include "tools/normalization.hpp"
 #include "utils_internal/utils_stats.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat normalize_mat(arma::mat &X, int normalization, int dim) {
         arma::mat X_norm = X;
@@ -143,5 +143,5 @@ namespace ACTIONet {
         return (X);
     }
 
-} // namespace ACTIONet
+} // namespace actionet
 

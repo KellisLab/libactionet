@@ -1,7 +1,7 @@
 #ifndef ACTIONET_NETDBSCAN_H
 #define ACTIONET_NETDBSCAN_H
 
-#include "actionet.hpp"
+#include "network.hpp"
 #include "tools/graph_measures.hpp"
 
 // -1: Undefined, 0: Noise, 1...: Cluster IDs

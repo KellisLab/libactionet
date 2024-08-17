@@ -5,7 +5,7 @@
 #include "libactionet_config.hpp"
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B);
 
@@ -31,6 +31,6 @@ namespace ACTIONet {
 
     arma::field<arma::mat> HalkoSVD(arma::mat &A, int dim, int iters, int seed = 0, int verbose = 1);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_SVD_HPP

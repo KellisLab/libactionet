@@ -97,7 +97,7 @@
 //void mds_direct(int n, int kd, double *X, double *d, double *w, int t_max,
 //                double *etas, int seed);
 
-namespace ACTIONet
+namespace actionet
 {
     // struct PCHAkernel_ret
     // {
@@ -480,6 +480,6 @@ namespace ACTIONet
 //    field<mat> compute_fourier_basis(mat &G, int n_basis = -1);
 //    field<mat> compute_fourier_basis(sp_mat &G, int n_basis = -1);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif

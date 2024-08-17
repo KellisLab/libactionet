@@ -1,7 +1,7 @@
 #ifndef ACTIONET_NETWORK_DIFFUSION_EXT_H
 #define ACTIONET_NETWORK_DIFFUSION_EXT_H
 
-#include "actionet.hpp"
+#include "network.hpp"
 
 arma::mat PR_linsys(arma::sp_mat &G, arma::sp_mat &X, double alpha = 0.85, int thread_no = -1);
 

@@ -1,9 +1,9 @@
-#include "actionet/label_propagation.hpp"
-#include "actionet/enrichment.hpp"
+#include "network/label_propagation.hpp"
+#include "tools/enrichment.hpp"
 #include "tools/normalization.hpp"
 #include "utils_internal/utils_misc.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::vec LPA(arma::sp_mat &G, arma::vec labels, double lambda, int iters, double sig_threshold,
                   arma::uvec fixed_labels, int thread_no) {
@@ -43,4 +43,4 @@ namespace ACTIONet {
         return (updated_labels);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

@@ -9,7 +9,7 @@ double MWM_driver(int n, int m, int nedges, double *vv1, double *vv2, double *we
                   int *noutedges);
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat MWM_hungarian(arma::mat &G);
 
@@ -17,6 +17,6 @@ namespace ACTIONet {
     // (https://dl.acm.org/citation.cfm?doid=3178876.3186128)
     arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold, double v_threshold);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 #endif //ACTIONET_MWM_HPP

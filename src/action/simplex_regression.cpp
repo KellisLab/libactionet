@@ -2,7 +2,7 @@
 #include "action/simplex_regression.hpp"
 #include "utils_internal/utils_active_set.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX) {
 
@@ -29,4 +29,4 @@ namespace ACTIONet {
         return (X);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

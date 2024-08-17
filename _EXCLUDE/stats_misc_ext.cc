@@ -31,7 +31,7 @@ double r8_normal_01_cdf_inverse(double p);
 /* P_high = 1 - p_low*/
 #define P_HIGH 0.97575
 
-namespace ACTIONet {
+namespace actionet {
     /**
      * @brief Generate a single random number using the capped Tausworthe RNG
      *
@@ -232,4 +232,4 @@ namespace ACTIONet {
         }
     }
 
-} // namespace ACTIONet
+} // namespace actionet

@@ -3,7 +3,7 @@
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::vec>
     autocorrelation_Moran_parametric(arma::mat G, arma::mat scores, int normalization_method, int thread_no) {
@@ -397,4 +397,4 @@ namespace ACTIONet {
         return (results);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

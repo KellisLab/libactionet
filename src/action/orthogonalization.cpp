@@ -3,7 +3,7 @@
 #include "action/reduction.hpp"
 
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> orthogonalize_batch_effect(arma::sp_mat &S, arma::field<arma::mat> SVD_results,
                                                       arma::mat &design) {
@@ -68,4 +68,4 @@ namespace ACTIONet {
         FLUSH;
         return (perturbed_SVD);
     }
-} // namespace ACTIONet
+} // namespace actionet

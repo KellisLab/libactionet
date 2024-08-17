@@ -1,7 +1,7 @@
-#include "actionet/specificity.hpp"
+#include "annotation/specificity.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> compute_feature_specificity(arma::sp_mat &S, arma::mat &H, int thread_no) {
 
@@ -161,4 +161,4 @@ namespace ACTIONet {
         return (res);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

@@ -5,7 +5,7 @@
 #include "libactionet_config.hpp"
 
 // Exported
-namespace ACTIONet {
+namespace actionet {
 
     // To store the output of run_ACTION()
     struct ACTION_results {
@@ -18,7 +18,7 @@ namespace ACTIONet {
     ACTION_results run_ACTION(arma::mat &S_r, int k_min, int k_max, int thread_no, int max_it = 100,
                               double min_delta = 1e-6, int normalization = 0);
 
-} // namespace ACTIONet
+} // namespace actionet
 
 
 #endif //ACTIONET_ACTION_DECOMP_HPP

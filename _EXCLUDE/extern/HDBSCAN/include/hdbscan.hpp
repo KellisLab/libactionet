@@ -1,5 +1,4 @@
 #pragma once
-#include <ACTIONet.h>
 #include <string>
 #include <vector>
 #include "hdbscanParameters.hpp"

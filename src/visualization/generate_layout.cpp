@@ -71,7 +71,7 @@ arma::sp_mat smoothKNN(arma::sp_mat &D, int max_iter, double epsilon, double ban
     return (G);
 }
 
-namespace ACTIONet {
+namespace actionet {
 
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_position, bool presmooth_network,
                                               const std::string &method, double min_dist, double spread, double gamma,
@@ -280,4 +280,4 @@ namespace ACTIONet {
         return (res);
     }
 
-} // namespace ACTIONet
+} // namespace actionet

@@ -1,6 +1,6 @@
 #include "spa_ext.h"
 
-ACTIONet::SPA_results run_SPA_rows_sparse(arma::sp_mat &A, int k) {
+actionet::SPA_results run_SPA_rows_sparse(arma::sp_mat &A, int k) {
     int m = A.n_rows;
     int n = A.n_cols;
     arma::sp_mat A_sq = arma::square(A);
@@ -12,7 +12,7 @@ ACTIONet::SPA_results run_SPA_rows_sparse(arma::sp_mat &A, int k) {
     cholmod_sparse *AS = as_cholmod_sparse(A, AS, &chol_c);
     cholmod_sparse *AS_sq = as_cholmod_sparse(A_sq, AS_sq, &chol_c);
 
-    ACTIONet::SPA_results res;
+    actionet::SPA_results res;
 
     arma::uvec K(k); // selected columns from A
 
