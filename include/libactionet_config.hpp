@@ -12,9 +12,9 @@
 #define STATS_ENABLE_ARMA_WRAPPERS
 #define STATS_GO_INLINE
 
-//#define LIBACTIONET_BUILD_R
+//#define LIBACTIONET_BUILD_R // For testing
 
-// Platform specific headers and macros
+// Configurations for R and Python interface
 #if defined(LIBACTIONET_BUILD_R)
 
     #define stdout_printf Rprintf
@@ -40,7 +40,7 @@
 
 #endif
 
-
+// Platform specific headers and macros
 // TODO: Move to cmake
 #if defined(LIBACTIONET_PLATFORM_APPLE)
 

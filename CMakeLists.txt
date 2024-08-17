@@ -75,11 +75,11 @@ find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 
 # ########### Interface test
 ## Build mode for testing R interface
-set(TEST_BUILD_R 1)
+set(TEST_BUILD_R 0)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(
-            COMMAND bash -c "R RHOME"
+            COMMAND sh -c "R RHOME"
             OUTPUT_VARIABLE R_HOME
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -93,7 +93,7 @@ if (LIBACTIONET_BUILD_R)
     else ()
         message("Using R found at ${R_HOME}")
     endif ()
-    add_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config headers
+    add_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config header
 
     # find R headers
     execute_process(

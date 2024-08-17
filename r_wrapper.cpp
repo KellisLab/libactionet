@@ -1,17 +1,12 @@
-#define LIBACTIONET_BUILD_R
-
+// Rcpp interface for libactionet
 // [[Rcpp::interfaces(r, cpp)]]
-// [[Rcpp::depends(RcppArmadillo)]]
-#include "libactionet_config.hpp"
-#include "Rcpp.h"
-#include "action.hpp"
-#include "actionet.hpp"
-#include "visualization.hpp"
-#include "tools.hpp"
 
-//#include <ACTIONetRTest.h>
-//#define ARMA_USE_CXX11_RNG
-//#define DYNSCHED
+// Enable build configuration for R interface
+#define LIBACTIONET_BUILD_R
+// Header `libactionet.hpp` configures package and includes `RcppArmadillo.h`. It must precede `Rcpp.h`.
+#include "libactionet.hpp"
+#include "Rcpp.h"
+// [[Rcpp::depends(RcppArmadillo)]]
 
 // TODO: Necessary?
 template<typename T>
@@ -19,8 +14,18 @@ Rcpp::NumericVector arma2vec(const T &x) {
     return Rcpp::NumericVector(x.begin(), x.end());
 }
 
-// TODO: Necessary?
-// set seed
+//' Set the RNG Seed from within Rcpp
+//'
+//' Within Rcpp, one can set the R session seed without triggering
+//' the CRAN rng modifier check.
+//' @param seed A \code{double} that is the seed one wishes to use.
+//' @return A set RNG scope.
+//' @examples
+//' set.seed(10)
+//' x = rnorm(5,0,1)
+//' set_seed(10)
+//' y = rnorm(5,0,1)
+//' all.equal(x,y, check.attributes = F)
 // [[Rcpp::export]]
 void set_seed(double seed) {
     Rcpp::Environment base_env("package:base");
@@ -46,7 +51,7 @@ void set_seed(double seed) {
 //' U = SVD.out$U
 // [[Rcpp::export]]
 Rcpp::List IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = ACTIONet::IRLB_SVD(A, dim, iters, seed, verbose);
+    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
 
     Rcpp::List res;
 
@@ -75,7 +80,7 @@ Rcpp::List IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, in
 //' U = SVD.out$U
 // [[Rcpp::export]]
 Rcpp::List IRLB_SVD_full(arma::mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = ACTIONet::IRLB_SVD(A, dim, iters, seed, verbose);
+    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
 
     Rcpp::List res;
 
@@ -106,7 +111,7 @@ Rcpp::List IRLB_SVD_full(arma::mat &A, int dim, int iters = 1000, int seed = 0, 
 //' U = SVD.out$U
 // [[Rcpp::export]]
 Rcpp::List FengSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = ACTIONet::FengSVD(A, dim, iters, seed, verbose);
+    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
 
     Rcpp::List res;
 
@@ -137,7 +142,7 @@ Rcpp::List FengSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int ve
 //' U = SVD.out$U
 // [[Rcpp::export]]
 Rcpp::List FengSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = ACTIONet::FengSVD(A, dim, iters, seed, verbose);
+    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
 
     Rcpp::List res;
 
@@ -168,7 +173,7 @@ Rcpp::List FengSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int 
 //' U = SVD.out$U
 // [[Rcpp::export]]
 Rcpp::List HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = ACTIONet::HalkoSVD(A, dim, iters, seed, verbose);
+    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
 
     Rcpp::List res;
 
@@ -199,7 +204,7 @@ Rcpp::List HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int v
 //' U = SVD.out$U
 // [[Rcpp::export]]
 Rcpp::List HalkoSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = ACTIONet::HalkoSVD(A, dim, iters, seed, verbose);
+    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
 
     Rcpp::List res;
 
@@ -237,7 +242,7 @@ Rcpp::List reduce_kernel(arma::sp_mat &S, int reduced_dim = 50, int iter = 5, in
                          int SVD_algorithm = 0, bool prenormalize = false, int verbose = 1) {
 
     arma::field<arma::mat> reduction =
-            ACTIONet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
+            actionet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
 
     Rcpp::List res;
     res["V"] = reduction(0);
@@ -288,7 +293,7 @@ Rcpp::List reduce_kernel_full(arma::mat &S, int reduced_dim = 50, int iter = 5, 
                               bool prenormalize = false, int verbose = 1) {
 
     arma::field<arma::mat> reduction =
-            ACTIONet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
+            actionet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
 
     Rcpp::List res;
     res["V"] = reduction(0);
@@ -326,7 +331,7 @@ Rcpp::List reduce_kernel_full(arma::mat &S, int reduced_dim = 50, int iter = 5, 
 //' H = run_simplex_regression(A, B)
 // [[Rcpp::export]]
 arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX = false) {
-    arma::mat X = ACTIONet::run_simplex_regression(A, B, computeXtX);
+    arma::mat X = actionet::run_simplex_regression(A, B, computeXtX);
 
     return X;
 }
@@ -341,7 +346,7 @@ arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX = f
 //' H = run_SPA(S_r, 10)
 // [[Rcpp::export]]
 Rcpp::List run_SPA(arma::mat &A, int k) {
-    ACTIONet::SPA_results res = ACTIONet::run_SPA(A, k);
+    actionet::SPA_results res = actionet::run_SPA(A, k);
     arma::uvec selected_columns = res.selected_columns;
 
     arma::vec cols(k);
@@ -372,8 +377,8 @@ Rcpp::List run_SPA(arma::mat &A, int k) {
 Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int thread_no = 0, int max_it = 100,
                       double min_delta = 1e-6, int normalization = 1) {
 
-    ACTIONet::ACTION_results trace =
-            ACTIONet::run_ACTION(S_r, k_min, k_max, thread_no, max_it, min_delta, normalization);
+    actionet::ACTION_results trace =
+            actionet::run_ACTION(S_r, k_min, k_max, thread_no, max_it, min_delta, normalization);
 
     Rcpp::List res;
 
@@ -407,7 +412,7 @@ Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int thread_
 // [[Rcpp::export]]
 Rcpp::List run_AA(arma::mat &A, arma::mat &W0, int max_it = 100, double min_delta = 1e-6) {
 
-    arma::field<arma::mat> res = ACTIONet::run_AA(A, W0, max_it, min_delta);
+    arma::field<arma::mat> res = actionet::run_AA(A, W0, max_it, min_delta);
 
     Rcpp::List out;
     out["C"] = res(0);
@@ -452,8 +457,8 @@ Rcpp::List prune_archetypes(const Rcpp::List &C_trace, const Rcpp::List &H_trace
         H_trace_vec[i + 1] = (Rcpp::as<arma::mat>(H_trace[i]));
     }
 
-    ACTIONet::multilevel_archetypal_decomposition results =
-            ACTIONet::prune_archetypes(C_trace_vec, H_trace_vec, min_specificity_z_threshold, min_cells);
+    actionet::multilevel_archetypal_decomposition results =
+            actionet::prune_archetypes(C_trace_vec, H_trace_vec, min_specificity_z_threshold, min_cells);
 
     Rcpp::List out_list;
 
@@ -492,8 +497,8 @@ Rcpp::List unify_archetypes(arma::mat &S_r, arma::mat C_stacked, arma::mat H_sta
                             double resolution = 1.0, int min_cluster_size = 3, int thread_no = 0,
                             int normalization = 0) {
 
-    ACTIONet::unification_results results =
-            ACTIONet::unify_archetypes(S_r, C_stacked, H_stacked, backbone_density,
+    actionet::unification_results results =
+            actionet::unify_archetypes(S_r, C_stacked, H_stacked, backbone_density,
                                        resolution, min_cluster_size, thread_no, normalization);
 
     Rcpp::List out_list;
@@ -537,7 +542,7 @@ arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::stri
 
     // TODO: Add as options in interface
     double M = 16, ef_construction = 200, ef = 50;
-    arma::sp_mat G = ACTIONet::buildNetwork(H, algorithm, distance_metric, density, thread_no, M, ef_construction, ef,
+    arma::sp_mat G = actionet::buildNetwork(H, algorithm, distance_metric, density, thread_no, M, ef_construction, ef,
                                             mutual_edges_only, k);
 
     return G;
@@ -568,7 +573,7 @@ Rcpp::List layoutNetwork(arma::sp_mat &G, arma::mat &initial_position, const std
                          int sim2dist = 2) {
 
     arma::field<arma::mat> res =
-            ACTIONet::layoutNetwork_xmap(G, initial_position, presmooth_network, method, min_dist, spread, gamma,
+            actionet::layoutNetwork_xmap(G, initial_position, presmooth_network, method, min_dist, spread, gamma,
                                          n_epochs, thread_no, seed, learning_rate, sim2dist);
 
     Rcpp::List out_list;
@@ -589,7 +594,7 @@ Rcpp::List layoutNetwork(arma::sp_mat &G, arma::mat &initial_position, const std
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowsums(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
 
-    arma::mat pb = ACTIONet::compute_grouped_rowsums(S, sample_assignments);
+    arma::mat pb = actionet::compute_grouped_rowsums(S, sample_assignments);
 
     return pb;
 }
@@ -604,7 +609,7 @@ arma::mat compute_grouped_rowsums(arma::sp_mat &S, arma::Col<unsigned long long>
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowsums_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
 
-    arma::mat pb = ACTIONet::compute_grouped_rowsums(S, sample_assignments);
+    arma::mat pb = actionet::compute_grouped_rowsums(S, sample_assignments);
 
     return pb;
 }
@@ -619,7 +624,7 @@ arma::mat compute_grouped_rowsums_full(arma::mat &S, arma::Col<unsigned long lon
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowmeans(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
 
-    arma::mat pb = ACTIONet::compute_grouped_rowmeans(S, sample_assignments);
+    arma::mat pb = actionet::compute_grouped_rowmeans(S, sample_assignments);
 
     return pb;
 }
@@ -634,7 +639,7 @@ arma::mat compute_grouped_rowmeans(arma::sp_mat &S, arma::Col<unsigned long long
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowmeans_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
 
-    arma::mat pb = ACTIONet::compute_grouped_rowmeans(S, sample_assignments);
+    arma::mat pb = actionet::compute_grouped_rowmeans(S, sample_assignments);
 
     return pb;
 }
@@ -642,7 +647,7 @@ arma::mat compute_grouped_rowmeans_full(arma::mat &S, arma::Col<unsigned long lo
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowvars(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
 
-    arma::mat pb = ACTIONet::compute_grouped_rowvars(S, sample_assignments);
+    arma::mat pb = actionet::compute_grouped_rowvars(S, sample_assignments);
 
     return pb;
 }
@@ -650,7 +655,7 @@ arma::mat compute_grouped_rowvars(arma::sp_mat &S, arma::Col<unsigned long long>
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowvars_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
 
-    arma::mat pb = ACTIONet::compute_grouped_rowvars(S, sample_assignments);
+    arma::mat pb = actionet::compute_grouped_rowvars(S, sample_assignments);
 
     return pb;
 }
@@ -672,7 +677,7 @@ arma::mat compute_grouped_rowvars_full(arma::mat &S, arma::Col<unsigned long lon
 //' specificity.scores = logPvals.list$upper_significance
 // [[Rcpp::export]]
 Rcpp::List compute_archetype_feature_specificity(arma::sp_mat &S, arma::mat &H, int thread_no = 0) {
-    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, H, thread_no);
+    arma::field<arma::mat> res = actionet::compute_feature_specificity(S, H, thread_no);
 
     Rcpp::List out_list;
     out_list["archetypes"] = res(0);
@@ -699,7 +704,7 @@ Rcpp::List compute_archetype_feature_specificity(arma::sp_mat &S, arma::mat &H, 
 //' specificity.scores = logPvals.list$upper_significance
 // [[Rcpp::export]]
 Rcpp::List compute_archetype_feature_specificity_full(arma::mat &S, arma::mat &H, int thread_no = 0) {
-    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, H, thread_no);
+    arma::field<arma::mat> res = actionet::compute_feature_specificity(S, H, thread_no);
 
     Rcpp::List out_list;
     out_list["archetypes"] = res(0);
@@ -726,7 +731,7 @@ Rcpp::List compute_archetype_feature_specificity_full(arma::mat &S, arma::mat &H
 //' specificity.scores = logPvals.list$upper_significance
 // [[Rcpp::export]]
 Rcpp::List compute_cluster_feature_specificity(arma::sp_mat &S, arma::uvec sample_assignments, int thread_no = 0) {
-    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, sample_assignments, thread_no);
+    arma::field<arma::mat> res = actionet::compute_feature_specificity(S, sample_assignments, thread_no);
 
     Rcpp::List out_list;
     out_list["average_profile"] = res(0);
@@ -753,7 +758,7 @@ Rcpp::List compute_cluster_feature_specificity(arma::sp_mat &S, arma::uvec sampl
 //' specificity.scores = logPvals.list$upper_significance
 // [[Rcpp::export]]
 Rcpp::List compute_cluster_feature_specificity_full(arma::mat &S, arma::uvec sample_assignments, int thread_no = 0) {
-    arma::field<arma::mat> res = ACTIONet::compute_feature_specificity(S, sample_assignments, thread_no);
+    arma::field<arma::mat> res = actionet::compute_feature_specificity(S, sample_assignments, thread_no);
 
     Rcpp::List out_list;
     out_list["average_profile"] = res(0);
@@ -774,7 +779,7 @@ Rcpp::List compute_cluster_feature_specificity_full(arma::mat &S, arma::uvec sam
 //' cn = compute_core_number(G)
 // [[Rcpp::export]]
 arma::uvec compute_core_number(arma::sp_mat &G) {
-    arma::uvec core_num = ACTIONet::compute_core_number(G);
+    arma::uvec core_num = actionet::compute_core_number(G);
 
     return (core_num);
 }
@@ -792,7 +797,7 @@ arma::uvec compute_core_number(arma::sp_mat &G) {
 //' connectivity = compute_core_number(G, assignments)
 // [[Rcpp::export]]
 arma::vec compute_archetype_core_centrality(arma::sp_mat &G, arma::uvec sample_assignments) {
-    arma::vec conn = ACTIONet::compute_archetype_core_centrality(G, sample_assignments);
+    arma::vec conn = actionet::compute_archetype_core_centrality(G, sample_assignments);
 
     return (conn);
 }
@@ -815,7 +820,7 @@ arma::vec compute_archetype_core_centrality(arma::sp_mat &G, arma::uvec sample_a
 // [[Rcpp::export]]
 arma::mat compute_network_diffusion_fast(arma::sp_mat &G, arma::sp_mat &X0, int thread_no = 0, double alpha = 0.85,
                                          int max_it = 3) {
-    arma::mat Diff = ACTIONet::compute_network_diffusion_fast(G, X0, thread_no, alpha, max_it);
+    arma::mat Diff = actionet::compute_network_diffusion_fast(G, X0, thread_no, alpha, max_it);
 
     return (Diff);
 }
@@ -841,7 +846,7 @@ arma::mat compute_network_diffusion_fast(arma::sp_mat &G, arma::sp_mat &X0, int 
 //' colnames(logPvals) = colnames(annotations)
 // [[Rcpp::export]]
 Rcpp::List assess_enrichment(arma::mat &scores, arma::sp_mat &associations, int thread_no = 0) {
-    arma::field<arma::mat> res = ACTIONet::assess_enrichment(scores, associations, thread_no);
+    arma::field<arma::mat> res = actionet::assess_enrichment(scores, associations, thread_no);
 
     Rcpp::List out_list;
     out_list["logPvals"] = res(0);
@@ -861,7 +866,7 @@ Rcpp::List assess_enrichment(arma::mat &scores, arma::sp_mat &associations, int 
 //' G_matched = MWM_hungarian(G)
 // [[Rcpp::export]]
 arma::mat MWM_hungarian(arma::mat &G) {
-    arma::mat G_matched = ACTIONet::MWM_hungarian(G);
+    arma::mat G_matched = actionet::MWM_hungarian(G);
 
     return G_matched;
 }
@@ -879,7 +884,7 @@ Rcpp::List PCA2SVD(arma::sp_mat &S, arma::mat x, arma::vec sdev, arma::mat rotat
     PCA_results(1) = d;
     PCA_results(2) = rotation;
 
-    arma::field<arma::mat> SVD_results = ACTIONet::PCA2SVD(S, PCA_results);
+    arma::field<arma::mat> SVD_results = actionet::PCA2SVD(S, PCA_results);
 
     Rcpp::List res;
     res["u"] = SVD_results(0);
@@ -902,7 +907,7 @@ Rcpp::List PCA2SVD_full(arma::mat &S, arma::mat x, arma::vec sdev, arma::mat rot
     PCA_results(1) = d;
     PCA_results(2) = rotation;
 
-    arma::field<arma::mat> SVD_results = ACTIONet::PCA2SVD(S, PCA_results);
+    arma::field<arma::mat> SVD_results = actionet::PCA2SVD(S, PCA_results);
 
     Rcpp::List res;
     res["u"] = SVD_results(0);
@@ -922,7 +927,7 @@ Rcpp::List SVD2PCA(arma::sp_mat &S, arma::mat u, arma::vec d, arma::mat v) {
     SVD_results(1) = d;
     SVD_results(2) = v;
 
-    arma::field<arma::mat> PCA_results = ACTIONet::SVD2PCA(S, SVD_results);
+    arma::field<arma::mat> PCA_results = actionet::SVD2PCA(S, SVD_results);
 
     Rcpp::List res;
     arma::vec s = PCA_results(1).col(0);
@@ -948,7 +953,7 @@ Rcpp::List SVD2PCA_full(arma::mat &S, arma::mat u, arma::vec d, arma::mat v) {
     SVD_results(1) = d;
     SVD_results(2) = v;
 
-    arma::field<arma::mat> PCA_results = ACTIONet::SVD2PCA(S, SVD_results);
+    arma::field<arma::mat> PCA_results = actionet::SVD2PCA(S, SVD_results);
 
     Rcpp::List res;
     arma::vec s = PCA_results(1).col(0);
@@ -974,7 +979,7 @@ Rcpp::List perturbedSVD(arma::mat u, arma::vec d, arma::mat v, arma::mat A, arma
     SVD_results(1) = d;
     SVD_results(2) = v;
 
-    arma::field<arma::mat> perturbed_SVD = ACTIONet::perturbedSVD(SVD_results, A, B);
+    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A, B);
 
     Rcpp::List res;
     res["u"] = perturbed_SVD(0);
@@ -1000,7 +1005,7 @@ Rcpp::List orthogonalize_batch_effect(arma::sp_mat &S, arma::mat &old_S_r, arma:
     SVD_results(4) = old_B;
 
     arma::field<arma::mat> orthogonalized_reduction =
-            ACTIONet::orthogonalize_batch_effect(S, SVD_results, design);
+            actionet::orthogonalize_batch_effect(S, SVD_results, design);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -1035,7 +1040,7 @@ Rcpp::List orthogonalize_batch_effect_full(arma::mat &S, arma::mat &old_S_r, arm
     SVD_results(4) = old_B;
 
     arma::field<arma::mat> orthogonalized_reduction =
-            ACTIONet::orthogonalize_batch_effect(S, SVD_results, design);
+            actionet::orthogonalize_batch_effect(S, SVD_results, design);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -1068,7 +1073,7 @@ Rcpp::List orthogonalize_basal(arma::sp_mat &S, arma::mat &old_S_r, arma::mat &o
     SVD_results(3) = old_A;
     SVD_results(4) = old_B;
 
-    arma::field<arma::mat> orthogonalized_reduction = ACTIONet::orthogonalize_basal(S, SVD_results, basal);
+    arma::field<arma::mat> orthogonalized_reduction = actionet::orthogonalize_basal(S, SVD_results, basal);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -1102,7 +1107,7 @@ Rcpp::List orthogonalize_basal_full(arma::mat &S, arma::mat &old_S_r, arma::mat 
     SVD_results(3) = old_A;
     SVD_results(4) = old_B;
 
-    arma::field<arma::mat> orthogonalized_reduction = ACTIONet::orthogonalize_basal(S, SVD_results, basal);
+    arma::field<arma::mat> orthogonalized_reduction = actionet::orthogonalize_basal(S, SVD_results, basal);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -1123,7 +1128,7 @@ Rcpp::List orthogonalize_basal_full(arma::mat &S, arma::mat &old_S_r, arma::mat 
 
 // [[Rcpp::export]]
 arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold = 0, double v_threshold = 0) {
-    arma::umat pairs = ACTIONet::MWM_rank1(u, v, u_threshold, v_threshold);
+    arma::umat pairs = actionet::MWM_rank1(u, v, u_threshold, v_threshold);
 
     pairs = pairs + 1;
 
@@ -1144,7 +1149,7 @@ Rcpp::NumericVector run_LPA(arma::sp_mat &G, arma::vec labels, double lambda = 1
     }
 
     arma::mat new_labels =
-            ACTIONet::LPA(G, labels, lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
+            actionet::LPA(G, labels, lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
     // vec labels_out = arma::conv_to<arma::vec>::from(new_labels);
 
     return (arma2vec(new_labels));
@@ -1155,7 +1160,7 @@ arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma:
                                          double alpha = 0.85, int max_it = 5, int thread_no = 0,
                                          bool ignore_baseline_expression = false) {
 
-    arma::mat stats = ACTIONet::compute_marker_aggregate_stats(G, S, marker_mat, alpha, max_it, thread_no,
+    arma::mat stats = actionet::compute_marker_aggregate_stats(G, S, marker_mat, alpha, max_it, thread_no,
                                                                ignore_baseline_expression);
 
     return (stats);
@@ -1163,7 +1168,7 @@ arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma:
 
 // [[Rcpp::export]]
 arma::sp_mat LSI(arma::sp_mat &X, double size_factor = 100000) {
-    arma::sp_mat TFIDF = ACTIONet::LSI(X, size_factor);
+    arma::sp_mat TFIDF = actionet::LSI(X, size_factor);
 
     return (TFIDF);
 }
@@ -1171,7 +1176,7 @@ arma::sp_mat LSI(arma::sp_mat &X, double size_factor = 100000) {
 // [[Rcpp::export]]
 Rcpp::List autocorrelation_Geary(arma::sp_mat G, arma::mat scores, int normalization_method = 1, int perm_no = 30,
                                  int thread_no = 0) {
-    arma::field<arma::vec> out = ACTIONet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
+    arma::field<arma::vec> out = actionet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
 
     Rcpp::List res;
     res["Geary_C"] = out[0];
@@ -1185,7 +1190,7 @@ Rcpp::List autocorrelation_Geary(arma::sp_mat G, arma::mat scores, int normaliza
 // [[Rcpp::export]]
 Rcpp::List autocorrelation_Geary_full(arma::mat G, arma::mat scores, int normalization_method = 1, int perm_no = 30,
                                       int thread_no = 0) {
-    arma::field<arma::vec> out = ACTIONet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
+    arma::field<arma::vec> out = actionet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
 
     Rcpp::List res;
     res["Geary_C"] = out[0];
@@ -1199,7 +1204,7 @@ Rcpp::List autocorrelation_Geary_full(arma::mat G, arma::mat scores, int normali
 // [[Rcpp::export]]
 Rcpp::List autocorrelation_Moran(arma::sp_mat G, arma::mat scores, int normalization_method = 1, int perm_no = 30,
                                  int thread_no = 0) {
-    arma::field<arma::vec> out = ACTIONet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
+    arma::field<arma::vec> out = actionet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
 
     Rcpp::List res;
     res["Moran_I"] = out[0];
@@ -1213,7 +1218,7 @@ Rcpp::List autocorrelation_Moran(arma::sp_mat G, arma::mat scores, int normaliza
 // [[Rcpp::export]]
 Rcpp::List autocorrelation_Moran_full(arma::mat G, arma::mat scores, int normalization_method = 1, int perm_no = 30,
                                       int thread_no = 0) {
-    arma::field<arma::vec> out = ACTIONet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
+    arma::field<arma::vec> out = actionet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
 
     Rcpp::List res;
     res["Moran_I"] = out[0];
@@ -1246,8 +1251,8 @@ arma::mat compute_network_diffusion_approx(arma::sp_mat &G, arma::mat &X0, int t
         return (arma::mat());
     }
 
-    arma::sp_mat P = ACTIONet::normalize_adj(G, norm_type);
-    arma::mat X = ACTIONet::compute_network_diffusion_Chebyshev(P, X0, thread_no, alpha, max_it, res_threshold);
+    arma::sp_mat P = actionet::normalize_adj(G, norm_type);
+    arma::mat X = actionet::compute_network_diffusion_Chebyshev(P, X0, thread_no, alpha, max_it, res_threshold);
 
     return (X);
 }
@@ -1258,7 +1263,7 @@ arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat &G, arma::sp_mat &S
                                                 int expression_normalization_method = 0, int gene_scaling_method = 0,
                                                 double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
 
-    arma::mat stats = ACTIONet::aggregate_genesets_mahalanobis_2archs(G, S, marker_mat, network_normalization_method,
+    arma::mat stats = actionet::aggregate_genesets_mahalanobis_2archs(G, S, marker_mat, network_normalization_method,
                                                                       expression_normalization_method,
                                                                       gene_scaling_method,
                                                                       pre_alpha, post_alpha, thread_no);
@@ -1272,7 +1277,7 @@ arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat &G, arma::sp_mat &S, 
                                               int expression_normalization_method = 0, int gene_scaling_method = 0,
                                               double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
 
-    arma::mat stats = ACTIONet::aggregate_genesets_mahalanobis_2gmm(G, S, marker_mat, network_normalization_method,
+    arma::mat stats = actionet::aggregate_genesets_mahalanobis_2gmm(G, S, marker_mat, network_normalization_method,
                                                                     expression_normalization_method,
                                                                     gene_scaling_method,
                                                                     pre_alpha, post_alpha, thread_no);
@@ -1284,7 +1289,7 @@ arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat &G, arma::sp_mat &S, 
 // TODO: Update and remove. Single reference.
 // [[Rcpp::export]]
 arma::mat normalize_mat(arma::mat &X, int normalization = 0) {
-    arma::mat X_norm = ACTIONet::normalize_mat(X, normalization);
+    arma::mat X_norm = actionet::normalize_mat(X, normalization);
 
     return (X_norm);
 }
@@ -1292,21 +1297,21 @@ arma::mat normalize_mat(arma::mat &X, int normalization = 0) {
 // TODO: Update and remove. Single reference.
 // [[Rcpp::export]]
 arma::sp_mat normalize_spmat(arma::sp_mat &X, int normalization = 0) {
-    arma::sp_mat X_norm = ACTIONet::normalize_mat(X, normalization);
+    arma::sp_mat X_norm = actionet::normalize_mat(X, normalization);
 
     return (X_norm);
 }
 
 // [[Rcpp::export]]
 arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval = true, int seed = 0) {
-    arma::vec res = ACTIONet::xicor(xvec, yvec, compute_pval, seed);
+    arma::vec res = actionet::xicor(xvec, yvec, compute_pval, seed);
 
     return (res);
 }
 
 // [[Rcpp::export]]
 Rcpp::List XICOR(arma::mat &X, arma::mat &Y, bool compute_pval = true, int seed = 0, int thread_no = 0) {
-    arma::field<arma::mat> out = ACTIONet::XICOR(X, Y, compute_pval, seed, thread_no);
+    arma::field<arma::mat> out = actionet::XICOR(X, Y, compute_pval, seed, thread_no);
 
     Rcpp::List res;
     res["XI"] = out(0);
@@ -1318,7 +1323,7 @@ Rcpp::List XICOR(arma::mat &X, arma::mat &Y, bool compute_pval = true, int seed 
 // [[Rcpp::export]]
 Rcpp::List aggregate_genesets(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                               int network_normalization_method = 0, double alpha = 0.85, int thread_no = 0) {
-    arma::field<arma::mat> stats = ACTIONet::aggregate_genesets_vision(G, S, marker_mat, network_normalization_method,
+    arma::field<arma::mat> stats = actionet::aggregate_genesets_vision(G, S, marker_mat, network_normalization_method,
                                                                        alpha, thread_no);
 
     Rcpp::List res;
@@ -1332,7 +1337,7 @@ Rcpp::List aggregate_genesets(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &ma
 
 // [[Rcpp::export]]
 arma::mat assess_label_enrichment(arma::sp_mat &G, arma::mat &M, int thread_no = 0) {
-    arma::mat logPvals = ACTIONet::assess_label_enrichment(G, M, thread_no);
+    arma::mat logPvals = actionet::assess_label_enrichment(G, M, thread_no);
 
     return (logPvals);
 }
@@ -1340,7 +1345,7 @@ arma::mat assess_label_enrichment(arma::sp_mat &G, arma::mat &M, int thread_no =
 // [[Rcpp::export]]
 Rcpp::List
 autocorrelation_Moran_parametric_full(arma::mat G, arma::mat scores, int normalization_method = 4, int thread_no = 0) {
-    arma::field<arma::vec> out = ACTIONet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
+    arma::field<arma::vec> out = actionet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
 
     Rcpp::List res;
     res["stat"] = out[0];
@@ -1355,7 +1360,7 @@ autocorrelation_Moran_parametric_full(arma::mat G, arma::mat scores, int normali
 Rcpp::List
 autocorrelation_Moran_parametric(arma::sp_mat G, arma::mat scores, int normalization_method = 4, int thread_no = 0) {
 
-    arma::field<arma::vec> out = ACTIONet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
+    arma::field<arma::vec> out = actionet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
 
     Rcpp::List res;
     res["stat"] = out[0];

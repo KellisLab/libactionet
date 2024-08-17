@@ -1,12 +1,13 @@
 #include "network/build_network.hpp"
 #include "network/hnsw_imp.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include <set> // CLion says you don't need this, but it's lying.
 
 // Argument options
-// allowed distance metrics for hnswlib
+// valid distance metrics for hnsw
 std::set<std::string> distance_metrics = {"jsd", "l2", "ip"};
 
-// allowed nn approaches
+// valid nearest-neighbor methods
 std::set<std::string> nn_approaches = {"k*nn", "knn"};
 
 // k^{*}-Nearest Neighbors: From Global to Local (NIPS 2016)
