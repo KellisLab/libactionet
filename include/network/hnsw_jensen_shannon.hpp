@@ -1,11 +1,12 @@
-#pragma once
+// Extension to hnsw for computing Jensen-shannon distance
+#ifndef ACTIONET_HNSW_JENSEN_SHANNON_HPP
+#define ACTIONET_HNSW_JENSEN_SHANNON_HPP
 #include <cmath>
-#include "fastlog.h"
-#include "hnswlib.h"
+#include "fastapprox/fastlog.h"
 
 #define LOGLEN 1000000
 
-using std::numeric_limits;
+// using std::numeric_limits;
 
 namespace hnswlib
 {
@@ -91,3 +92,6 @@ namespace hnswlib
   };
 
 } // namespace hnswlib
+
+#endif //ACTIONET_HNSW_JENSEN_SHANNON_HPP
+

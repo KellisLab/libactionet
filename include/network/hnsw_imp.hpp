@@ -1,9 +1,10 @@
+// Header implementation of necessary hnsw structures and functions for `build_network`
 #ifndef ACTIONET_HNSW_IMP_HPP
 #define ACTIONET_HNSW_IMP_HPP
 
 #include "libactionet_config.hpp"
-#include "hnsw/hnswlib.h"
-#include "hnsw/space_js.h"
+#include "hnswlib/hnswlib.h"
+#include "hnsw_jensen_shannon.hpp"
 
 // Structs: private
 struct AddWorker {
