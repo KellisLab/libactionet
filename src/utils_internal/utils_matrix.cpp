@@ -34,8 +34,7 @@ void dsdmult(char transpose, int n_rows, int n_cols, const void *A, const double
     cholmod_sdmult(cha, t, one, zero, &chb, &chc, chol_cp);
 }
 
-cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A,
-                                  cholmod_common *chol_c) {
+cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A, cholmod_common *chol_c) {
     int nrow = A.n_rows, ncol = A.n_cols, nz = A.n_nonzero;
     cholmod_allocate_work(0, std::max(nrow, ncol), 0, chol_c);
     chol_A = cholmod_allocate_sparse(nrow, ncol, nz, 1 /*sorted*/, 1 /*packed*/, 0 /*NOT symmetric*/, CHOLMOD_REAL,
@@ -97,16 +96,15 @@ arma::vec spmat_vec_product(arma::sp_mat &A, arma::vec &x) {
 
 arma::mat spmat_mat_product(arma::sp_mat &A, arma::mat &B) {
     if (A.n_cols != B.n_rows) {
-        // fprintf(stderr, "spmat_sat_product:: Inner dimension of matrices should match\n.");
-        stderr_printf("spmat_sat_product:: Inner dimension of matrices should match\n.");
-
+        stderr_printf("spmat_mat_product:: Inner dimension of matrices should match\n.");
         return (arma::mat());
     }
 
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    cholmod_sparse *chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
+    cholmod_sparse *chol_A;
+    chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
 
     cholmod_dense *chol_B = cholmod_allocate_dense(B.n_rows, B.n_cols, B.n_rows, CHOLMOD_REAL, &chol_c);
     chol_B->x = (void *) B.memptr();
@@ -130,15 +128,15 @@ arma::sp_mat spmat_spmat_product(arma::sp_mat &A, arma::sp_mat &B) {
     arma::sp_mat res;
 
     if (A.n_cols != B.n_rows) {
-        // fprintf(stderr, "spmat_spmat_product:: Inner dimension of matrices should match\n.");
-        stderr_printf("spmat_sat_product:: Inner dimension of matrices should match\n.");
+        stderr_printf("spmat_spmat_product:: Inner dimension of matrices should match\n.");
         return (res);
     }
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    cholmod_sparse *chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
-    cholmod_sparse *chol_B = as_cholmod_sparse(B, chol_B, &chol_c);
+    cholmod_sparse *chol_A, *chol_B;
+    chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
+    chol_B = as_cholmod_sparse(B, chol_B, &chol_c);
 
     cholmod_sparse *chol_res = cholmod_ssmult(chol_A, chol_B, 0, true,
                                               true, &chol_c);
@@ -154,7 +152,6 @@ arma::sp_mat spmat_spmat_product(arma::sp_mat &A, arma::sp_mat &B) {
 
 arma::mat spmat_mat_product_parallel(arma::sp_mat &A, arma::mat &B, int thread_no) {
     if (A.n_cols != B.n_rows) {
-        // fprintf(stderr, "spmat_mat_product_parallel:: Inner dimension of matrices should match\n.");
         stderr_printf("spmat_mat_product_parallel:: Inner dimension of matrices should match\n.");
         return (arma::mat());
     }
@@ -162,7 +159,8 @@ arma::mat spmat_mat_product_parallel(arma::sp_mat &A, arma::mat &B, int thread_n
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    cholmod_sparse *chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
+    cholmod_sparse *chol_A;
+    chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
 
     if (thread_no <= 0) {
         thread_no = SYS_THREADS_DEF;
