@@ -7,7 +7,7 @@
 namespace actionet {
 
     arma::field<arma::mat>
-    orthogonalize_batch_effect(arma::sp_mat &S, arma::field<arma::mat> SVD_results, arma::mat &design);
+    orthogonalize_batch_effect(arma::sp_mat S, arma::field<arma::mat> SVD_results, arma::mat &design);
 
     arma::field<arma::mat>
     orthogonalize_batch_effect(arma::mat &S, arma::field<arma::mat> SVD_results, arma::mat &design);

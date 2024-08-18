@@ -22,7 +22,6 @@ namespace actionet {
 
     arma::field<arma::mat> reduce_kernel(arma::sp_mat &S, int dim, int iter, int seed, int SVD_algorithm,
                                          bool prenormalize, int verbose) {
-        int n = S.n_rows;
 
         if (prenormalize)
             S = arma::normalise(S, 2);
@@ -81,7 +80,6 @@ namespace actionet {
 
     arma::field<arma::mat> reduce_kernel(arma::mat &S, int dim, int iter, int seed, int SVD_algorithm,
                                          bool prenormalize, int verbose) {
-        int n = S.n_rows;
 
         if (prenormalize)
             S = arma::normalise(S, 2);
@@ -138,15 +136,12 @@ namespace actionet {
     }
 
     arma::field<arma::mat> PCA2SVD(arma::sp_mat &S, arma::field<arma::mat> PCA_results) {
-        int n = S.n_rows;
 
         stdout_printf("PCA => SVD (sparse)\n");
         FLUSH;
         arma::mat U = PCA_results(0);
         arma::vec s = PCA_results(1);
         arma::mat V = PCA_results(2);
-
-        int dim = U.n_cols;
 
         arma::mat A = arma::ones(S.n_rows, 1);
         arma::mat B = arma::mat(arma::trans(arma::mean(S, 0)));
@@ -157,15 +152,12 @@ namespace actionet {
     }
 
     arma::field<arma::mat> PCA2SVD(arma::mat &S, arma::field<arma::mat> PCA_results) {
-        int n = S.n_rows;
 
         stdout_printf("PCA => SVD (dense)\n");
         FLUSH;
         arma::mat U = PCA_results(0);
         arma::vec s = PCA_results(1);
         arma::mat V = PCA_results(2);
-
-        int dim = U.n_cols;
 
         arma::mat A = arma::ones(S.n_rows, 1);
         arma::mat B = arma::mat(arma::trans(arma::mean(S, 0)));
@@ -176,15 +168,12 @@ namespace actionet {
     }
 
     arma::field<arma::mat> SVD2PCA(arma::sp_mat &S, arma::field<arma::mat> SVD_results) {
-        int n = S.n_rows;
 
         stdout_printf("SVD => PCA (sparse)\n");
         FLUSH;
         arma::mat U = SVD_results(0);
         arma::vec s = SVD_results(1);
         arma::mat V = SVD_results(2);
-
-        int dim = U.n_cols;
 
         arma::mat A = arma::ones(S.n_rows, 1);
         arma::mat B = -arma::mat(arma::trans(arma::mean(S, 0)));
@@ -195,15 +184,12 @@ namespace actionet {
     }
 
     arma::field<arma::mat> SVD2PCA(arma::mat &S, arma::field<arma::mat> SVD_results) {
-        int n = S.n_rows;
 
         stdout_printf("SVD => PCA (dense)\n");
         FLUSH;
         arma::mat U = SVD_results(0);
         arma::vec s = SVD_results(1);
         arma::mat V = SVD_results(2);
-
-        int dim = U.n_cols;
 
         arma::mat A = arma::ones(S.n_rows, 1);
         arma::mat B = -arma::mat(arma::trans(arma::mean(S, 0)));

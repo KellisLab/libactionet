@@ -10,7 +10,6 @@
 
 arma::sp_mat smoothKNN(arma::sp_mat &D, int max_iter, double epsilon, double bandwidth, double local_connectivity,
                        double min_k_dist_scale, double min_sim, int thread_no) {
-
     int nV = D.n_cols;
     arma::sp_mat G = D;
 
@@ -30,7 +29,7 @@ arma::sp_mat smoothKNN(arma::sp_mat &D, int max_iter, double epsilon, double ban
             // Binary search to find optimal sigma
             double sigma = 1.0;
             double lo = 0.0;
-            double hi = DBL_MAX;
+            auto hi = DBL_MAX;
 
             int j;
             for (j = 0; j < max_iter; j++) {
@@ -72,7 +71,6 @@ arma::sp_mat smoothKNN(arma::sp_mat &D, int max_iter, double epsilon, double ban
 }
 
 namespace actionet {
-
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat &G, arma::mat &initial_position, bool presmooth_network,
                                               const std::string &method, double min_dist, double spread, double gamma,
                                               unsigned int n_epochs, int thread_no, int seed, double learning_rate,
@@ -86,8 +84,8 @@ namespace actionet {
         double b = found.second;
 
         stdout_printf(
-                "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, threads=%d)\n",
-                method.c_str(), a, b, n_epochs, thread_no);
+            "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, threads=%d)\n",
+            method.c_str(), a, b, n_epochs, thread_no);
 
         bool move_other = true;
         std::size_t grain_size = 1;
@@ -111,7 +109,7 @@ namespace actionet {
         // Encode positive edges of the graph
         arma::sp_mat H = G;
         if (presmooth_network == true) {
-            stdout_printf("%\tSmoothing similarities (sim2dist = %d) ... ", sim2dist);
+            stdout_printf("\tSmoothing similarities (sim2dist = %d) ... ", sim2dist);
             if (sim2dist == 1) {
                 H.for_each([](arma::sp_mat::elem_type &val) { val = 1 - val; });
             } else if (sim2dist == 2) {
@@ -139,7 +137,6 @@ namespace actionet {
 
         unsigned int nV = H.n_rows;
         unsigned int nE = H.n_nonzero;
-        unsigned int nD = init_coors.n_rows;
 
         std::vector<unsigned int> positive_head(nE);
         std::vector<unsigned int> positive_tail(nE);
@@ -173,16 +170,14 @@ namespace actionet {
         // Initial coordinates of vertices (0-simplices)
         std::vector<float> head_embedding(init_coors.n_elem);
         arma::fmat sub_coor = arma::conv_to<arma::fmat>::from(init_coors);
-        std::memcpy(head_embedding.data(), sub_coor.memptr(),
-                    sizeof(float) * head_embedding.size());
-        // vector<float> tail_embedding(head_embedding);
+        std::memcpy(head_embedding.data(), sub_coor.memptr(), sizeof(float) * head_embedding.size());
         uwot::Coords coords = uwot::Coords(head_embedding);
 
         UmapFactory umap_factory(
-                move_other, pcg_rand, coords.get_head_embedding(),
-                coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
-                n_epochs, nV, nV, epochs_per_sample, learning_rate, negative_sample_rate,
-                batch, thread_no, grain_size, opt_name, alpha, beta1, beta2, eps, engine);
+            move_other, pcg_rand, coords.get_head_embedding(),
+            coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
+            n_epochs, nV, nV, epochs_per_sample, learning_rate, negative_sample_rate,
+            batch, thread_no, grain_size, opt_name, alpha, beta1, beta2, eps, engine);
 
         stdout_printf("Computing 2D layout ... ");
         FLUSH;
@@ -217,11 +212,11 @@ namespace actionet {
             coords = uwot::Coords(head_embedding);
 
             UmapFactory umap_factory_3D(
-                    move_other, pcg_rand, coords.get_head_embedding(),
-                    coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
-                    n_epochs / 2, nV, nV, epochs_per_sample, learning_rate,
-                    negative_sample_rate, batch, thread_no, grain_size, opt_name, alpha,
-                    beta1, beta2, eps, engine);
+                move_other, pcg_rand, coords.get_head_embedding(),
+                coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
+                n_epochs / 2, nV, nV, epochs_per_sample, learning_rate,
+                negative_sample_rate, batch, thread_no, grain_size, opt_name, alpha,
+                beta1, beta2, eps, engine);
 
             stdout_printf("Computing 3D layout ... ");
             FLUSH;
@@ -279,5 +274,4 @@ namespace actionet {
 
         return (res);
     }
-
 } // namespace actionet

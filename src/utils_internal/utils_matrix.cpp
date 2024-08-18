@@ -45,8 +45,7 @@ cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A,
     double *x_ptr = (double *) chol_A->x;
     int *i_ptr = (int *) chol_A->i;
 
-    A.sync();
-    {
+    A.sync(); {
         for (int k = 0; k < A.n_nonzero; k++) {
             x_ptr[k] = (A.values)[k];
             i_ptr[k] = (A.row_indices)[k];
@@ -178,33 +177,33 @@ arma::mat spmat_mat_product_parallel(arma::sp_mat &A, arma::mat &B, int thread_n
     int slice_size = std::ceil((double) N / thread_no);
 
     mini_thread::parallelFor(
-            0, thread_no, [&](unsigned int k) {
-                int i = k * slice_size;
-                if (i <= (N - 1)) {
-                    int j = (k + 1) * slice_size - 1;
-                    if (j > (N - 1))
-                        j = N - 1;
+        0, thread_no, [&](unsigned int k) {
+            int i = k * slice_size;
+            if (i <= (N - 1)) {
+                int j = (k + 1) * slice_size - 1;
+                if (j > (N - 1))
+                    j = N - 1;
 
-                    arma::mat subB = B.cols(i, j);
+                arma::mat subB = B.cols(i, j);
 
-                    // Magic starts here!
-                    cholmod_dense *chol_B = cholmod_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
-                                                                   &chol_c);
-                    chol_B->x = (void *) subB.memptr();
-                    chol_B->z = (void *) NULL;
+                // Magic starts here!
+                cholmod_dense *chol_B = cholmod_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
+                                                               &chol_c);
+                chol_B->x = (void *) subB.memptr();
+                chol_B->z = (void *) NULL;
 
-                    arma::mat subC = arma::zeros(A.n_rows, subB.n_cols);
-                    cholmod_dense *out = cholmod_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
-                    out->x = (void *) subC.memptr();
-                    out->z = (void *) NULL;
+                arma::mat subC = arma::zeros(A.n_rows, subB.n_cols);
+                cholmod_dense *out = cholmod_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
+                out->x = (void *) subC.memptr();
+                out->z = (void *) NULL;
 
-                    double one[] = {1, 0}, zero[] = {0, 0};
-                    cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
+                double one[] = {1, 0}, zero[] = {0, 0};
+                cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
 
-                    res.cols(i, j) = subC;
-                }
-            },
-            thread_no);
+                res.cols(i, j) = subC;
+            }
+        },
+        thread_no);
 
     cholmod_free_sparse(&chol_A, &chol_c);
     cholmod_finish(&chol_c);
@@ -223,29 +222,29 @@ arma::mat mat_mat_product_parallel(arma::mat &A, arma::mat &B, int thread_no) {
     if (thread_no > N) {
         thread_no = N;
         mini_thread::parallelFor(
-                0, thread_no, [&](size_t k) {
-                    arma::vec u = B.col(k);
-                    arma::vec v = A * u;
-                    res.col(k) = v;
-                },
-                thread_no);
+            0, thread_no, [&](size_t k) {
+                arma::vec u = B.col(k);
+                arma::vec v = A * u;
+                res.col(k) = v;
+            },
+            thread_no);
     } else {
         int slice_size = std::ceil((double) N / thread_no);
 
         mini_thread::parallelFor(
-                0, thread_no, [&](size_t k) {
-                    int i = k * slice_size;
-                    if (i <= (N - 1)) {
-                        int j = (k + 1) * slice_size - 1;
-                        if (j > (N - 1))
-                            j = N - 1;
+            0, thread_no, [&](size_t k) {
+                int i = k * slice_size;
+                if (i <= (N - 1)) {
+                    int j = (k + 1) * slice_size - 1;
+                    if (j > (N - 1))
+                        j = N - 1;
 
-                        arma::mat subB = B.cols(i, j);
-                        arma::mat subC = A * subB;
-                        res.cols(i, j) = subC;
-                    }
-                },
-                thread_no);
+                    arma::mat subB = B.cols(i, j);
+                    arma::mat subC = A * subB;
+                    res.cols(i, j) = subC;
+                }
+            },
+            thread_no);
     }
 
     return (res);

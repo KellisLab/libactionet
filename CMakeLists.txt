@@ -40,10 +40,7 @@ add_compile_options(-w)
 
 ## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-add_library(actionet
-        STATIC ${SOURCES}
-#                r_wrapper.cpp # Test Rcpp wrappers
-)
+add_library(actionet STATIC ${SOURCES})
 
 ## Check for BLAS. Platform dependent.
 if (APPLE)
@@ -62,7 +59,7 @@ if (APPLE)
             PRIVATE "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers"
     )
 elseif (UNIX)
-    #    set(BLA_VENDOR Apple)
+    #    set(BLA_VENDOR something)
     find_package(BLAS REQUIRED)
 endif ()
 

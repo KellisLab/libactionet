@@ -1,13 +1,12 @@
 #include "network/network_measures.hpp"
 
 namespace actionet {
-
     arma::uvec compute_core_number(arma::sp_mat &G) {
-        unsigned int i, j = 0;
+        unsigned int i, j;
         unsigned int no_of_nodes = G.n_rows;
 
         // Construct node neighborhood sets
-        std::vector<std::vector<unsigned int>> N(no_of_nodes);
+        std::vector<std::vector<unsigned int> > N(no_of_nodes);
         arma::sp_mat::const_iterator it = G.begin();
         arma::sp_mat::const_iterator it_end = G.end();
 
@@ -79,11 +78,11 @@ namespace actionet {
     }
 
     arma::uvec compute_induced_core_number(arma::sp_mat &G, arma::uvec mask) {
-        unsigned int i, j = 0;
+        unsigned int i, j;
         unsigned int no_of_nodes = G.n_rows;
 
         // Construct node neighborhood sets
-        std::vector<std::vector<unsigned int>> N(no_of_nodes);
+        std::vector<std::vector<unsigned int> > N(no_of_nodes);
         arma::sp_mat::const_iterator it = G.begin();
         arma::sp_mat::const_iterator it_end = G.end();
 
@@ -157,7 +156,6 @@ namespace actionet {
     }
 
     arma::vec compute_archetype_core_centrality(arma::sp_mat &G, arma::uvec sample_assignments) {
-
         arma::vec conn = arma::zeros(G.n_cols);
 
         for (int i = 0; i <= arma::max(sample_assignments); i++) {
@@ -178,5 +176,4 @@ namespace actionet {
 
         return (conn);
     }
-
-}  // namespace actionet
+} // namespace actionet

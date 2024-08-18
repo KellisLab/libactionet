@@ -5,10 +5,7 @@
 #include <cholmod.h>
 
 namespace actionet {
-
     arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B) {
-        int n = A.n_rows;
-
         arma::mat U = SVD_results(0);
         arma::vec s = SVD_results(1);
         arma::mat V = SVD_results(2);
@@ -67,7 +64,7 @@ namespace actionet {
         dim = std::min(dim, std::min(m, n) - 1);
 
         if (verbose) {
-            stdout_printf("IRLB (sparse) -- A: %d x %d\n", A.n_rows, A.n_cols);
+            stdout_printf("IRLB (sparse) -- A: %d x %d\n", (int) A.n_rows, (int) A.n_cols);
             FLUSH;
         }
 
@@ -109,7 +106,7 @@ namespace actionet {
         double *x;
         int jj, kk;
         int converged;
-        int info, j, k = 0;
+        int j, k = 0;
         int iter = 0;
         double Smax = 0;
 
@@ -122,7 +119,6 @@ namespace actionet {
         arma::vec v, y;
 
         // Initialize first column of V
-        // pcg32 engine(seed);
         std::mt19937_64 engine(seed);
 
         double ss;
@@ -168,7 +164,8 @@ namespace actionet {
                     R_F = cblas_dnrm2(n, F, inc);
                     R = 1.0 / R_F;
 
-                    if (R_F < eps) { // near invariant subspace
+                    if (R_F < eps) {
+                        // near invariant subspace
 
                         StdNorm(F, n, engine);
                         ss = 0;
@@ -230,7 +227,6 @@ namespace actionet {
             if (R_F < eps)
                 R_F = 0;
 
-            Smax = 0;
             for (jj = 0; jj < j; ++jj) {
                 if (BS[jj] > Smax)
                     Smax = BS[jj];
@@ -311,7 +307,6 @@ namespace actionet {
     }
 
     arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int verbose) {
-
         double eps = 3e-13;
         double tol = 1e-05, svtol = 1e-5;
 
@@ -324,7 +319,7 @@ namespace actionet {
         int lwork = 7 * work * (1 + work);
 
         if (verbose) {
-            stdout_printf("IRLB (dense) -- A: %d x %d\n", A.n_rows, A.n_cols);
+            stdout_printf("IRLB (dense) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
             FLUSH;
         }
 
@@ -354,7 +349,7 @@ namespace actionet {
         double *x;
         int jj, kk;
         int converged;
-        int info, j, k = 0;
+        int j, k = 0;
         int iter = 0;
         double Smax = 0;
 
@@ -367,7 +362,6 @@ namespace actionet {
         arma::vec v, y;
 
         // Initialize first column of V
-        // pcg32 engine(seed);
         std::mt19937_64 engine(seed);
 
         StdNorm(V, n, engine);
@@ -411,7 +405,8 @@ namespace actionet {
                     R_F = cblas_dnrm2(n, F, inc);
                     R = 1.0 / R_F;
 
-                    if (R_F < eps) { // near invariant subspace
+                    if (R_F < eps) {
+                        // near invariant subspace
                         StdNorm(F, n, engine);
 
                         orthog(V, F, T, n, j + 1, 1);
@@ -467,7 +462,6 @@ namespace actionet {
             if (R_F < eps)
                 R_F = 0;
 
-            Smax = 0;
             for (jj = 0; jj < j; ++jj) {
                 if (BS[jj] > Smax)
                     Smax = BS[jj];
@@ -538,14 +532,13 @@ namespace actionet {
 
         if (converged != 1) {
             stderr_printf(
-                    "IRLB did NOT converge! Try increasing the number of iterations\n");
+                "IRLB did NOT converge! Try increasing the number of iterations\n");
         }
 
         return (orient_SVD(out));
     }
 
     arma::field<arma::mat> FengSVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose) {
-
         int s = 5;
         int m = A.n_rows;
         int n = A.n_cols;
@@ -553,7 +546,7 @@ namespace actionet {
         dim = std::min(dim, std::min(m, n) + s - 1);
 
         if (verbose) {
-            stdout_printf("Feng (sparse) -- A: %d x %d\n", A.n_rows, A.n_cols);
+            stdout_printf("Feng (sparse) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
             FLUSH;
         }
 
@@ -644,7 +637,6 @@ namespace actionet {
     }
 
     arma::field<arma::mat> FengSVD(arma::mat &A, int dim, int iters, int seed, int verbose) {
-
         int s = 5;
         int m = A.n_rows;
         int n = A.n_cols;
@@ -652,7 +644,7 @@ namespace actionet {
         dim = std::min(dim, std::min(m, n) + s - 1);
 
         if (verbose) {
-            stdout_printf("Feng (dense) -- A: %d x %d\n", A.n_rows, A.n_cols);
+            stdout_printf("Feng (dense) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
             FLUSH;
         }
 
@@ -748,7 +740,6 @@ namespace actionet {
     }
 
     arma::field<arma::mat> HalkoSVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose) {
-
         arma::field<arma::mat> results(3);
 
         int m = A.n_rows;
@@ -763,7 +754,7 @@ namespace actionet {
         arma::mat U, V, X;
 
         if (verbose) {
-            stdout_printf("Halko (sparse) -- A: %d x %d\n", A.n_rows, A.n_cols);
+            stdout_printf("Halko (sparse) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
             FLUSH;
         }
 
@@ -840,7 +831,6 @@ namespace actionet {
     }
 
     arma::field<arma::mat> HalkoSVD(arma::mat &A, int dim, int iters, int seed, int verbose) {
-
         arma::field<arma::mat> results(3);
 
         int m = A.n_rows;
@@ -855,7 +845,7 @@ namespace actionet {
         arma::mat U, V, X;
 
         if (verbose) {
-            stdout_printf("Halko (dense) -- A: %d x %d\n", A.n_rows, A.n_cols);
+            stdout_printf("Halko (dense) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
             FLUSH;
         }
 
@@ -931,5 +921,4 @@ namespace actionet {
 
         return (orient_SVD(results));
     }
-
 } // namespace actionet

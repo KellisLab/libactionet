@@ -1,17 +1,6 @@
 #include "utils_internal/utils_active_set.hpp"
 #include <cassert>
 
-// void activeSet_arma_ptr(double* M_ptr, int m, int n, double* b_ptr,
-//                         double* x_ptr) {
-//   arma::mat M = arma::mat(M_ptr, m, n, false);
-//   arma::vec b = arma::vec(b_ptr, m, false);
-
-//   arma::vec x = activeSet_arma(M, b);
-//   std::memcpy(x_ptr, x.memptr(), x.n_elem * sizeof(double));
-
-//   return;
-// }
-
 // min(|| AX - B ||) s.t. simplex constraint
 
 /* **************************

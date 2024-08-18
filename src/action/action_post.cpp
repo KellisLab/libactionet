@@ -34,8 +34,7 @@ namespace actionet {
         }
         int total_archs = H_stacked.n_rows;
 
-        stdout_printf("done (%d archetypes)\n", C_stacked.n_cols);
-        FLUSH;
+        stdout_printf("done (%d archetypes)\n", (int)C_stacked.n_cols);
         stdout_printf("Pruning archetypes:\n");
         FLUSH;
 
@@ -70,12 +69,11 @@ namespace actionet {
         arma::vec transitivity_z = zscore(transitivity);
         arma::uvec nonspecific_idx = arma::find(transitivity_z < min_specificity_z_threshold);
         pruned(nonspecific_idx).ones();
-        stdout_printf("\tNon-specific archetypes: %d\n", nonspecific_idx.n_elem);
+        stdout_printf("\tNon-specific archetypes: %d\n", (int)nonspecific_idx.n_elem);
         FLUSH;
 
-        // Find landmark cells, i.e., closest cells to each multi-level archetype (its
-        // projection on to the cell space, ish) stdout_printf("Removing unreliable
-        // archetypes (based on the landmark cells) ... ");
+        // Find landmark cells
+        // i.e., closest cells to each multi-level archetype (its projection on to the cell space)
         double epsilon = 1e-3;
         int bad_archs = 0;
         arma::vec landmark_cells = -arma::ones(total_archs);
@@ -104,7 +102,7 @@ namespace actionet {
         arma::uvec trivial_idx = arma::find(arma::sum(C_bin) < min_cells);
         pruned(trivial_idx).ones();
 
-        stdout_printf("\tTrivial archetypes: %d\n", trivial_idx.n_elem);
+        stdout_printf("\tTrivial archetypes: %d\n", (int)trivial_idx.n_elem);
         FLUSH;
 
         arma::uvec selected_archs = arma::find(pruned == 0);
@@ -123,7 +121,7 @@ namespace actionet {
             thread_no = SYS_THREADS_DEF;
         }
 
-        stdout_printf("Unifying %d archetypes (%d threads):\n", C_stacked.n_cols, thread_no);
+        stdout_printf("Unifying %d archetypes (%d threads):\n", (int)C_stacked.n_cols, thread_no);
         FLUSH;
 
         unification_results output;
@@ -133,15 +131,15 @@ namespace actionet {
         arma::mat H_arch = spmat_mat_product_parallel(H_stacked_sp, C_stacked, thread_no);
         H_arch.replace(arma::datum::nan, 0); // replace each NaN with 0
 
-        SPA_results SPA_out = run_SPA(H_arch, H_arch.n_cols);
+        SPA_results SPA_out = run_SPA(H_arch, (int)H_arch.n_cols);
         arma::uvec candidates = SPA_out.selected_columns;
         arma::vec scores = SPA_out.column_norms;
         double x1 = arma::sum(scores);
         double x2 = arma::sum(arma::square(scores));
-        double arch_no = std::round((x1 * x1) / x2);
+        int arch_no = std::round((x1 * x1) / x2);
         candidates = candidates(arma::span(0, arch_no - 1));
 
-        stdout_printf("# unified archetypes: %d\n", (int) arch_no);
+        stdout_printf("# unified archetypes: %d\n", arch_no);
         FLUSH;
 
         output.selected_archetypes = candidates;

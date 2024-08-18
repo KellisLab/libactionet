@@ -35,8 +35,6 @@ void convtests(int Bsz, int n, double tol, double svtol, double Smax, double *sv
         *k = 1;
 
     *converged = 0;
-
-    return;
 }
 
 void gram_schmidt(arma::mat &A) {

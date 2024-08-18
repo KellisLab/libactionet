@@ -12,8 +12,6 @@ namespace actionet {
             thread_no = SYS_THREADS_DEF;
         }
 
-        int feature_no = S_r.n_rows;
-
         stdout_printf("Running ACTION (%d threads):", thread_no);
         FLUSH;
 
@@ -47,9 +45,7 @@ namespace actionet {
 
                     arma::mat W = X_r.cols(trace.selected_cols[kk]);
 
-                    arma::field<arma::mat> AA_res;
-
-                    AA_res = run_AA(X_r, W, max_it, min_delta);
+                    arma::field<arma::mat> AA_res = run_AA(X_r, W, max_it, min_delta);
                     trace.C[kk] = AA_res(0);
                     trace.H[kk] = AA_res(1);
                     current_k++;

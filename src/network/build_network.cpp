@@ -187,9 +187,7 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
         H = arma::normalise(H, 1, 0);
     }
 
-    double kappa = 5.0;
     int sample_no = H.n_cols;
-    int kNN = k;
 
     hnswlib::HierarchicalNSW<float> *appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
     appr_alg->setEf(ef);

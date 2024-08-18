@@ -44,7 +44,6 @@ namespace actionet {
             double b = arma::mean(arma::square(m));
             double v = (ai - 2 * b + (ci * ci)) / (CU * CU);
 
-            double xi_sd = std::sqrt(v / n);
             double z = std::sqrt(n) * xi / std::sqrt(v);
 
             out(1) = z;
@@ -56,13 +55,8 @@ namespace actionet {
     }
 
     arma::field<arma::mat> XICOR(arma::mat &X, arma::mat &Y, bool compute_pval, int seed, int thread_no) {
+
         arma::field<arma::mat> out(2);
-
-        // arma_rng::set_seed(seed);
-        // uvec perm = randperm(X.n_rows);
-
-        // X = X.rows(perm);
-        // Y = Y.rows(perm);
 
         bool swapped = false;
         int n1 = X.n_cols, n2 = Y.n_cols;
@@ -82,9 +76,9 @@ namespace actionet {
                     arma::vec x = X.col(i);
                     for (int j = 0; j < Y.n_cols; j++) {
                         arma::vec y = Y.col(j);
-                        arma::vec out = xicor(x, y, compute_pval, seed);
-                        XI(i, j) = out(0);
-                        XI_Z(i, j) = out(1);
+                        arma::vec xi_out = xicor(x, y, compute_pval, seed);
+                        XI(i, j) = xi_out(0);
+                        XI_Z(i, j) = xi_out(1);
                     }
                 },
                 thread_no);

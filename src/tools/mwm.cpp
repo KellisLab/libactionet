@@ -188,27 +188,12 @@ namespace actionet {
 
     arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold, double v_threshold) {
 
-        int pair_no = std::min(u.n_elem, v.n_elem);
-
         // Rank-1 matching for each paired-archetypes
         arma::vec u_sorted = arma::sort(u, "descend");
         arma::uvec u_sorted_idx = arma::sort_index(u, "descend");
 
         arma::vec v_sorted = arma::sort(v, "descend");
         arma::uvec v_sorted_idx = arma::sort_index(v, "descend");
-
-        /*
-                // To randomly break ties
-                u_sorted = u_sorted + stddev(u)*randn(size(u_sorted))/30;
-                u_sorted.transform( [](double val) { return (val < 0? 0:val); } );
-
-                v_sorted = v_sorted + stddev(v)*randn(size(v_sorted))/30;
-                v_sorted.transform( [](double val) { return (val < 0? 0:val); } );
-        */
-
-        // To reduce false positves by aligning only high-quality pairs
-        // vec uv_prod = sqrt(u_sorted(span(0, pair_no-1)) % v_sorted(span(0,
-        // pair_no-1)));
 
         int top_rank = std::min(arma::sum(u > u_threshold),
                                 arma::sum(v > v_threshold));  // sum(uv_prod > threshold);

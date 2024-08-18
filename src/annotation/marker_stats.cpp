@@ -20,7 +20,6 @@ arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization) {
 }
 
 namespace actionet {
-
     arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat, double alpha,
                                              int max_it, int thread_no, bool ignore_baseline_expression) {
         arma::mat stats = arma::zeros(S.n_cols, marker_mat.n_cols);
@@ -50,7 +49,7 @@ namespace actionet {
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
             arma::mat imputed_expression = compute_network_diffusion_fast(
-                    G, raw_expression, thread_no, alpha, max_it);
+                G, raw_expression, thread_no, alpha, max_it);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
                 arma::vec ppr = imputed_expression.col(j);
@@ -69,7 +68,6 @@ namespace actionet {
     arma::mat aggregate_genesets(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                  int network_normalization_method, int expression_normalization_method,
                                  int gene_scaling_method, double diffusion_alpha, int thread_no) {
-
         if (S.n_rows != marker_mat.n_rows) {
             stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
             FLUSH;
@@ -174,7 +172,7 @@ namespace actionet {
         if (alpha != 0) {
             stdout_printf("Smoothing geneset scores ... ");
             marker_stats_smoothed = actionet::compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no,
-                                                                                  alpha);
+                alpha);
             stdout_printf("done\n");
             FLUSH;
         }
@@ -218,53 +216,50 @@ namespace actionet {
 
         arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
         mini_thread::parallelFor(
-                0, marker_mat.n_cols, [&](int j) {
-
-                    arma::vec w = arma::vec(marker_mat.col(j));
-                    arma::uvec nnz_idx = find(w != 0);
-                    if (nnz_idx.n_elem != 0) {
-
-                        arma::mat T_scaled = T.rows(nnz_idx);
-                        //0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
-                        if (gene_scaling_method != 0) {
-                            T_scaled = normalize_scores(T_scaled, gene_scaling_method, thread_no);
-                        }
-                        T_scaled = T_scaled.each_col() % w(nnz_idx);
-
-                        arma::uvec idx(2);
-                        arma::rowvec ss = arma::sum(T_scaled);
-                        idx(0) = arma::index_min(ss);
-                        idx(1) = arma::index_max(ss);
-
-                        arma::mat W0 = T_scaled.cols(idx);
-
-                        arma::field<arma::mat> AA_res = run_AA(T_scaled, W0, 100);
-                        arma::mat C = AA_res(0);
-                        arma::mat H = AA_res(1);
-                        arma::mat W = T_scaled * C;
-                        arma::uword selected_arch0 = arma::index_min(sum(W));
-                        arma::uword selected_arch1 = arma::index_max(sum(W));
-                        arma::vec mu = W.col(selected_arch0);
-
-                        double p = T_scaled.n_rows;
-                        double n = T_scaled.n_cols;
-
-                        arma::mat Delta = T_scaled.each_col() - mu;
-
-                        arma::mat sigma = Delta * arma::trans(Delta) / (n - 1);
-                        arma::mat sigma_inv = arma::pinv(sigma);
-
-                        for (int k = 0; k < n; k++) {
-                            arma::vec delta = Delta.col(k);
-                            double dist = dot(delta, sigma_inv * delta);
-                            double z = (dist - p) / sqrt(2 * p);
-                            z = z < 0 ? 0 : z;
-
-                            marker_stats(k, j) = arma::sign(arma::mean(delta)) * z;
-                        }
+            0, marker_mat.n_cols, [&](int j) {
+                arma::vec w = arma::vec(marker_mat.col(j));
+                arma::uvec nnz_idx = find(w != 0);
+                if (nnz_idx.n_elem != 0) {
+                    arma::mat T_scaled = T.rows(nnz_idx);
+                    //0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
+                    if (gene_scaling_method != 0) {
+                        T_scaled = normalize_scores(T_scaled, gene_scaling_method, thread_no);
                     }
-                },
-                thread_no);
+                    T_scaled = T_scaled.each_col() % w(nnz_idx);
+
+                    arma::uvec idx(2);
+                    arma::rowvec ss = arma::sum(T_scaled);
+                    idx(0) = arma::index_min(ss);
+                    idx(1) = arma::index_max(ss);
+
+                    arma::mat W0 = T_scaled.cols(idx);
+
+                    arma::field<arma::mat> AA_res = run_AA(T_scaled, W0, 100);
+                    arma::mat C = AA_res(0);
+                    arma::mat H = AA_res(1);
+                    arma::mat W = T_scaled * C;
+                    arma::uword selected_arch0 = arma::index_min(sum(W));
+                    arma::vec mu = W.col(selected_arch0);
+
+                    double p = T_scaled.n_rows;
+                    double n = T_scaled.n_cols;
+
+                    arma::mat Delta = T_scaled.each_col() - mu;
+
+                    arma::mat sigma = Delta * arma::trans(Delta) / (n - 1);
+                    arma::mat sigma_inv = arma::pinv(sigma);
+
+                    for (int k = 0; k < n; k++) {
+                        arma::vec delta = Delta.col(k);
+                        double dist = dot(delta, sigma_inv * delta);
+                        double z = (dist - p) / sqrt(2 * p);
+                        z = z < 0 ? 0 : z;
+
+                        marker_stats(k, j) = arma::sign(arma::mean(delta)) * z;
+                    }
+                }
+            },
+            thread_no);
 
         marker_stats.replace(arma::datum::nan, 0);
 
@@ -311,50 +306,43 @@ namespace actionet {
         }
 
         arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
-        mini_thread::parallelFor(
-                0, marker_mat.n_cols, [&](int j) {
+        mini_thread::parallelFor(0, marker_mat.n_cols, [&](int j) {
+                                     arma::vec w = arma::vec(marker_mat.col(j));
+                                     arma::uvec nnz_idx = arma::find(w != 0);
+                                     if (nnz_idx.n_elem != 0) {
+                                         arma::mat T_scaled = T.rows(nnz_idx);
+                                         //0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
+                                         if (gene_scaling_method != 0) {
+                                             T_scaled = normalize_scores(T_scaled, gene_scaling_method, thread_no);
+                                         }
+                                         T_scaled = T_scaled.each_col() % w(nnz_idx);
 
-                    arma::vec w = arma::vec(marker_mat.col(j));
-                    arma::uvec nnz_idx = arma::find(w != 0);
-                    if (nnz_idx.n_elem != 0) {
+                                         arma::gmm_full model;
 
-                        arma::mat T_scaled = T.rows(nnz_idx);
-                        //0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
-                        if (gene_scaling_method != 0) {
-                            T_scaled = normalize_scores(T_scaled, gene_scaling_method, thread_no);
-                        }
-                        T_scaled = T_scaled.each_col() % w(nnz_idx);
+                                         arma::mat W = model.means;
 
-                        arma::gmm_full model;
+                                         arma::uword selected_arch0 = arma::index_min(arma::sum(W));
+                                         arma::vec mu = W.col(selected_arch0);
 
-                        bool status = model.learn(T_scaled, 2, arma::maha_dist,
-                                                  arma::static_spread, 10, 10, 1e-10, false);
-                        arma::mat W = model.means;
+                                         double p = T_scaled.n_rows;
+                                         double n = T_scaled.n_cols;
 
-                        arma::uword selected_arch0 = arma::index_min(arma::sum(W));
-                        arma::uword selected_arch1 = arma::index_max(arma::sum(W));
-                        arma::vec mu = W.col(selected_arch0);
+                                         arma::mat Delta = T_scaled.each_col() - mu;
 
-                        double p = T_scaled.n_rows;
-                        double n = T_scaled.n_cols;
+                                         arma::mat sigma = Delta * arma::trans(Delta) / (n - 1);
+                                         arma::mat sigma_inv = arma::pinv(sigma);
 
-                        arma::mat Delta = T_scaled.each_col() - mu;
+                                         for (int k = 0; k < n; k++) {
+                                             arma::vec delta = Delta.col(k);
+                                             double dist = arma::dot(delta, sigma_inv * delta);
+                                             double z = (dist - p) / std::sqrt(2 * p);
+                                             z = z < 0 ? 0 : z;
 
-                        //mat sigma = cov(trans(T_scaled));
-                        arma::mat sigma = Delta * arma::trans(Delta) / (n - 1);
-                        arma::mat sigma_inv = arma::pinv(sigma);
-
-                        for (int k = 0; k < n; k++) {
-                            arma::vec delta = Delta.col(k);
-                            double dist = arma::dot(delta, sigma_inv * delta);
-                            double z = (dist - p) / std::sqrt(2 * p);
-                            z = z < 0 ? 0 : z;
-
-                            marker_stats(k, j) = arma::sign(arma::mean(delta)) * z;
-                        }
-                    }
-                },
-                thread_no);
+                                             marker_stats(k, j) = arma::sign(arma::mean(delta)) * z;
+                                         }
+                                     }
+                                 },
+                                 thread_no);
 
         marker_stats.replace(arma::datum::nan, 0);
 
@@ -369,5 +357,4 @@ namespace actionet {
 
         return (marker_stats_smoothed);
     }
-
 } // namespace actionet

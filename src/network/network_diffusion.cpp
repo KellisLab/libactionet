@@ -5,7 +5,6 @@
 #include <cholmod.h>
 
 namespace actionet {
-
     arma::mat compute_network_diffusion(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha, int max_it) {
         thread_no = std::min(thread_no, (int) X0.n_cols);
 
@@ -24,12 +23,11 @@ namespace actionet {
         arma::rowvec zt = trans(z);
 
         for (int it = 0; it < max_it; it++) {
-
             mini_thread::parallelFor(
-                    0, X.n_cols, [&](size_t i) {
-                        X.col(i) = P * X.col(i) + X0.col(i) * (zt * X.col(i));
-                    },
-                    thread_no);
+                0, X.n_cols, [&](size_t i) {
+                    X.col(i) = P * X.col(i) + X0.col(i) * (zt * X.col(i));
+                },
+                thread_no);
         }
 
         return (X);
@@ -37,7 +35,6 @@ namespace actionet {
 
     arma::mat compute_network_diffusion_fast(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha,
                                              int max_it) {
-
         thread_no = std::min(thread_no, (int) X0.n_cols);
 
         int n = G.n_rows;
@@ -80,11 +77,11 @@ namespace actionet {
         for (int it = 0; it < max_it; it++) {
             arma::mat Y = X;
             mini_thread::parallelFor(
-                    0, X.n_cols, [&](size_t i) {
-                        dsdmult('n', n, n, AS, X.colptr(i), Y.colptr(i), &chol_c);
-                        X.col(i) = Y.col(i) + X0.col(i) * (zt * X.col(i));
-                    },
-                    thread_no);
+                0, X.n_cols, [&](size_t i) {
+                    dsdmult('n', n, n, AS, X.colptr(i), Y.colptr(i), &chol_c);
+                    X.col(i) = Y.col(i) + X0.col(i) * (zt * X.col(i));
+                },
+                thread_no);
         }
 
         // Free up matrices
@@ -99,7 +96,7 @@ namespace actionet {
     arma::mat compute_network_diffusion_Chebyshev(arma::sp_mat &P, arma::mat &X0, int thread_no, double alpha,
                                                   int max_it, double res_threshold) {
         if (alpha == 1) {
-//            fprintf(stderr, "alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
+            //            fprintf(stderr, "alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
             stderr_printf("alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
             FLUSH;
             return (X0);
@@ -112,7 +109,7 @@ namespace actionet {
 
         arma::mat mPPreviousScore = X0; // zeros(size(X0));
         arma::mat mPreviousScore = (1 - alpha) * spmat_mat_product_parallel(P, mPPreviousScore, thread_no) + alpha * X0;
-        double mu = 0.0, muPPrevious = 1.0, muPrevious = 1 / (1 - alpha);
+        double muPPrevious = 1.0, muPrevious = 1 / (1 - alpha);
 
         if (max_it <= 0)
             return (mPreviousScore);
@@ -144,5 +141,4 @@ namespace actionet {
 
         return (mScore);
     }
-
 } // namespace actionet
