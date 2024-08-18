@@ -53,8 +53,8 @@ getApproximationAlgo(std::string distance_metric, arma::mat H, double M, double 
     } else {
         space = new hnswlib::InnerProductSpace(dim); // innerproduct
     }
-    hnswlib::HierarchicalNSW<float> *appr_alg = new hnswlib::HierarchicalNSW<float>(space, max_elements, M,
-                                                                                    ef_construction);
+    hnswlib::HierarchicalNSW<float> *appr_alg =
+            new hnswlib::HierarchicalNSW<float>(space, max_elements, M, ef_construction);
     return (appr_alg);
 }
 

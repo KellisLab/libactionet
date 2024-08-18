@@ -6,8 +6,6 @@
 
 #define LOGLEN 1000000
 
-// using std::numeric_limits;
-
 namespace hnswlib
 {
 
@@ -40,16 +38,9 @@ namespace hnswlib
       float lg_q = log_vec[q_idx];
       float lg_m = log_vec[m_idx];
 
-      /*
-          float lg_p = fasterlog2(p);
-          float lg_q = fasterlog2(q);
-          float lg_m = fasterlog2(m);
-      */
       float plgp = (p == 0 ? 0 : p * lg_p);
       float qlgq = (q == 0 ? 0 : q * lg_q);
       float mlgm = (m == 0 ? 0 : m * lg_m);
-
-      // printf("%d- %f %f %f -> %f %f %f\n", i, p, q, m, plgp, qlgq, mlgm);
 
       sum1 += (plgp) + (qlgq);
       sum2 += mlgm;
@@ -77,7 +68,7 @@ namespace hnswlib
       params[0] = 0;
       for (int i = 1; i <= LOGLEN; i++)
       {
-        params[i] = (float)fasterlog2((float)i / LOGLEN);
+        params[i] = fasterlog2((float)i / LOGLEN);
       }
       params[LOGLEN + 1] = dim;
     }

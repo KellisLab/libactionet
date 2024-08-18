@@ -80,7 +80,10 @@ if (TEST_BUILD_R)
             OUTPUT_VARIABLE R_HOME
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    target_sources(actionet PRIVATE r_wrapper.cpp) # Test Rcpp wrappers
+    target_sources(actionet
+            PRIVATE r_wrapper.cpp
+            PRIVATE r_wrapper_exp.cpp
+    ) # Test Rcpp wrappers
 endif ()
 
 if (LIBACTIONET_BUILD_R)

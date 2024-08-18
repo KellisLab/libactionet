@@ -1,7 +1,6 @@
 ## Primary
 * pybind 11 wrappers
 * Condense redundant SVD functions
-* Update hnswlib
 * Automatically link R BLAS/LAPACK
 * Eliminate external cholmod dependency
 * Split colorspace from generate_layout.
@@ -31,10 +30,11 @@
     * Moved to "network_construction_ext"
 * Replace and remove "ParallelFor" in build_network.
 * Update StatsLib
-* Fix duplicate PCG headers (run diff)?
+* Fix duplicate PCG headers
 * Fix threading (RcppThread, mini_thread, inline, OpenMP)
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
 * Fix namespace usage in headers
 * Consistent header guards
 * Rcpp wrappers
+* Update hnswlib
