@@ -14,7 +14,9 @@
   * Figure out cblas dependency
 * zscore is multithreaded???
 * Remove OpenMP dependency?
-  * May not even be there anymore
+  * May not even be there anymor
+* Make interruptable from interface
+  * Macros?
   
 ## Done
 * Automate link SuiteSparse on unix/macos

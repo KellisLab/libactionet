@@ -15,8 +15,8 @@ void orthog(double *X, double *Y, double *T, int xm, int xn, int yn) {
 // Convergence test
 void convtests(int Bsz, int n, double tol, double svtol, double Smax, double *svratio, double *residuals, int *k,
                int *converged, double S) {
-    int j, Len_res = 0;
-    for (j = 0; j < Bsz; j++) {
+    int Len_res = 0;
+    for (int j = 0; j < Bsz; j++) {
         if ((std::fabs(residuals[j]) < tol * Smax) && (svratio[j] < svtol))
             Len_res++;
     }
@@ -69,7 +69,7 @@ arma::mat randNorm(int l, int m, int seed) {
     return R;
 }
 
-arma::field<arma::mat> eigSVD(arma::mat A) {
+arma::field<arma::mat> eigSVD(const arma::mat &A) {
     int n = A.n_cols;
     arma::mat B = arma::trans(A) * A;
 

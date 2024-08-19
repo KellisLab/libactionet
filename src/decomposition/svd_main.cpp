@@ -6,73 +6,61 @@
 #include "utils_internal/utils_decomp.hpp"
 
 // overloaded wrapper of arma::svd_econ to accept arma::mat and arma::sp_mat.
-bool svd_econ_arma(arma::mat &U, arma::vec &s, arma::mat &V, const arma::sp_mat &S) {
-    return arma::svd_econ(U, s, V, arma::mat(S));
+// Currently unused because they are very slow
+bool svd_econ_arma(arma::mat &U, arma::vec &s, arma::mat &V, const arma::sp_mat &A) {
+    return arma::svd_econ(U, s, V, arma::mat(A));
 }
 
-bool svd_econ_arma(arma::mat &U, arma::vec &s, arma::mat &V, const arma::mat &S) {
-    return arma::svd_econ(U, s, V, S);
+bool svd_econ_arma(arma::mat &U, arma::vec &s, arma::mat &V, const arma::mat &A) {
+    return arma::svd_econ(U, s, V, A);
 }
 
 namespace actionet {
     template<typename T>
-    arma::field<arma::mat> runSVD(T &S, int k, int iter, int seed, int algorithm, int verbose) {
+    arma::field<arma::mat> runSVD(T &A, int k, int max_it, int seed, int algorithm, int verbose) {
+        // char status_msg[100];
+        // snprintf(status_msg, 100, "Performing SVD input matrix using");
 
-        char status_msg[100];
-        snprintf(status_msg, 100, "Performing SVD input matrix using");
-        stdout_printf(status_msg);
+        if (max_it < 1) {
+            switch (algorithm) {
+                case 1:
+                case 2: max_it = 5;
+                    break;
+                default: max_it = 1000;
+                    break;
+            }
+        }
+
+        if (verbose) {
+            stdout_printf("Performing SVD input matrix using ");
+        }
 
         arma::vec s;
         arma::mat U, V;
         arma::field<arma::mat> SVD_results(3);
 
         switch (algorithm) {
-            case FULL_SVD:
-                if (verbose) {
-                    stdout_printf("%s %s", status_msg, "Armadillo");
-                    FLUSH;
-                };
-                svd_econ_arma(U, s, V, S);
-                SVD_results(0) = U;
-                SVD_results(1) = s;
-                SVD_results(2) = V;
-                break;
             case IRLB_ALG:
-                if (verbose) {
-                    stdout_printf("%s %s", status_msg, "IRLBA");
-                    FLUSH;
-                };
-                SVD_results = IRLB_SVD(S, k, iter, seed, verbose);
+                SVD_results = IRLB_SVD(A, k, max_it, seed, verbose);
                 break;
             case HALKO_ALG:
-                if (verbose) {
-                    stdout_printf("%s %s", status_msg, "Halko");
-                    FLUSH;
-                };
-                SVD_results = HalkoSVD(S, k, iter, seed, verbose);
+                SVD_results = HalkoSVD(A, k, max_it, seed, verbose);
                 break;
             case FENG_ALG:
-                if (verbose) {
-                    stdout_printf("%s %s", status_msg, "Fend");
-                    FLUSH;
-                };
-                SVD_results = FengSVD(S, k, iter, seed, verbose);
+                SVD_results = FengSVD(A, k, max_it, seed, verbose);
                 break;
             default:
-                stderr_printf("Invalid SVD algorithm chosen (%d)\n", algorithm);
-                stdout_printf("%s %s", status_msg, "Halko");
-                FLUSH;
-                SVD_results = IRLB_SVD(S, k, iter, seed, verbose);
+                SVD_results = IRLB_SVD(A, k, max_it, seed, verbose);
                 break;
         }
 
         return SVD_results;
     }
 
-    template arma::field<arma::mat> runSVD<arma::mat>(arma::mat &S, int k, int iter, int seed, int algorithm,
+    template arma::field<arma::mat> runSVD<arma::mat>(arma::mat &A, int k, int max_it, int seed, int algorithm,
                                                       int verbose);
 
-    template arma::field<arma::mat> runSVD<arma::sp_mat>(arma::sp_mat &S, int k, int iter, int seed, int algorithm,
+    template arma::field<arma::mat> runSVD<arma::sp_mat>(arma::sp_mat &A, int k, int max_it, int seed, int algorithm,
                                                          int verbose);
 
     arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B) {

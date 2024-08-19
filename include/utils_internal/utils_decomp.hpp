@@ -13,7 +13,7 @@ void gram_schmidt(arma::mat &A);
 
 arma::mat randNorm(int l, int m, int seed);
 
-arma::field <arma::mat> eigSVD(arma::mat A);
+arma::field<arma::mat> eigSVD(const arma::mat &A);
 
 arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res);
 

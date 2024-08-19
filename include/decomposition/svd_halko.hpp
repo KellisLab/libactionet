@@ -7,8 +7,7 @@
 
 #include "libactionet_config.hpp"
 
-arma::field<arma::mat> HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1);
-
-arma::field<arma::mat> HalkoSVD(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1);
+template<typename T>
+arma::field<arma::mat> HalkoSVD(T &A, int dim, int iters = 5, int seed = 0, int verbose = 1);
 
 #endif //ACTIONET_SVD_HALKO_HPP

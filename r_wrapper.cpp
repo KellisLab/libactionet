@@ -32,188 +32,6 @@ void set_seed(double seed) {
     set_seed_r(std::floor(std::fabs(seed)));
 }
 
-////' Computes SVD decomposition
-////'
-////' This is direct implementation of the randomized SVD algorithm:
-////' From: IRLBA R Package
-////'
-////' @param A Input matrix ("sparseMatrix")
-////' @param dim Dimension of SVD decomposition
-////' @param iters Number of iterations (default=5)
-////' @param seed Random seed (default=0)
-////'
-////' @return A named list with U, sigma, and V components
-////'
-////' @examples
-////' A = randn(100, 20)
-////' SVD.out = IRLBA_SVD(A, dim = 2)
-////' U = SVD.out$U
-//// [[Rcpp::export]]
-//Rcpp::List IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
-//    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
-//
-//    Rcpp::List res;
-//
-//    res["u"] = SVD_out(0);
-//    res["d"] = SVD_out(1);
-//    res["v"] = SVD_out(2);
-//
-//    return res;
-//}
-//
-////' Computes SVD decomposition
-////'
-////' This is direct implementation of the randomized SVD algorithm:
-////' From: IRLBA R Package
-////'
-////' @param A Input matrix ("sparseMatrix")
-////' @param dim Dimension of SVD decomposition
-////' @param iters Number of iterations (default=5)
-////' @param seed Random seed (default=0)
-////'
-////' @return A named list with U, sigma, and V components
-////'
-////' @examples
-////' A = randn(100, 20)
-////' SVD.out = IRLBA_SVD_full(A, dim = 2)
-////' U = SVD.out$U
-//// [[Rcpp::export]]
-//Rcpp::List IRLB_SVD_full(arma::mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
-//    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
-//
-//    Rcpp::List res;
-//
-//    res["u"] = SVD_out(0);
-//    res["d"] = SVD_out(1);
-//    res["v"] = SVD_out(2);
-//
-//    return res;
-//}
-//
-////' Computes SVD decomposition
-////'
-////' This is direct implementation of the randomized SVD algorithm for sparse
-////' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
-////' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
-////' Beijing, China, Nov. 2018.
-////'
-////' @param A Input matrix ("sparseMatrix")
-////' @param dim Dimension of SVD decomposition
-////' @param iters Number of iterations (default=5)
-////' @param seed Random seed (default=0)
-////'
-////' @return A named list with U, sigma, and V components
-////'
-////' @examples
-////' A = randn(100, 20)
-////' SVD.out = FengSVD(A, dim = 2)
-////' U = SVD.out$U
-//// [[Rcpp::export]]
-//Rcpp::List FengSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-//    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
-//
-//    Rcpp::List res;
-//
-//    res["u"] = SVD_out(0);
-//    res["d"] = SVD_out(1);
-//    res["v"] = SVD_out(2);
-//
-//    return res;
-//}
-//
-////' Computes SVD decomposition
-////'
-////' This is direct implementation of the randomized SVD algorithm for sparse
-////' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
-////' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
-////' Beijing, China, Nov. 2018.
-////'
-////' @param A Input matrix ("matrix")
-////' @param dim Dimension of SVD decomposition
-////' @param iters Number of iterations (default=5)
-////' @param seed Random seed (default=0)
-////'
-////' @return A named list with U, sigma, and V components
-////'
-////' @examples
-////' A = randn(100, 20)
-////' SVD.out = FengSVD(A, dim = 2)
-////' U = SVD.out$U
-//// [[Rcpp::export]]
-//Rcpp::List FengSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-//    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
-//
-//    Rcpp::List res;
-//
-//    res["u"] = SVD_out(0);
-//    res["d"] = SVD_out(1);
-//    res["v"] = SVD_out(2);
-//
-//    return res;
-//}
-//
-////' Computes SVD decomposition
-////'
-////' This is direct implementation of the randomized SVD algorithm:
-////' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
-////' randomness: Probabilistic algorithms for constructing approximate matrix
-////' decompositions. Siam Review, 53(2):217-288, 2011.
-////'
-////' @param A Input matrix ("sparseMatrix")
-////' @param dim Dimension of SVD decomposition
-////' @param iters Number of iterations (default=5)
-////' @param seed Random seed (default=0)
-////'
-////' @return A named list with U, sigma, and V components
-////'
-////' @examples
-////' A = randn(100, 20)
-////' SVD.out = HalkoSVD(A, dim = 2)
-////' U = SVD.out$U
-//// [[Rcpp::export]]
-//Rcpp::List HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-//    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
-//
-//    Rcpp::List res;
-//
-//    res["u"] = SVD_out(0);
-//    res["d"] = SVD_out(1);
-//    res["v"] = SVD_out(2);
-//
-//    return res;
-//}
-//
-////' Computes SVD decomposition
-////'
-////' This is direct implementation of the randomized SVD algorithm:
-////' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
-////' randomness: Probabilistic algorithms for constructing approximate matrix
-////' decompositions. Siam Review, 53(2):217-288, 2011.
-////'
-////' @param A Input matrix ("matrix")
-////' @param dim Dimension of SVD decomposition
-////' @param iters Number of iterations (default=5)
-////' @param seed Random seed (default=0)
-////'
-////' @return A named list with U, sigma, and V components
-////'
-////' @examples
-////' A = randn(100, 20)
-////' SVD.out = HalkoSVD(A, dim = 2)
-////' U = SVD.out$U
-//// [[Rcpp::export]]
-//Rcpp::List HalkoSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-//    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
-//
-//    Rcpp::List res;
-//
-//    res["u"] = SVD_out(0);
-//    res["d"] = SVD_out(1);
-//    res["v"] = SVD_out(2);
-//
-//    return res;
-//}
-
 //' Computes reduced kernel matrix for a given (single-cell) profile
 //'
 //' @param S Input matrix ("sparseMatrix")
@@ -239,7 +57,6 @@ void set_seed(double seed) {
 // [[Rcpp::export]]
 Rcpp::List reduce_kernel(arma::sp_mat &S, int reduced_dim = 50, int iter = 5, int seed = 0,
                          int SVD_algorithm = 0, bool prenormalize = false, int verbose = 1) {
-
     arma::field<arma::mat> reduction =
             actionet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
 
@@ -290,7 +107,6 @@ Rcpp::List reduce_kernel(arma::sp_mat &S, int reduced_dim = 50, int iter = 5, in
 // [[Rcpp::export]]
 Rcpp::List reduce_kernel_full(arma::mat &S, int reduced_dim = 50, int iter = 5, int seed = 0, int SVD_algorithm = 0,
                               bool prenormalize = false, int verbose = 1) {
-
     arma::field<arma::mat> reduction =
             actionet::reduce_kernel(S, reduced_dim, iter, seed, SVD_algorithm, prenormalize, verbose);
 
@@ -375,7 +191,6 @@ Rcpp::List run_SPA(arma::mat &A, int k) {
 // [[Rcpp::export]]
 Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int thread_no = 0, int max_it = 100,
                       double min_delta = 1e-6, int normalization = 1) {
-
     actionet::ACTION_results trace =
             actionet::run_ACTION(S_r, k_min, k_max, thread_no, max_it, min_delta, normalization);
 
@@ -410,7 +225,6 @@ Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int thread_
 //' run_AA(S_r, W0) ' H = AA.out$H ' cell.assignments = apply(H, 2, which.max)
 // [[Rcpp::export]]
 Rcpp::List run_AA(arma::mat &A, arma::mat &W0, int max_it = 100, double min_delta = 1e-6) {
-
     arma::field<arma::mat> res = actionet::run_AA(A, W0, max_it, min_delta);
 
     Rcpp::List out;
@@ -495,7 +309,6 @@ Rcpp::List prune_archetypes(const Rcpp::List &C_trace, const Rcpp::List &H_trace
 Rcpp::List unify_archetypes(arma::mat &S_r, arma::mat C_stacked, arma::mat H_stacked, double backbone_density = 0.5,
                             double resolution = 1.0, int min_cluster_size = 3, int thread_no = 0,
                             int normalization = 0) {
-
     actionet::unification_results results =
             actionet::unify_archetypes(S_r, C_stacked, H_stacked, backbone_density,
                                        resolution, min_cluster_size, thread_no, normalization);
@@ -538,7 +351,6 @@ Rcpp::List unify_archetypes(arma::mat &S_r, arma::mat C_stacked, arma::mat H_sta
 // [[Rcpp::export]]
 arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
                           double density = 1.0, int thread_no = 0, bool mutual_edges_only = true, int k = 10) {
-
     // TODO: Add as options in interface
     double M = 16, ef_construction = 200, ef = 50;
     arma::sp_mat G = actionet::buildNetwork(H, algorithm, distance_metric, density, thread_no, M, ef_construction, ef,
@@ -570,7 +382,6 @@ Rcpp::List layoutNetwork(arma::sp_mat &G, arma::mat &initial_position, const std
                          bool presmooth_network = false, double min_dist = 1, double spread = 1, double gamma = 1.0,
                          unsigned int n_epochs = 500, int thread_no = 0, int seed = 0, double learning_rate = 1.0,
                          int sim2dist = 2) {
-
     arma::field<arma::mat> res =
             actionet::layoutNetwork_xmap(G, initial_position, presmooth_network, method, min_dist, spread, gamma,
                                          n_epochs, thread_no, seed, learning_rate, sim2dist);
@@ -592,7 +403,6 @@ Rcpp::List layoutNetwork(arma::sp_mat &G, arma::mat &initial_position, const std
 //'
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowsums(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
-
     arma::mat pb = actionet::compute_grouped_rowsums(S, sample_assignments);
 
     return pb;
@@ -607,7 +417,6 @@ arma::mat compute_grouped_rowsums(arma::sp_mat &S, arma::Col<unsigned long long>
 //'
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowsums_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
-
     arma::mat pb = actionet::compute_grouped_rowsums(S, sample_assignments);
 
     return pb;
@@ -622,7 +431,6 @@ arma::mat compute_grouped_rowsums_full(arma::mat &S, arma::Col<unsigned long lon
 //'
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowmeans(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
-
     arma::mat pb = actionet::compute_grouped_rowmeans(S, sample_assignments);
 
     return pb;
@@ -637,7 +445,6 @@ arma::mat compute_grouped_rowmeans(arma::sp_mat &S, arma::Col<unsigned long long
 //'
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowmeans_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
-
     arma::mat pb = actionet::compute_grouped_rowmeans(S, sample_assignments);
 
     return pb;
@@ -645,7 +452,6 @@ arma::mat compute_grouped_rowmeans_full(arma::mat &S, arma::Col<unsigned long lo
 
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowvars(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
-
     arma::mat pb = actionet::compute_grouped_rowvars(S, sample_assignments);
 
     return pb;
@@ -653,7 +459,6 @@ arma::mat compute_grouped_rowvars(arma::sp_mat &S, arma::Col<unsigned long long>
 
 // [[Rcpp::export]]
 arma::mat compute_grouped_rowvars_full(arma::mat &S, arma::Col<unsigned long long> sample_assignments) {
-
     arma::mat pb = actionet::compute_grouped_rowvars(S, sample_assignments);
 
     return pb;
@@ -991,7 +796,6 @@ Rcpp::List perturbedSVD(arma::mat u, arma::vec d, arma::mat v, arma::mat A, arma
 // [[Rcpp::export]]
 Rcpp::List orthogonalize_batch_effect(arma::sp_mat &S, arma::mat &old_S_r, arma::mat &old_V, arma::mat &old_A,
                                       arma::mat &old_B, arma::vec &old_sigma, arma::mat &design) {
-
     arma::field<arma::mat> SVD_results(5);
 
     SVD_results(0) = old_V;
@@ -1158,7 +962,6 @@ Rcpp::NumericVector run_LPA(arma::sp_mat &G, arma::vec labels, double lambda = 1
 arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
                                          double alpha = 0.85, int max_it = 5, int thread_no = 0,
                                          bool ignore_baseline_expression = false) {
-
     arma::mat stats = actionet::compute_marker_aggregate_stats(G, S, marker_mat, alpha, max_it, thread_no,
                                                                ignore_baseline_expression);
 
@@ -1261,7 +1064,6 @@ arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat &G, arma::sp_mat &S
                                                 int network_normalization_method = 0,
                                                 int expression_normalization_method = 0, int gene_scaling_method = 0,
                                                 double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
-
     arma::mat stats = actionet::aggregate_genesets_mahalanobis_2archs(G, S, marker_mat, network_normalization_method,
                                                                       expression_normalization_method,
                                                                       gene_scaling_method,
@@ -1275,7 +1077,6 @@ arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat &G, arma::sp_mat &S, 
                                               int network_normalization_method = 0,
                                               int expression_normalization_method = 0, int gene_scaling_method = 0,
                                               double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
-
     arma::mat stats = actionet::aggregate_genesets_mahalanobis_2gmm(G, S, marker_mat, network_normalization_method,
                                                                     expression_normalization_method,
                                                                     gene_scaling_method,
@@ -1358,7 +1159,6 @@ autocorrelation_Moran_parametric_full(arma::mat G, arma::mat scores, int normali
 // [[Rcpp::export]]
 Rcpp::List
 autocorrelation_Moran_parametric(arma::sp_mat G, arma::mat scores, int normalization_method = 4, int thread_no = 0) {
-
     arma::field<arma::vec> out = actionet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
 
     Rcpp::List res;
