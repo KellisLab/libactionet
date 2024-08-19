@@ -5,7 +5,6 @@
 #define LIBACTIONET_BUILD_R
 // Header `libactionet.hpp` configures package and includes `RcppArmadillo.h`. It must precede `Rcpp.h`.
 #include "libactionet.hpp"
-#include "Rcpp.h"
 // [[Rcpp::depends(RcppArmadillo)]]
 
 // TODO: Necessary?
