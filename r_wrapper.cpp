@@ -32,187 +32,187 @@ void set_seed(double seed) {
     set_seed_r(std::floor(std::fabs(seed)));
 }
 
-//' Computes SVD decomposition
-//'
-//' This is direct implementation of the randomized SVD algorithm:
-//' From: IRLBA R Package
-//'
-//' @param A Input matrix ("sparseMatrix")
-//' @param dim Dimension of SVD decomposition
-//' @param iters Number of iterations (default=5)
-//' @param seed Random seed (default=0)
-//'
-//' @return A named list with U, sigma, and V components
-//'
-//' @examples
-//' A = randn(100, 20)
-//' SVD.out = IRLBA_SVD(A, dim = 2)
-//' U = SVD.out$U
-// [[Rcpp::export]]
-Rcpp::List IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
-
-    Rcpp::List res;
-
-    res["u"] = SVD_out(0);
-    res["d"] = SVD_out(1);
-    res["v"] = SVD_out(2);
-
-    return res;
-}
-
-//' Computes SVD decomposition
-//'
-//' This is direct implementation of the randomized SVD algorithm:
-//' From: IRLBA R Package
-//'
-//' @param A Input matrix ("sparseMatrix")
-//' @param dim Dimension of SVD decomposition
-//' @param iters Number of iterations (default=5)
-//' @param seed Random seed (default=0)
-//'
-//' @return A named list with U, sigma, and V components
-//'
-//' @examples
-//' A = randn(100, 20)
-//' SVD.out = IRLBA_SVD_full(A, dim = 2)
-//' U = SVD.out$U
-// [[Rcpp::export]]
-Rcpp::List IRLB_SVD_full(arma::mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
-
-    Rcpp::List res;
-
-    res["u"] = SVD_out(0);
-    res["d"] = SVD_out(1);
-    res["v"] = SVD_out(2);
-
-    return res;
-}
-
-//' Computes SVD decomposition
-//'
-//' This is direct implementation of the randomized SVD algorithm for sparse
-//' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
-//' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
-//' Beijing, China, Nov. 2018.
-//'
-//' @param A Input matrix ("sparseMatrix")
-//' @param dim Dimension of SVD decomposition
-//' @param iters Number of iterations (default=5)
-//' @param seed Random seed (default=0)
-//'
-//' @return A named list with U, sigma, and V components
-//'
-//' @examples
-//' A = randn(100, 20)
-//' SVD.out = FengSVD(A, dim = 2)
-//' U = SVD.out$U
-// [[Rcpp::export]]
-Rcpp::List FengSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
-
-    Rcpp::List res;
-
-    res["u"] = SVD_out(0);
-    res["d"] = SVD_out(1);
-    res["v"] = SVD_out(2);
-
-    return res;
-}
-
-//' Computes SVD decomposition
-//'
-//' This is direct implementation of the randomized SVD algorithm for sparse
-//' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
-//' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
-//' Beijing, China, Nov. 2018.
-//'
-//' @param A Input matrix ("matrix")
-//' @param dim Dimension of SVD decomposition
-//' @param iters Number of iterations (default=5)
-//' @param seed Random seed (default=0)
-//'
-//' @return A named list with U, sigma, and V components
-//'
-//' @examples
-//' A = randn(100, 20)
-//' SVD.out = FengSVD(A, dim = 2)
-//' U = SVD.out$U
-// [[Rcpp::export]]
-Rcpp::List FengSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
-
-    Rcpp::List res;
-
-    res["u"] = SVD_out(0);
-    res["d"] = SVD_out(1);
-    res["v"] = SVD_out(2);
-
-    return res;
-}
-
-//' Computes SVD decomposition
-//'
-//' This is direct implementation of the randomized SVD algorithm:
-//' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
-//' randomness: Probabilistic algorithms for constructing approximate matrix
-//' decompositions. Siam Review, 53(2):217-288, 2011.
-//'
-//' @param A Input matrix ("sparseMatrix")
-//' @param dim Dimension of SVD decomposition
-//' @param iters Number of iterations (default=5)
-//' @param seed Random seed (default=0)
-//'
-//' @return A named list with U, sigma, and V components
-//'
-//' @examples
-//' A = randn(100, 20)
-//' SVD.out = HalkoSVD(A, dim = 2)
-//' U = SVD.out$U
-// [[Rcpp::export]]
-Rcpp::List HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
-
-    Rcpp::List res;
-
-    res["u"] = SVD_out(0);
-    res["d"] = SVD_out(1);
-    res["v"] = SVD_out(2);
-
-    return res;
-}
-
-//' Computes SVD decomposition
-//'
-//' This is direct implementation of the randomized SVD algorithm:
-//' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
-//' randomness: Probabilistic algorithms for constructing approximate matrix
-//' decompositions. Siam Review, 53(2):217-288, 2011.
-//'
-//' @param A Input matrix ("matrix")
-//' @param dim Dimension of SVD decomposition
-//' @param iters Number of iterations (default=5)
-//' @param seed Random seed (default=0)
-//'
-//' @return A named list with U, sigma, and V components
-//'
-//' @examples
-//' A = randn(100, 20)
-//' SVD.out = HalkoSVD(A, dim = 2)
-//' U = SVD.out$U
-// [[Rcpp::export]]
-Rcpp::List HalkoSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
-    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
-
-    Rcpp::List res;
-
-    res["u"] = SVD_out(0);
-    res["d"] = SVD_out(1);
-    res["v"] = SVD_out(2);
-
-    return res;
-}
+////' Computes SVD decomposition
+////'
+////' This is direct implementation of the randomized SVD algorithm:
+////' From: IRLBA R Package
+////'
+////' @param A Input matrix ("sparseMatrix")
+////' @param dim Dimension of SVD decomposition
+////' @param iters Number of iterations (default=5)
+////' @param seed Random seed (default=0)
+////'
+////' @return A named list with U, sigma, and V components
+////'
+////' @examples
+////' A = randn(100, 20)
+////' SVD.out = IRLBA_SVD(A, dim = 2)
+////' U = SVD.out$U
+//// [[Rcpp::export]]
+//Rcpp::List IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
+//    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
+//
+//    Rcpp::List res;
+//
+//    res["u"] = SVD_out(0);
+//    res["d"] = SVD_out(1);
+//    res["v"] = SVD_out(2);
+//
+//    return res;
+//}
+//
+////' Computes SVD decomposition
+////'
+////' This is direct implementation of the randomized SVD algorithm:
+////' From: IRLBA R Package
+////'
+////' @param A Input matrix ("sparseMatrix")
+////' @param dim Dimension of SVD decomposition
+////' @param iters Number of iterations (default=5)
+////' @param seed Random seed (default=0)
+////'
+////' @return A named list with U, sigma, and V components
+////'
+////' @examples
+////' A = randn(100, 20)
+////' SVD.out = IRLBA_SVD_full(A, dim = 2)
+////' U = SVD.out$U
+//// [[Rcpp::export]]
+//Rcpp::List IRLB_SVD_full(arma::mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1) {
+//    arma::field<arma::mat> SVD_out = actionet::IRLB_SVD(A, dim, iters, seed, verbose);
+//
+//    Rcpp::List res;
+//
+//    res["u"] = SVD_out(0);
+//    res["d"] = SVD_out(1);
+//    res["v"] = SVD_out(2);
+//
+//    return res;
+//}
+//
+////' Computes SVD decomposition
+////'
+////' This is direct implementation of the randomized SVD algorithm for sparse
+////' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
+////' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
+////' Beijing, China, Nov. 2018.
+////'
+////' @param A Input matrix ("sparseMatrix")
+////' @param dim Dimension of SVD decomposition
+////' @param iters Number of iterations (default=5)
+////' @param seed Random seed (default=0)
+////'
+////' @return A named list with U, sigma, and V components
+////'
+////' @examples
+////' A = randn(100, 20)
+////' SVD.out = FengSVD(A, dim = 2)
+////' U = SVD.out$U
+//// [[Rcpp::export]]
+//Rcpp::List FengSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+//    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
+//
+//    Rcpp::List res;
+//
+//    res["u"] = SVD_out(0);
+//    res["d"] = SVD_out(1);
+//    res["v"] = SVD_out(2);
+//
+//    return res;
+//}
+//
+////' Computes SVD decomposition
+////'
+////' This is direct implementation of the randomized SVD algorithm for sparse
+////' matrices: ' Xu Feng, Yuyang Xie, and Yaohang Li, "Fast Randomzied SVD for
+////' Sparse Data," in Proc. the 10th Asian Conference on Machine Learning (ACML),
+////' Beijing, China, Nov. 2018.
+////'
+////' @param A Input matrix ("matrix")
+////' @param dim Dimension of SVD decomposition
+////' @param iters Number of iterations (default=5)
+////' @param seed Random seed (default=0)
+////'
+////' @return A named list with U, sigma, and V components
+////'
+////' @examples
+////' A = randn(100, 20)
+////' SVD.out = FengSVD(A, dim = 2)
+////' U = SVD.out$U
+//// [[Rcpp::export]]
+//Rcpp::List FengSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+//    arma::field<arma::mat> SVD_out = actionet::FengSVD(A, dim, iters, seed, verbose);
+//
+//    Rcpp::List res;
+//
+//    res["u"] = SVD_out(0);
+//    res["d"] = SVD_out(1);
+//    res["v"] = SVD_out(2);
+//
+//    return res;
+//}
+//
+////' Computes SVD decomposition
+////'
+////' This is direct implementation of the randomized SVD algorithm:
+////' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
+////' randomness: Probabilistic algorithms for constructing approximate matrix
+////' decompositions. Siam Review, 53(2):217-288, 2011.
+////'
+////' @param A Input matrix ("sparseMatrix")
+////' @param dim Dimension of SVD decomposition
+////' @param iters Number of iterations (default=5)
+////' @param seed Random seed (default=0)
+////'
+////' @return A named list with U, sigma, and V components
+////'
+////' @examples
+////' A = randn(100, 20)
+////' SVD.out = HalkoSVD(A, dim = 2)
+////' U = SVD.out$U
+//// [[Rcpp::export]]
+//Rcpp::List HalkoSVD(arma::sp_mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+//    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
+//
+//    Rcpp::List res;
+//
+//    res["u"] = SVD_out(0);
+//    res["d"] = SVD_out(1);
+//    res["v"] = SVD_out(2);
+//
+//    return res;
+//}
+//
+////' Computes SVD decomposition
+////'
+////' This is direct implementation of the randomized SVD algorithm:
+////' From: N Halko, P. G Martinsson, and J. A Tropp. Finding structure with
+////' randomness: Probabilistic algorithms for constructing approximate matrix
+////' decompositions. Siam Review, 53(2):217-288, 2011.
+////'
+////' @param A Input matrix ("matrix")
+////' @param dim Dimension of SVD decomposition
+////' @param iters Number of iterations (default=5)
+////' @param seed Random seed (default=0)
+////'
+////' @return A named list with U, sigma, and V components
+////'
+////' @examples
+////' A = randn(100, 20)
+////' SVD.out = HalkoSVD(A, dim = 2)
+////' U = SVD.out$U
+//// [[Rcpp::export]]
+//Rcpp::List HalkoSVD_full(arma::mat &A, int dim, int iters = 5, int seed = 0, int verbose = 1) {
+//    arma::field<arma::mat> SVD_out = actionet::HalkoSVD(A, dim, iters, seed, verbose);
+//
+//    Rcpp::List res;
+//
+//    res["u"] = SVD_out(0);
+//    res["d"] = SVD_out(1);
+//    res["v"] = SVD_out(2);
+//
+//    return res;
+//}
 
 //' Computes reduced kernel matrix for a given (single-cell) profile
 //'

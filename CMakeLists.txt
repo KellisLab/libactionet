@@ -82,7 +82,7 @@ if (TEST_BUILD_R)
     )
     target_sources(actionet
             PRIVATE r_wrapper.cpp
-            PRIVATE r_wrapper_exp.cpp
+            PRIVATE r_wrapper_experimental.cpp
     ) # Test Rcpp wrappers
 endif ()
 

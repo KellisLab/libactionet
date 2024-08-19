@@ -9,10 +9,12 @@ arma::field<arma::mat> deflate_reduction(arma::field<arma::mat> SVD_results, arm
 
 // Exported
 namespace actionet {
-    // Entry point to compute a reduced kernel matrix
-    template<typename T>
-    arma::field<arma::mat> reduce_kernel(T &S, int dim, int iter, int seed, int SVD_algorithm, bool prenormalize,
-                                         int verbose);
+    // Entry-points to compute a reduced kernel matrix
+    arma::field<arma::mat> reduce_kernel(arma::sp_mat &S, int dim, int iter = 5, int seed = 0,
+                                         int SVD_algorithm = HALKO_ALG, bool prenormalize = false, int verbose = 1);
+
+    arma::field<arma::mat> reduce_kernel(arma::mat &S, int dim, int iter = 5, int seed = 0,
+                                         int SVD_algorithm = HALKO_ALG, bool prenormalize = false, int verbose = 1);
 
     // Convert between PCA and SVD results
     arma::field<arma::mat> PCA2SVD(arma::sp_mat &S, arma::field<arma::mat> PCA_results);

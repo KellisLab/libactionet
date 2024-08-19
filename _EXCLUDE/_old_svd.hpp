@@ -11,6 +11,7 @@ namespace actionet {
 
     arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1);
 
+
     arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters = 1000, int seed = 0, int verbose = 1);
 
     //******************************************************************************************************************

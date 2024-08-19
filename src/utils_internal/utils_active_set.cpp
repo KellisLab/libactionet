@@ -36,7 +36,7 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsi
     arma::mat MRed(m, L);
     double *pr_MRed = MRed.memptr();
     arma::mat GRed(L, L);
-    double *pr_GRed = GRed.memptr();
+    // double *pr_GRed = GRed.memptr();
     arma::mat GRedinv(L, L);
     double *pr_GRedinv = GRedinv.memptr();
 
@@ -164,8 +164,7 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsi
                 // GRedinv (restricted) += USi * UAiB*UAiB
                 // replace cblas_syr(CblasColMajor,CblasUpper,na,USi, pr_UAiB, 1,
                 // pr_GRedinv, L);
-                cblas_dger(CblasColMajor, na, na, USi, pr_UAiB, 1, pr_UAiB, 1,
-                           pr_GRedinv, L);
+                cblas_dger(CblasColMajor, na, na, USi, pr_UAiB, 1, pr_UAiB, 1, pr_GRedinv, L);
                 // copy -UAiB*USi, -UAiB.double*USi, USi to GRedinv
                 cblas_dcopy(na, pr_UAiB, 1, pr_GRedinv + na * L, 1);
                 cblas_dscal(na, -USi, pr_GRedinv + na * L, 1);
@@ -179,7 +178,7 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsi
         } else {
             // P != 0, can advance
             int indexMin = -1;
-            double alphaMin = double(1.0);
+            auto alphaMin = double(1.0);
             for (int i = 0; i < na; ++i) {
                 if (PRed[i] < 0 && -xRed[i] / PRed[i] < alphaMin) {
                     indexMin = i;
@@ -239,10 +238,8 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsi
                     cblas_dcopy(na + 1, pr_GRedinv + i + 1, L, pr_GRedinv + i, L);
 
                 // BLAS GRedinv = (GRedinv translated) - UB*UB.double*UCi
-                // replace cblas_syr(CblasColMajor,CblasUpper,na,-UCi, pr_UB, 1,
-                // pr_GRedinv, L);
-                cblas_dger(CblasColMajor, na, na, -UCi, pr_UB, 1, pr_UB, 1, pr_GRedinv,
-                           L);
+                // replace cblas_syr(CblasColMajor,CblasUpper,na,-UCi, pr_UB, 1, pr_GRedinv, L);
+                cblas_dger(CblasColMajor, na, na, -UCi, pr_UB, 1, pr_UB, 1, pr_GRedinv, L);
             }
         }
     }
@@ -421,7 +418,7 @@ arma::vec activeSetS_arma(arma::mat &M, arma::vec &b, arma::mat &G, double lambd
         } else {
             // P != 0, can advance
             int indexMin = -1;
-            double alphaMin = double(1.0);
+            auto alphaMin = double(1.0);
             for (int i = 0; i < na; ++i) {
                 if (PRed[i] < 0 && -xRed[i] / PRed[i] < alphaMin) {
                     indexMin = i;

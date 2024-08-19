@@ -33,7 +33,7 @@ namespace actionet {
         int current_k = 0;
         char status_msg[50];
 
-        sprintf(status_msg, "Iterating from k = %d ... %d:", k_min, k_max);
+        snprintf(status_msg, 50, "Iterating from k = %d ... %d:", k_min, k_max);
         stderr_printf("\n\t%s %d/%d finished", status_msg, current_k, (k_max - k_min + 1));
         FLUSH;
 
