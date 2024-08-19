@@ -1,21 +1,5 @@
-#include "action/reduction.hpp"
+#include "action/reduce_kernel.hpp"
 #include "decomposition/svd_main.hpp"
-
-arma::field<arma::mat> deflate_reduction(arma::field<arma::mat> SVD_results, arma::mat &A, arma::mat &B) {
-    stdout_printf("\tDeflating reduction ... ");
-    FLUSH;
-
-    arma::vec mu_A = arma::vec(arma::trans(arma::mean(A, 0)));
-    arma::vec mu = B * mu_A;
-
-    A = arma::join_rows(arma::ones(A.n_rows), A);
-    B = arma::join_rows(-mu, B);
-    stdout_printf("done\n");
-    FLUSH;
-
-    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(std::move(SVD_results), A, B);
-    return (perturbed_SVD);
-}
 
 namespace actionet {
     template<typename T>

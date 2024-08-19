@@ -7,15 +7,15 @@
 // Exported modules: Symbols defined in these headers are accessible through
 // the `action` namespace and visible to interfaces.
 
-// decomposition: Algorithms for singular value decomposition (SVD)
+// decomposition: Algorithms for matrix decomposition
 #include "decomposition/svd_main.hpp"
+#include "decomposition/orthogonalization.hpp"
 
 // action: Main archetypal analysis for cell type identification (ACTION) module
 #include "action/aa.hpp"
 #include "action/action_decomp.hpp"
 #include "action/action_post.hpp"
-#include "action/orthogonalization.hpp"
-#include "action/reduction.hpp"
+#include "action/reduce_kernel.hpp"
 #include "action/simplex_regression.hpp"
 #include "action/spa.hpp"
 

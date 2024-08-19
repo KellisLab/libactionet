@@ -11,9 +11,11 @@ namespace actionet {
         if (max_it < 1) {
             switch (algorithm) {
                 case 1:
-                case 2: max_it = 5;
+                case 2:
+                    max_it = 5;
                     break;
-                default: max_it = 1000;
+                default:
+                    max_it = 1000;
                     break;
             }
         }
