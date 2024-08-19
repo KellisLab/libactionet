@@ -660,3 +660,96 @@ arma::mat aggregate_genesets_weighted_enrichment(arma::sp_mat &G, arma::sp_mat &
     return (stats);
 }
 
+Rcpp::List PCA2SVD(arma::sp_mat &S, arma::mat x, arma::vec sdev, arma::mat rotation) {
+    arma::field<arma::mat> PCA_results(3);
+    arma::vec d = sdev * std::sqrt(x.n_rows - 1);
+
+    arma::mat U = x;
+    for (int i = 0; i < U.n_cols; i++) {
+        U.col(i) /= d(i);
+    }
+    PCA_results(0) = U;
+    PCA_results(1) = d;
+    PCA_results(2) = rotation;
+
+    arma::field<arma::mat> SVD_results = actionet::PCA2SVD(S, PCA_results);
+
+    Rcpp::List res;
+    res["u"] = SVD_results(0);
+    res["d"] = SVD_results(1);
+    res["v"] = SVD_results(2);
+
+    return res;
+}
+
+Rcpp::List PCA2SVD_full(arma::mat &S, arma::mat x, arma::vec sdev, arma::mat rotation) {
+    arma::field<arma::mat> PCA_results(3);
+    arma::vec d = sdev * std::sqrt(x.n_rows - 1);
+
+    arma::mat U = x;
+    for (int i = 0; i < U.n_cols; i++) {
+        U.col(i) /= d(i);
+    }
+    PCA_results(0) = U;
+    PCA_results(1) = d;
+    PCA_results(2) = rotation;
+
+    arma::field<arma::mat> SVD_results = actionet::PCA2SVD(S, PCA_results);
+
+    Rcpp::List res;
+    res["u"] = SVD_results(0);
+    res["d"] = SVD_results(1);
+    res["v"] = SVD_results(2);
+
+    return res;
+}
+
+Rcpp::List SVD2PCA(arma::sp_mat &S, arma::mat u, arma::vec d, arma::mat v) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> PCA_results = actionet::SVD2PCA(S, SVD_results);
+
+    Rcpp::List res;
+    arma::vec s = PCA_results(1).col(0);
+
+    arma::mat X = PCA_results(0);
+    for (int i = 0; i < X.n_cols; i++) {
+        X.col(i) *= s(i);
+    }
+    res["x"] = X;
+    res["rotation"] = PCA_results(2);
+    res["sdev"] = s / std::sqrt(X.n_rows - 1);
+
+    return res;
+}
+
+Rcpp::List SVD2PCA_full(arma::mat &S, arma::mat u, arma::vec d, arma::mat v) {
+    if (1 < d.n_cols)
+        d = d.diag();
+
+    arma::field<arma::mat> SVD_results(3);
+    SVD_results(0) = u;
+    SVD_results(1) = d;
+    SVD_results(2) = v;
+
+    arma::field<arma::mat> PCA_results = actionet::SVD2PCA(S, SVD_results);
+
+    Rcpp::List res;
+    arma::vec s = PCA_results(1).col(0);
+
+    arma::mat X = PCA_results(0);
+    for (int i = 0; i < X.n_cols; i++) {
+        X.col(i) *= s(i);
+    }
+    res["x"] = X;
+    res["rotation"] = PCA_results(2);
+    res["sdev"] = s / std::sqrt(X.n_rows - 1);
+
+    return res;
+}

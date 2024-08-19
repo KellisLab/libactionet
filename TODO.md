@@ -1,6 +1,5 @@
 ## Primary
 * pybind 11 wrappers
-* Condense redundant SVD functions
 * Automatically link R BLAS/LAPACK
 * Eliminate external cholmod dependency
 * Split colorspace from generate_layout.
@@ -40,3 +39,4 @@
 * Consistent header guards
 * Rcpp wrappers
 * Update hnswlib
+* Condense redundant SVD functions

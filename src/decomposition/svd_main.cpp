@@ -5,22 +5,9 @@
 #include "decomposition/svd_halko.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
-// overloaded wrapper of arma::svd_econ to accept arma::mat and arma::sp_mat.
-// Currently unused because they are very slow
-bool svd_econ_arma(arma::mat &U, arma::vec &s, arma::mat &V, const arma::sp_mat &A) {
-    return arma::svd_econ(U, s, V, arma::mat(A));
-}
-
-bool svd_econ_arma(arma::mat &U, arma::vec &s, arma::mat &V, const arma::mat &A) {
-    return arma::svd_econ(U, s, V, A);
-}
-
 namespace actionet {
     template<typename T>
     arma::field<arma::mat> runSVD(T &A, int k, int max_it, int seed, int algorithm, int verbose) {
-        // char status_msg[100];
-        // snprintf(status_msg, 100, "Performing SVD input matrix using");
-
         if (max_it < 1) {
             switch (algorithm) {
                 case 1:
@@ -32,7 +19,7 @@ namespace actionet {
         }
 
         if (verbose) {
-            stdout_printf("Performing SVD input matrix using ");
+            stdout_printf("Performing SVD using ");
         }
 
         arma::vec s;

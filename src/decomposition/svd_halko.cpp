@@ -17,7 +17,7 @@ arma::field<arma::mat> HalkoSVD(T &A, int dim, int iters, int seed, int verbose)
     arma::mat U, V, X;
 
     if (verbose) {
-        stdout_printf("Halko (dense) -- A: %d x %d\n", (int) A.n_rows, (int) A.n_cols);
+        stdout_printf("Halko -- A: %d x %d\n", (int) A.n_rows, (int) A.n_cols);
         FLUSH;
     }
 
