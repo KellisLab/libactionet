@@ -6,6 +6,7 @@
 
 ## Secondary
 * Cleanup unused code and comments
+* Abstract `autocorrelation.cpp`
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
 * Compile to macOS

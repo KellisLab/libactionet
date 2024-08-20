@@ -28,7 +28,7 @@ namespace actionet {
         trace.selected_cols = arma::field<arma::uvec>(k_max + 1);
 
         // ATTENTION!
-        arma::mat X_r = normalize_mat(S_r, normalization, 0);
+        arma::mat X_r = normalize_matrix(S_r, normalization, 0);
 
         int current_k = 0;
         char status_msg[50];

@@ -145,7 +145,7 @@ namespace actionet {
 
         arma::mat C_unified = C_stacked.cols(candidates);
 
-        arma::mat X_r = normalize_mat(S_r, normalization, 0);
+        arma::mat X_r = normalize_matrix(S_r, normalization, 0);
 
         arma::mat W_r_unified = X_r * C_unified;
 

@@ -69,6 +69,13 @@ find_package(LAPACK REQUIRED)
 ## Check for CHOLMOD
 find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 
+## Check for OpenMP support
+find_package(OpenMP)
+if (OpenMP_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
+endif ()
+
 
 # ########### Interface test
 ## Build mode for testing R interface

@@ -1089,21 +1089,20 @@ arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat& G, arma::sp_mat& S, 
     return (stats);
 }
 
-
 // TODO: Update and remove. Single reference.
 // [[Rcpp::export]]
-arma::mat normalize_mat(arma::mat& X, int normalization = 0, int dim = 0)
+arma::mat normalize_mat(arma::mat& X, int p = 0, int dim = 0)
 {
-    arma::mat X_norm = actionet::normalize_mat(X, normalization, dim);
+    arma::mat X_norm = actionet::normalize_matrix(X, p, dim);
 
     return (X_norm);
 }
 
 // TODO: Update and remove. Single reference.
 // [[Rcpp::export]]
-arma::sp_mat normalize_spmat(arma::sp_mat& X, int normalization = 0, int dim = 0)
+arma::sp_mat normalize_spmat(arma::sp_mat& X, int p = 0, int dim = 0)
 {
-    arma::sp_mat X_norm = actionet::normalize_mat(X, normalization, dim);
+    arma::sp_mat X_norm = actionet::normalize_matrix(X, p, dim);
 
     return (X_norm);
 }

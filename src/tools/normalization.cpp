@@ -4,7 +4,7 @@
 namespace actionet
 {
     template <typename T>
-    T normalize_mat(T& X, int p, int dim)
+    T normalize_matrix(T& X, int p, int dim)
     {
         if (p > 0)
         {
@@ -14,20 +14,8 @@ namespace actionet
         return (X);
     }
 
-    template arma::mat normalize_mat<arma::mat>(arma::mat& X, int p, int dim);
-    template arma::sp_mat normalize_mat<arma::sp_mat>(arma::sp_mat& X, int p, int dim);
-
-    // // TODO: Why copy X?
-    // arma::sp_mat normalize_mat(const arma::sp_mat &X, int normalization, int dim) {
-    //     arma::sp_mat X_norm = X;
-    //     if (normalization == 1) {
-    //         X_norm = arma::normalise(X_norm, 1, dim);
-    //     }
-    //     if (normalization == 2) {
-    //         X_norm = arma::normalise(X_norm, 2, dim);
-    //     }
-    //     return (X_norm);
-    // }
+    template arma::mat normalize_matrix<arma::mat>(arma::mat& X, int p, int dim);
+    template arma::sp_mat normalize_matrix<arma::sp_mat>(arma::sp_mat& X, int p, int dim);
 
     arma::sp_mat normalize_adj(arma::sp_mat& G, int norm_type)
     {
