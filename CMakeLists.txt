@@ -53,14 +53,14 @@ endif ()
 ## Check for BLAS. Platform dependent.
 if (APPLE)
     message("cmake: Configuring for macOS")
-    add_compile_definitions(-DLIBACTIONET_PLATFORM_APPLE)
+    add_compile_definitions(LIBACTIONET_PLATFORM_APPLE)
 
     set(BLA_VENDOR Apple)
     find_package(BLAS REQUIRED)
 
     add_compile_options(-flax-vector-conversions -framework Accelerate)
     #    TODO: Probably unneeded. Suppress deprecation warnings.
-    add_compile_definitions(-DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64)
+    add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
 
     target_include_directories(
             actionet
@@ -82,7 +82,7 @@ find_package(OpenMP)
 if (OpenMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
-    add_compile_definitions(-DARMA_OPENMP_THREADS=${NPROC})
+    add_compile_definitions(ARMA_OPENMP_THREADS=${NPROC})
 endif ()
 
 
@@ -109,7 +109,7 @@ if (LIBACTIONET_BUILD_R)
     else ()
         message("Using R found at ${R_HOME}")
     endif ()
-    add_compile_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config header
+    add_compile_definitions(LIBACTIONET_BUILD_R) # Set R build mode in config header
 
     # find R headers
     execute_process(

@@ -9,7 +9,7 @@
 
 inline int get_max_threads()
 {
-    int coresDet = (std::thread::hardware_concurrency() - 2);
+    int coresDet = std::thread::hardware_concurrency();
     if (coresDet >= 6)
     {
         coresDet -= 2;
