@@ -3,7 +3,7 @@
 
 namespace actionet {
     template<typename T>
-    arma::field<arma::mat> reduce_kernel(T &S, int dim, int iter, int seed, int SVD_algorithm, bool prenormalize,
+    arma::field<arma::mat> reduce_kernel(T &S, int dim, int max_it, int seed, int SVD_algorithm, bool prenormalize,
                                          int verbose) {
         if (prenormalize)
             S = arma::normalise(S, 2);
@@ -15,7 +15,7 @@ namespace actionet {
 
         arma::field<arma::mat> SVD_results(3);
 
-        SVD_results = runSVD(S, dim, iter, seed, SVD_algorithm, verbose);
+        SVD_results = runSVD(S, dim, max_it, seed, SVD_algorithm, verbose);
 
         // Update 1: Orthogonalize columns w.r.t. background (mean)
         arma::vec mu = arma::vec(arma::mean(S, 1));

@@ -3,6 +3,7 @@
 
 namespace actionet {
 
+    // TODO: Why copy X?
     arma::mat normalize_mat(arma::mat &X, int normalization, int dim) {
         arma::mat X_norm = X;
         if (normalization == 1) {
@@ -18,6 +19,7 @@ namespace actionet {
         return (X_norm);
     }
 
+    // TODO: Why copy X?
     arma::sp_mat normalize_mat(arma::sp_mat &X, int normalization, int dim) {
         arma::sp_mat X_norm = X;
         if (normalization == 1) {

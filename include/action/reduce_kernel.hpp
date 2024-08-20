@@ -8,7 +8,7 @@
 namespace actionet {
     // Entry point to compute a reduced kernel matrix
     template<typename T>
-    arma::field<arma::mat> reduce_kernel(T &S, int dim, int iter, int seed, int SVD_algorithm, bool prenormalize,
+    arma::field<arma::mat> reduce_kernel(T &S, int dim, int max_it, int seed, int SVD_algorithm, bool prenormalize,
                                          int verbose);
 }
 

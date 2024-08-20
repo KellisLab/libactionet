@@ -15,8 +15,8 @@ namespace actionet {
     };
 
     // Runs ACTION decomposition
-    ACTION_results run_ACTION(arma::mat &S_r, int k_min, int k_max, int thread_no, int max_it = 100,
-                              double min_delta = 1e-6, int normalization = 0);
+    ACTION_results
+    run_ACTION(arma::mat &S_r, int k_min, int k_max, int normalization, int max_it, double min_delta, int thread_no);
 
 } // namespace actionet
 

@@ -386,10 +386,10 @@ Rcpp::List run_SPA(arma::mat &A, int k) {
 //' values of k ' @examples ' ACTION.out = run_ACTION(S_r, k_max = 10) ' H8 =
 //' ACTION.out$H[[8]] ' cell.assignments = apply(H8, 2, which.max)
 // [[Rcpp::export]]
-Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int thread_no = 0, int max_it = 100,
-                      double min_delta = 1e-6, int normalization = 1) {
+Rcpp::List run_ACTION(arma::mat &S_r, int k_min = 2, int k_max = 30, int normalization = 1, int max_it = 100,
+                      double min_delta = 1e-6, int thread_no = 0) {
     actionet::ACTION_results trace =
-            actionet::run_ACTION(S_r, k_min, k_max, thread_no, max_it, min_delta, normalization);
+            actionet::run_ACTION(S_r, k_min, k_max, normalization, max_it, min_delta, thread_no);
 
     Rcpp::List res;
 
@@ -503,12 +503,10 @@ Rcpp::List prune_archetypes(const Rcpp::List &C_trace, const Rcpp::List &H_trace
 //' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 // [[Rcpp::export]]
-Rcpp::List unify_archetypes(arma::mat &S_r, arma::mat C_stacked, arma::mat H_stacked, double backbone_density = 0.5,
-                            double resolution = 1.0, int min_cluster_size = 3, int thread_no = 0,
-                            int normalization = 0) {
+Rcpp::List
+unify_archetypes(arma::mat &S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0, int thread_no = 0) {
     actionet::unification_results results =
-            actionet::unify_archetypes(S_r, C_stacked, H_stacked, backbone_density,
-                                       resolution, min_cluster_size, thread_no, normalization);
+            actionet::unify_archetypes(S_r, C_stacked, H_stacked, normalization, thread_no);
 
     Rcpp::List out_list;
 

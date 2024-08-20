@@ -6,8 +6,8 @@
 
 namespace actionet {
 
-    ACTION_results run_ACTION(arma::mat &S_r, int k_min, int k_max, int thread_no, int max_it, double min_delta,
-                              int normalization) {
+    ACTION_results
+    run_ACTION(arma::mat &S_r, int k_min, int k_max, int normalization, int max_it, double min_delta, int thread_no) {
         if (thread_no <= 0) {
             thread_no = SYS_THREADS_DEF;
         }

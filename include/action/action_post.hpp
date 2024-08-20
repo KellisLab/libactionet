@@ -35,8 +35,7 @@ namespace actionet {
                      int min_cells = 3);
 
     unification_results
-    unify_archetypes(arma::mat &S_r, arma::mat &C_stacked, arma::mat &H_stacked, double backbone_density,
-                     double resolution, int min_cluster_size, int thread_no, int normalization);
+    unify_archetypes(arma::mat &S_r, arma::mat &C_stacked, arma::mat &H_stacked, int normalization = 0, int thread_no = 0);
 
 } // namespace actionet
 
