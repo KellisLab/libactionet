@@ -17,11 +17,10 @@
 // Configurations for R and Python interface
 #if defined(LIBACTIONET_BUILD_R)
 
+    #include <Rinterface.h>
     #define stdout_printf Rprintf
     #define stderr_printf REprintf
     #define FLUSH R_FlushConsole()
-
-    #include <Rinterface.h>
 
     // Use RcppArmadillo for StatsLib
     #define USE_RCPP_ARMADILLO

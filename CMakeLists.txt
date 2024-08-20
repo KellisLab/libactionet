@@ -42,17 +42,25 @@ add_compile_options(-w)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(actionet STATIC ${SOURCES})
 
+## Detect usable logical CPU cores
+cmake_host_system_information(RESULT NPROC QUERY NUMBER_OF_LOGICAL_CORES)
+message("Detected CPU cores: ${NPROC}")
+if(NPROC GREATER_EQUAL 6)
+    math(EXPR NPROC "${NPROC} - 2" OUTPUT_FORMAT DECIMAL)
+    message("Using ${NPROC} cores")
+endif ()
+
 ## Check for BLAS. Platform dependent.
 if (APPLE)
-    message("cmake: Configuring for macOS.")
-    add_definitions(-DLIBACTIONET_PLATFORM_APPLE)
+    message("cmake: Configuring for macOS")
+    add_compile_definitions(-DLIBACTIONET_PLATFORM_APPLE)
 
     set(BLA_VENDOR Apple)
     find_package(BLAS REQUIRED)
 
     add_compile_options(-flax-vector-conversions -framework Accelerate)
     #    TODO: Probably unneeded. Suppress deprecation warnings.
-    add_definitions(-DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64)
+    add_compile_definitions(-DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64)
 
     target_include_directories(
             actionet
@@ -74,12 +82,13 @@ find_package(OpenMP)
 if (OpenMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
+    add_compile_definitions(-DARMA_OPENMP_THREADS=${NPROC})
 endif ()
 
 
 # ########### Interface test
 ## Build mode for testing R interface
-set(TEST_BUILD_R 1)
+set(TEST_BUILD_R 0)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(
@@ -94,13 +103,13 @@ if (TEST_BUILD_R)
 endif ()
 
 if (LIBACTIONET_BUILD_R)
-    message("cmake: Configuring for R library.")
+    message("cmake: Configuring for R library")
     if (NOT DEFINED R_HOME)
-        message(FATAL_ERROR "R_HOME not defined.")
+        message(FATAL_ERROR "R_HOME not defined")
     else ()
         message("Using R found at ${R_HOME}")
     endif ()
-    add_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config header
+    add_compile_definitions(-DLIBACTIONET_BUILD_R) # Set R build mode in config header
 
     # find R headers
     execute_process(
@@ -143,6 +152,9 @@ target_include_directories(
 ## [Dirty] Add all header files in the directory for testing/
 #HEADER_DIRECTORIES(header_list)
 #include_directories(${header_list})
+
+get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
+message("COMPILE_DEFINITIONS = ${CPP_Defs}" )
 
 target_compile_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS})
 target_compile_options(actionet PUBLIC ${BLAS_LINKER_FLAGS})
