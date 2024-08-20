@@ -186,7 +186,7 @@ namespace actionet {
         return G_matched;
     }
 
-    arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold, double v_threshold) {
+    arma::umat MWM_rank1(const arma::vec& u, const arma::vec& v, double u_threshold, double v_threshold) {
 
         // Rank-1 matching for each paired-archetypes
         arma::vec u_sorted = arma::sort(u, "descend");

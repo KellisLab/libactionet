@@ -3,11 +3,11 @@
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
-namespace actionet {
+namespace actionet
+{
     arma::field<arma::vec>
-    autocorrelation_Moran_parametric(arma::mat G, arma::mat scores, int normalization_method, int thread_no) {
-        // G.each_row() -= sum(G, 1); // Make row-sum == 1
-
+    autocorrelation_Moran_parametric(arma::mat G, const arma::mat& scores, int normalization_method, int thread_no)
+    {
         double nV = G.n_rows;
         int scores_no = scores.n_cols;
         stdout_printf("Normalizing scores (method=%d) ... ", normalization_method);
@@ -27,7 +27,8 @@ namespace actionet {
         arma::vec stat = arma::zeros(scores_no);
         mini_thread::parallelFor(
             0, scores_no,
-            [&](unsigned int i) {
+            [&](unsigned int i)
+            {
                 arma::vec x = normalized_scores.col(i);
                 double y = dot(x, G * x);
                 stat(i) = y;
@@ -51,7 +52,7 @@ namespace actionet {
 
         arma::mat normalized_scores_sq = arma::square(normalized_scores);
         arma::vec S3_vec = arma::trans((arma::sum(arma::square(normalized_scores_sq), 0) / nV) /
-                                       (arma::square(arma::sum(normalized_scores_sq, 0) / nV)));
+            (arma::square(arma::sum(normalized_scores_sq, 0) / nV)));
         double S4 = (nV * (nV - 3) + 3) * S1 - nV * S2 + 3 * Wsq;
         double S5 = (nV * (nV - 1)) * S1 - 2 * nV * S2 + 6 * Wsq;
 
@@ -74,13 +75,13 @@ namespace actionet {
     }
 
     arma::field<arma::vec>
-    autocorrelation_Moran_parametric(arma::sp_mat G, arma::mat scores, int normalization_method, int thread_no) {
-
+    autocorrelation_Moran_parametric(arma::sp_mat G, const arma::mat& scores, int normalization_method, int thread_no)
+    {
         double nV = G.n_rows;
         int scores_no = scores.n_cols;
         stdout_printf("Normalizing scores (method=%d) ... ", normalization_method);
         arma::mat normalized_scores =
-                normalize_scores(scores, normalization_method, thread_no);
+            normalize_scores(scores, normalization_method, thread_no);
         stdout_printf("done\n");
         FLUSH;
 
@@ -96,7 +97,8 @@ namespace actionet {
         arma::vec stat = arma::zeros(scores_no);
         mini_thread::parallelFor(
             0, scores_no,
-            [&](unsigned int i) {
+            [&](unsigned int i)
+            {
                 arma::vec x = normalized_scores.col(i);
                 double y = dot(x, spmat_vec_product(G, x));
                 stat(i) = y;
@@ -120,7 +122,7 @@ namespace actionet {
 
         arma::mat normalized_scores_sq = arma::square(normalized_scores);
         arma::vec S3_vec = arma::trans((arma::sum(arma::square(normalized_scores_sq), 0) / nV) /
-                                       (arma::square(arma::sum(normalized_scores_sq, 0) / nV)));
+            (arma::square(arma::sum(normalized_scores_sq, 0) / nV)));
         double S4 = (nV * (nV - 3) + 3) * S1 - nV * S2 + 3 * Wsq;
         double S5 = (nV * (nV - 1)) * S1 - 2 * nV * S2 + 6 * Wsq;
 
@@ -143,7 +145,8 @@ namespace actionet {
     }
 
     arma::field<arma::vec>
-    autocorrelation_Moran(arma::mat G, arma::mat scores, int normalization_method, int perm_no, int thread_no) {
+    autocorrelation_Moran(arma::mat G, const arma::mat& scores, int normalization_method, int perm_no, int thread_no)
+    {
         int nV = G.n_rows;
         int scores_no = scores.n_cols;
         stdout_printf("Normalizing scores (method=%d) ... ", normalization_method);
@@ -161,7 +164,8 @@ namespace actionet {
         arma::vec stat = arma::zeros(scores_no);
         mini_thread::parallelFor(
             0, scores_no,
-            [&](unsigned int i) {
+            [&](unsigned int i)
+            {
                 arma::vec x = normalized_scores.col(i);
                 double y = dot(x, G * x);
                 stat(i) = y;
@@ -171,16 +175,19 @@ namespace actionet {
         arma::vec mu = arma::zeros(scores_no);
         arma::vec sigma = arma::zeros(scores_no);
         arma::vec z = arma::zeros(scores_no);
-        if (0 < perm_no) {
+        if (0 < perm_no)
+        {
             arma::mat rand_stats = arma::zeros(scores_no, perm_no);
             mini_thread::parallelFor(
                 0, perm_no,
-                [&](unsigned int j) {
+                [&](unsigned int j)
+                {
                     arma::uvec perm = arma::randperm(nV);
                     arma::mat score_permuted = normalized_scores.rows(perm);
 
                     arma::vec v = arma::zeros(scores_no);
-                    for (int i = 0; i < scores_no; i++) {
+                    for (int i = 0; i < scores_no; i++)
+                    {
                         arma::vec rand_x = score_permuted.col(i);
                         v(i) = arma::dot(rand_x, G * rand_x);
                     }
@@ -206,7 +213,8 @@ namespace actionet {
     }
 
     arma::field<arma::vec>
-    autocorrelation_Moran(arma::sp_mat G, arma::mat scores, int normalization_method, int perm_no, int thread_no) {
+    autocorrelation_Moran(arma::sp_mat G, const arma::mat& scores, int normalization_method, int perm_no, int thread_no)
+    {
         int nV = G.n_rows;
         int scores_no = scores.n_cols;
 
@@ -221,7 +229,8 @@ namespace actionet {
         arma::vec stat = arma::zeros(scores_no);
         mini_thread::parallelFor(
             0, scores_no,
-            [&](unsigned int i) {
+            [&](unsigned int i)
+            {
                 arma::vec x = normalized_scores.col(i);
                 double y = arma::dot(x, spmat_vec_product(G, x));
                 stat(i) = y;
@@ -231,16 +240,19 @@ namespace actionet {
         arma::vec mu = arma::zeros(scores_no);
         arma::vec sigma = arma::zeros(scores_no);
         arma::vec z = arma::zeros(scores_no);
-        if (0 < perm_no) {
+        if (0 < perm_no)
+        {
             arma::mat rand_stats = arma::zeros(scores_no, perm_no);
             mini_thread::parallelFor(
                 0, perm_no,
-                [&](unsigned int j) {
+                [&](unsigned int j)
+                {
                     arma::uvec perm = arma::randperm(nV);
                     arma::mat score_permuted = normalized_scores.rows(perm);
 
                     arma::vec v = arma::zeros(scores_no);
-                    for (int i = 0; i < scores_no; i++) {
+                    for (int i = 0; i < scores_no; i++)
+                    {
                         arma::vec rand_x = score_permuted.col(i);
                         v(i) = arma::dot(rand_x, spmat_vec_product(G, rand_x));
                     }
@@ -267,7 +279,9 @@ namespace actionet {
     }
 
     arma::field<arma::vec>
-    autocorrelation_Geary(arma::mat G, arma::mat scores, int normalization_method, int perm_no, int thread_no) {
+    autocorrelation_Geary(const arma::mat& G, const arma::mat& scores, int normalization_method, int perm_no,
+                          int thread_no)
+    {
         int nV = G.n_rows;
         int scores_no = scores.n_cols;
         arma::mat normalized_scores = normalize_scores(scores, normalization_method, thread_no);
@@ -286,7 +300,8 @@ namespace actionet {
         arma::vec stat = arma::zeros(scores_no);
         mini_thread::parallelFor(
             0, scores_no,
-            [&](unsigned int i) {
+            [&](unsigned int i)
+            {
                 arma::vec x = normalized_scores.col(i);
                 double y = arma::dot(x, L * x);
                 stat(i) = y;
@@ -296,16 +311,19 @@ namespace actionet {
         arma::vec mu = arma::zeros(scores_no);
         arma::vec sigma = arma::zeros(scores_no);
         arma::vec z = arma::zeros(scores_no);
-        if (0 < perm_no) {
+        if (0 < perm_no)
+        {
             arma::mat rand_stats = arma::zeros(scores_no, perm_no);
             mini_thread::parallelFor(
                 0, perm_no,
-                [&](unsigned int j) {
+                [&](unsigned int j)
+                {
                     arma::uvec perm = arma::randperm(nV);
                     arma::mat score_permuted = normalized_scores.rows(perm);
 
                     arma::vec v = arma::zeros(scores_no);
-                    for (int i = 0; i < scores_no; i++) {
+                    for (int i = 0; i < scores_no; i++)
+                    {
                         arma::vec rand_x = score_permuted.col(i);
                         v(i) = arma::dot(rand_x, L * rand_x);
                     }
@@ -331,7 +349,9 @@ namespace actionet {
     }
 
     arma::field<arma::vec>
-    autocorrelation_Geary(arma::sp_mat G, arma::mat scores, int normalization_method, int perm_no, int thread_no) {
+    autocorrelation_Geary(const arma::sp_mat& G, const arma::mat& scores, int normalization_method, int perm_no,
+                          int thread_no)
+    {
         int nV = G.n_rows;
         int scores_no = scores.n_cols;
         arma::mat normalized_scores = normalize_scores(scores, normalization_method, thread_no);
@@ -350,7 +370,8 @@ namespace actionet {
         arma::vec stat = arma::zeros(scores_no);
         mini_thread::parallelFor(
             0, scores_no,
-            [&](unsigned int i) {
+            [&](unsigned int i)
+            {
                 arma::vec x = normalized_scores.col(i);
                 double y = arma::dot(x, spmat_vec_product(L, x));
                 stat(i) = y;
@@ -360,16 +381,19 @@ namespace actionet {
         arma::vec mu = arma::zeros(scores_no);
         arma::vec sigma = arma::zeros(scores_no);
         arma::vec z = arma::zeros(scores_no);
-        if (0 < perm_no) {
+        if (0 < perm_no)
+        {
             arma::mat rand_stats = arma::zeros(scores_no, perm_no);
             mini_thread::parallelFor(
                 0, perm_no,
-                [&](unsigned int j) {
+                [&](unsigned int j)
+                {
                     arma::uvec perm = arma::randperm(nV);
                     arma::mat score_permuted = normalized_scores.rows(perm);
 
                     arma::vec v = arma::zeros(scores_no);
-                    for (int i = 0; i < scores_no; i++) {
+                    for (int i = 0; i < scores_no; i++)
+                    {
                         arma::vec rand_x = score_permuted.col(i);
                         v(i) = arma::dot(rand_x, spmat_vec_product(L, rand_x));
                     }

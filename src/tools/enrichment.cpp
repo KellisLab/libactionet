@@ -4,7 +4,7 @@
 
 namespace actionet {
 
-    arma::mat assess_label_enrichment(arma::sp_mat &H, arma::mat &M, int thread_no) {
+    arma::mat assess_label_enrichment(const arma::sp_mat &H, arma::mat &M, int thread_no) {
         arma::mat Obs = spmat_mat_product_parallel(H, M, thread_no);
 
         arma::rowvec p = mean(M, 0);

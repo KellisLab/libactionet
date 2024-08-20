@@ -69,7 +69,7 @@ arma::mat tzscoret(arma::mat &A) {
     return (A.t());
 }
 
-arma::mat mean_center(arma::mat &A) {
+arma::mat mean_center(const arma::mat &A) {
     arma::mat A_centered = A;
     arma::rowvec mu = arma::rowvec(mean(A, 0));
 

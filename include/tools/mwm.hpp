@@ -15,7 +15,7 @@ namespace actionet {
 
     // Low Rank Spectral Network Alignment
     // (https://dl.acm.org/citation.cfm?doid=3178876.3186128)
-    arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold, double v_threshold);
+    arma::umat MWM_rank1(const arma::vec& u, const arma::vec& v, double u_threshold, double v_threshold);
 
 } // namespace actionet
 

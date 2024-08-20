@@ -5,7 +5,7 @@
 void dsdmult(char transpose, int n_rows, int n_cols, const void *A, const double *x, double *out,
              cholmod_common *chol_cp) {
     int t = transpose == 't' ? 1 : 0; // 'n': computes Ax, 't': computes A'x
-    cholmod_sparse *cha = (cholmod_sparse *) A;
+    auto *cha = (cholmod_sparse *) A;
 
     // x
     cholmod_dense chb;
@@ -57,7 +57,7 @@ cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A,
     return chol_A;
 }
 
-arma::sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *chol_c) {
+arma::sp_mat &as_arma_sparse(const cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *chol_c) {
     // Allocate space
     A = arma::sp_mat(chol_A->nrow, chol_A->ncol);
     A.mem_resize(static_cast<unsigned>(chol_A->nzmax));
@@ -87,14 +87,14 @@ arma::sp_mat &as_arma_sparse(cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_co
     return A;
 }
 
-arma::vec spmat_vec_product(arma::sp_mat &A, arma::vec &x) {
+arma::vec spmat_vec_product(const arma::sp_mat &A, arma::vec &x) {
     arma::mat X = arma::mat(x);
     arma::mat Ax = spmat_mat_product(A, X);
 
     return (Ax.col(0));
 }
 
-arma::mat spmat_mat_product(arma::sp_mat &A, arma::mat &B) {
+arma::mat spmat_mat_product(const arma::sp_mat &A, arma::mat &B) {
     if (A.n_cols != B.n_rows) {
         stderr_printf("spmat_mat_product:: Inner dimension of matrices should match\n.");
         return (arma::mat());
@@ -124,7 +124,7 @@ arma::mat spmat_mat_product(arma::sp_mat &A, arma::mat &B) {
 }
 
 // TODO: REMOVE?
-arma::sp_mat spmat_spmat_product(arma::sp_mat &A, arma::sp_mat &B) {
+arma::sp_mat spmat_spmat_product(const arma::sp_mat &A, const arma::sp_mat &B) {
     arma::sp_mat res;
 
     if (A.n_cols != B.n_rows) {
@@ -150,7 +150,7 @@ arma::sp_mat spmat_spmat_product(arma::sp_mat &A, arma::sp_mat &B) {
     return (res);
 }
 
-arma::mat spmat_mat_product_parallel(arma::sp_mat &A, arma::mat &B, int thread_no) {
+arma::mat spmat_mat_product_parallel(const arma::sp_mat &A, arma::mat &B, int thread_no) {
     if (A.n_cols != B.n_rows) {
         stderr_printf("spmat_mat_product_parallel:: Inner dimension of matrices should match\n.");
         return (arma::mat());
@@ -208,7 +208,7 @@ arma::mat spmat_mat_product_parallel(arma::sp_mat &A, arma::mat &B, int thread_n
     return (res);
 }
 
-arma::mat mat_mat_product_parallel(arma::mat &A, arma::mat &B, int thread_no) {
+arma::mat mat_mat_product_parallel(const arma::mat &A, arma::mat &B, int thread_no) {
     if (thread_no <= 0) {
         thread_no = SYS_THREADS_DEF;
     }
