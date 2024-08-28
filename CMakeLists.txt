@@ -39,9 +39,22 @@ macro(CONFIGURE_ACCELERATE)
             PRIVATE "${ACCELERATE_HEADERS}"
     )
     # TODO: Detect Apple architecture. Currently assumes and requires arm64.
-    add_compile_options(-flax-vector-conversions -framework Accelerate)
+    #    add_compile_options(-flax-vector-conversions -framework Accelerate)
+    add_compile_options(-framework Accelerate)
     #    TODO: Probably unneeded. Suppress deprecation warnings.
     add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
+endmacro()
+
+macro(CONFIGURE_APPLE arch_apple bla_vendor_apple)
+    message("cmake: Configuring for macOS")
+    message("Building for ${arch_apple}")
+    if (arch_apple STREQUAL "arm64")
+        add_compile_options(-flax-vector-conversions)
+    endif ()
+
+    if ("${bla_vendor_apple}" STREQUAL "Apple")
+        CONFIGURE_ACCELERATE()
+    endif ()
 endmacro()
 
 # ########### Compiler options
@@ -107,6 +120,13 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
+    ## Find R CPPFLAGS
+    execute_process(
+            COMMAND bash -c "${R_HOME}/bin/R CMD config CPPFLAGS | sed s/-I//g"
+            OUTPUT_VARIABLE rCppFLags
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
     ## Find Rcpp headers
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
@@ -119,15 +139,14 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
             OUTPUT_VARIABLE rcppArmaInclude
     )
 
-    ## Find R CPPFLAGS
-    execute_process(
-            COMMAND bash -c "${R_HOME}/bin/R CMD config CPPFLAGS | sed s/-I//g"
-            OUTPUT_VARIABLE rCppFLags
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
 
-    if (APPLE AND ("${BLA_VENDOR}" STREQUAL "Apple"))
-        CONFIGURE_ACCELERATE()
+    if (APPLE)
+        execute_process(
+                COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(R.version[[\"arch\"]])'"
+                OUTPUT_VARIABLE arch
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        CONFIGURE_APPLE(arch BLA_VENDOR)
     else ()
         ## Find R BLAS_LIBS
         execute_process(
@@ -159,10 +178,12 @@ elseif (UNIX) # Build for Unix-alike configurations (including macOS)
     find_package(LAPACK REQUIRED)
 
     if (APPLE) ## Mac-specific configurations
-        message("cmake: Configuring for macOS")
-        if ("${BLA_VENDOR}" STREQUAL "Apple")
-            CONFIGURE_ACCELERATE()
-        endif ()
+        execute_process(
+                COMMAND bash -c "uname -m"
+                OUTPUT_VARIABLE arch
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        CONFIGURE_APPLE(arch BLA_VENDOR)
     endif ()
 
     # Use packaged Armadillo
