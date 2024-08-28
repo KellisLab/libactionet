@@ -12,10 +12,13 @@ cmake_minimum_required(VERSION 3.18)
 #set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
 #set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
 
+# Test Apple cross-compilation
+#set(CMAKE_OSX_ARCHITECTURES x86_64)
+
 project(actionet)
 ## Include third-part cmake modules
 list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
-
+include(ConfigureBLAS)
 ############# COMPILER OPTIONS
 # C++11 is not supported, as the code uses C++17 features
 set(CMAKE_CXX_STANDARD 17)
@@ -29,56 +32,83 @@ add_compile_options(-w)
 
 ## Detect usable logical CPUs
 cmake_host_system_information(RESULT NPROC QUERY NUMBER_OF_LOGICAL_CORES)
-message("Detecting CPU cores: ${NPROC}")
+message(STATUS "Detecting CPU cores: ${NPROC}")
 if (NPROC GREATER_EQUAL 6)
     math(EXPR NPROC "${NPROC} - 2" OUTPUT_FORMAT DECIMAL)
-    message("Using ${NPROC} cores")
+    message(STATUS "Using ${NPROC} cores")
 endif ()
 
 ############# FUNCTIONS AND MACROS
 ## Set BLAS vendor default
-if (APPLE)
-    set(BLA_VENDOR Apple)
-elseif (UNIX)
-    #    set(BLA_VENDOR something)
-endif ()
+set(BLA_VENDOR All)
+#if (APPLE)
+##    set(BLA_VENDOR Apple)
+#    set(BLA_VENDOR All)
+#elseif (UNIX)
+#    #    set(BLA_VENDOR something)
+#endif ()
 
-## Configure BLAS/LAPACK
-macro(CONFIGURE_BLAS)
-
-    find_package(BLAS REQUIRED) ## Find BLAS
-    find_package(LAPACK REQUIRED) ## Find LAPACK
-
-    if ("${BLA_VENDOR}" STREQUAL "Apple")
-        if (NOT APPLE)
-            message(FATAL_ERROR "Accelerate can only be used on macOS")
-        endif ()
-        ## Find and link Apple BLAS
-        message("Using Apple Accelerate for BLAS and LAPACK")
-        add_compile_definitions(LIBACTIONET_BLAS_ACCELERATE)
-
-        set(ACCELERATE_HEADERS "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
-        if (NOT EXISTS "${ACCELERATE_HEADERS}")
-            message(FATAL_ERROR "Cannot locate Apple Accelerate headers")
-        endif ()
-
-        message("Accelerate headers: ${ACCELERATE_HEADERS}")
-        target_include_directories(
-                actionet
-                PRIVATE "${ACCELERATE_HEADERS}"
-        )
-        # TODO: Detect Apple architecture. Currently assumes and requires arm64.
-        #    add_compile_options(-flax-vector-conversions -framework Accelerate)
-        add_compile_options(-framework Accelerate)
-        #    TODO: Probably unneeded. Suppress deprecation warnings.
-        add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
-    endif ()
-endmacro()
+### Configure BLAS/LAPACK
+#macro(CONFIGURE_BLAS)
+#
+#    find_package(BLAS REQUIRED) ## Find BLAS
+#    find_package(LAPACK REQUIRED) ## Find LAPACK
+#
+#
+#    foreach (lib ${BLAS_LIBRARIES})
+#        if (${lib} MATCHES "mkl")
+#            message("Using Intel MKL for BLAS and LAPACK")
+#            if (NOT DEFINED ENV{MKLROOT})
+#                message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
+#            endif ()
+#
+#            set(MKL_HEADERS "$ENV{MKLROOT}/include")
+#            if (EXISTS "${MKL_HEADERS}")
+#                message("MKL headers: ${MKL_HEADERS}")
+#                target_include_directories(
+#                        actionet
+#                        PRIVATE "${MKL_HEADERS}"
+#                )
+#                add_compile_definitions(LIBACTIONET_BLAS_MKL)
+#            else ()
+#                message("Not using MKL headers.")
+#            endif ()
+#            break()
+#        endif ()
+#    endforeach ()
+#
+#
+#
+#    if ("${BLA_VENDOR}" STREQUAL "Apple")
+#        if (NOT APPLE)
+#            message(FATAL_ERROR "Accelerate can only be used on macOS")
+#        endif ()
+#        ## Find and link Apple BLAS
+#        message("Using Apple Accelerate for BLAS and LAPACK")
+#        add_compile_definitions(LIBACTIONET_BLAS_ACCELERATE)
+#
+#        set(ACCELERATE_HEADERS "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
+#        if (NOT EXISTS "${ACCELERATE_HEADERS}")
+#            message(FATAL_ERROR "Cannot locate Apple Accelerate headers")
+#        endif ()
+#
+#        message("Accelerate headers: ${ACCELERATE_HEADERS}")
+#        target_include_directories(
+#                actionet
+#                PRIVATE "${ACCELERATE_HEADERS}"
+#        )
+#        # TODO: Detect Apple architecture. Currently assumes and requires arm64.
+#        #    add_compile_options(-flax-vector-conversions -framework Accelerate)
+#        add_compile_options(-framework Accelerate)
+#        #    TODO: Probably unneeded. Suppress deprecation warnings.
+#        add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
+#    endif ()
+#endmacro()
 
 ## Set Apple CPU-specific compiler flags
 macro(CONFIGURE_APPLE arch_apple)
-    message("cmake: Configuring for macOS")
-    message("Building for ${arch_apple}")
+    message(NOTICE "Configuring cmake build for macOS")
+    message(STATUS "Building for ${arch_apple}")
 
     if (${arch_apple} STREQUAL "arm64")
         add_compile_options(-flax-vector-conversions)
@@ -94,7 +124,8 @@ add_library(actionet STATIC ${SOURCES})
 find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
 
-## Build mode for testing R interface
+############# TEST MODES
+## Test build for R interface
 set(TEST_BUILD_R 0)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
@@ -113,11 +144,11 @@ endif ()
 
 ############ BUILD MODES
 if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
-    message("cmake: Configuring for R library")
+    message(NOTICE "Configuring for R library")
     if (NOT DEFINED R_HOME)
         message(FATAL_ERROR "R_HOME not defined")
     else ()
-        message("Using R found at ${R_HOME}")
+        message(STATUS "Using R found at ${R_HOME}")
     endif ()
     add_compile_definitions(LIBACTIONET_BUILD_R) # Set R build mode in config header
 
@@ -157,9 +188,11 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     )
 
     ## Set BLAS and LAPACK libraries
-    if (DEFINED BLA_VENDOR) ## User provided
+    if ((DEFINED BLA_VENDOR) AND (NOT ${BLA_VENDOR} STREQUAL "All")) ## User provided
         CONFIGURE_BLAS()
     else () ## Get BLAS/LAPACK from R
+        message(NOTICE "Using BLAS/LAPACK from R")
+
         ## Find R BLAS_LIBS
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/R CMD config BLAS_LIBS | sed s/-I//g"
@@ -204,27 +237,27 @@ elseif (UNIX) # Build for Unix-alike configurations (including macOS)
 endif ()
 
 ## Configure Intel MKL if linked
-foreach (lib ${BLAS_LIBRARIES})
-    if (${lib} MATCHES "mkl")
-        message("Using Intel MKL for BLAS and LAPACK")
-        if (NOT DEFINED ENV{MKLROOT})
-            message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
-        endif ()
-
-        set(MKL_HEADERS "$ENV{MKLROOT}/include")
-        if (EXISTS "${MKL_HEADERS}")
-            message("MKL headers: ${MKL_HEADERS}")
-            target_include_directories(
-                    actionet
-                    PRIVATE "${MKL_HEADERS}"
-            )
-            add_compile_definitions(LIBACTIONET_BLAS_MKL)
-        else ()
-            message("Not using MKL headers.")
-        endif ()
-        break()
-    endif ()
-endforeach ()
+#foreach (lib ${BLAS_LIBRARIES})
+#    if (${lib} MATCHES "mkl")
+#        message("Using Intel MKL for BLAS and LAPACK")
+#        if (NOT DEFINED ENV{MKLROOT})
+#            message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
+#        endif ()
+#
+#        set(MKL_HEADERS "$ENV{MKLROOT}/include")
+#        if (EXISTS "${MKL_HEADERS}")
+#            message("MKL headers: ${MKL_HEADERS}")
+#            target_include_directories(
+#                    actionet
+#                    PRIVATE "${MKL_HEADERS}"
+#            )
+#            add_compile_definitions(LIBACTIONET_BLAS_MKL)
+#        else ()
+#            message("Not using MKL headers.")
+#        endif ()
+#        break()
+#    endif ()
+#endforeach ()
 
 ############ CONFIGURE BUILD
 if (LAPACK_LINKER_FLAGS)
