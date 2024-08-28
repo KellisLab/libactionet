@@ -49,7 +49,7 @@ macro(CONFIGURE_APPLE arch_apple bla_vendor_apple)
     message("cmake: Configuring for macOS")
     message("Building for ${arch_apple}")
     
-    if (arch_apple STREQUAL "arm64")
+    if (${arch_apple} STREQUAL "arm64")
         add_compile_options(-flax-vector-conversions)
     endif ()
 
@@ -147,7 +147,7 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
                 OUTPUT_VARIABLE arch
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        CONFIGURE_APPLE(arch BLA_VENDOR)
+        CONFIGURE_APPLE(${arch} ${BLA_VENDOR})
     else ()
         ## Find R BLAS_LIBS
         execute_process(
@@ -184,7 +184,7 @@ elseif (UNIX) # Build for Unix-alike configurations (including macOS)
                 OUTPUT_VARIABLE arch
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        CONFIGURE_APPLE(arch BLA_VENDOR)
+        CONFIGURE_APPLE(${arch} ${BLA_VENDOR})
     endif ()
 
     # Use packaged Armadillo
