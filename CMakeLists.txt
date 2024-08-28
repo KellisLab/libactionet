@@ -63,7 +63,7 @@ target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
 
 ############# TEST MODES
 ## Test build for R interface
-set(TEST_BUILD_R 0)
+set(TEST_BUILD_R 1)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(
@@ -81,13 +81,6 @@ endif ()
 
 ############ BUILD MODES
 if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
-    message(NOTICE "Configuring for R library")
-    if (NOT DEFINED R_HOME)
-        message(FATAL_ERROR "R_HOME not defined")
-    else ()
-        message(STATUS "Using R found at ${R_HOME}")
-    endif ()
-    add_compile_definitions(LIBACTIONET_BUILD_R) # Set R build mode in config header
 
     if (APPLE) ## Detect R architecture on Apple systems
         execute_process(
@@ -98,31 +91,43 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
         CONFIGURE_APPLE(${arch})
     endif ()
 
+    message(NOTICE "Configuring for R library")
+    if (NOT DEFINED R_HOME)
+        message(FATAL_ERROR "R_HOME not defined")
+    else ()
+        message(NOTICE "Using R installation in ${R_HOME}")
+    endif ()
+    add_compile_definitions(LIBACTIONET_BUILD_R) # Set R build mode in config header
+
     ## Find R headers
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/R CMD config --cppflags | sed s/-I//g"
-            OUTPUT_VARIABLE rInclude
+            OUTPUT_VARIABLE r_RInclude
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    message(STATUS "R library headers: ${r_RInclude}")
 
     ## Find R CPPFLAGS
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/R CMD config CPPFLAGS | sed s/-I//g"
-            OUTPUT_VARIABLE rCppFLags
+            OUTPUT_VARIABLE r_CppFlags
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    message(STATUS "R CPPFLAGS: ${r_CppFlags}")
 
     ## Find Rcpp headers
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
-            OUTPUT_VARIABLE rcppInclude
+            OUTPUT_VARIABLE r_RcppInclude
     )
+    message(STATUS "Rcpp headers: ${r_RcppInclude}")
 
     ## Find RcppArmadillo headers
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"RcppArmadillo\"))'"
-            OUTPUT_VARIABLE rcppArmaInclude
+            OUTPUT_VARIABLE r_RcppArmaInclude
     )
+    message(STATUS "RcppArmadillo headers: ${r_RcppArmaInclude}")
 
     ## Set BLAS and LAPACK libraries
     if ((DEFINED BLA_VENDOR) AND (NOT ${BLA_VENDOR} STREQUAL "All")) ## User provided
@@ -149,10 +154,10 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     endif ()
 
     target_include_directories(actionet
-            PRIVATE "${rInclude}"
-            PRIVATE "${rCppFLags}"
-            PRIVATE "${rcppInclude}"
-            PRIVATE "${rcppArmaInclude}"
+            PRIVATE "${r_RInclude}"
+            PRIVATE "${r_CppFlags}"
+            PRIVATE "${r_RcppInclude}"
+            PRIVATE "${r_RcppArmaInclude}"
     )
 elseif (UNIX) # Build for Unix-alike configurations (including macOS)
 
@@ -173,7 +178,6 @@ elseif (UNIX) # Build for Unix-alike configurations (including macOS)
             actionet
             PRIVATE "${actionet_SOURCE_DIR}/include/extern/armadillo"
     )
-
 endif ()
 
 ############ CONFIGURE BUILD
@@ -200,7 +204,7 @@ target_include_directories(
 )
 
 ## Check for OpenMP support
-# TODO: Adapt for when building with Apple Clang. Does not support OpenMP.
+message(NOTICE "Detecting OpenMP capabilities")
 find_package(OpenMP)
 if (OpenMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
