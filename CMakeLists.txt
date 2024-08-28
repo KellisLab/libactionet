@@ -48,6 +48,7 @@ endmacro()
 macro(CONFIGURE_APPLE arch_apple bla_vendor_apple)
     message("cmake: Configuring for macOS")
     message("Building for ${arch_apple}")
+    
     if (arch_apple STREQUAL "arm64")
         add_compile_options(-flax-vector-conversions)
     endif ()
