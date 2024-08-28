@@ -41,69 +41,6 @@ endif ()
 ############# FUNCTIONS AND MACROS
 ## Set BLAS vendor default
 set(BLA_VENDOR All)
-#if (APPLE)
-##    set(BLA_VENDOR Apple)
-#    set(BLA_VENDOR All)
-#elseif (UNIX)
-#    #    set(BLA_VENDOR something)
-#endif ()
-
-### Configure BLAS/LAPACK
-#macro(CONFIGURE_BLAS)
-#
-#    find_package(BLAS REQUIRED) ## Find BLAS
-#    find_package(LAPACK REQUIRED) ## Find LAPACK
-#
-#
-#    foreach (lib ${BLAS_LIBRARIES})
-#        if (${lib} MATCHES "mkl")
-#            message("Using Intel MKL for BLAS and LAPACK")
-#            if (NOT DEFINED ENV{MKLROOT})
-#                message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
-#            endif ()
-#
-#            set(MKL_HEADERS "$ENV{MKLROOT}/include")
-#            if (EXISTS "${MKL_HEADERS}")
-#                message("MKL headers: ${MKL_HEADERS}")
-#                target_include_directories(
-#                        actionet
-#                        PRIVATE "${MKL_HEADERS}"
-#                )
-#                add_compile_definitions(LIBACTIONET_BLAS_MKL)
-#            else ()
-#                message("Not using MKL headers.")
-#            endif ()
-#            break()
-#        endif ()
-#    endforeach ()
-#
-#
-#
-#    if ("${BLA_VENDOR}" STREQUAL "Apple")
-#        if (NOT APPLE)
-#            message(FATAL_ERROR "Accelerate can only be used on macOS")
-#        endif ()
-#        ## Find and link Apple BLAS
-#        message("Using Apple Accelerate for BLAS and LAPACK")
-#        add_compile_definitions(LIBACTIONET_BLAS_ACCELERATE)
-#
-#        set(ACCELERATE_HEADERS "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
-#        if (NOT EXISTS "${ACCELERATE_HEADERS}")
-#            message(FATAL_ERROR "Cannot locate Apple Accelerate headers")
-#        endif ()
-#
-#        message("Accelerate headers: ${ACCELERATE_HEADERS}")
-#        target_include_directories(
-#                actionet
-#                PRIVATE "${ACCELERATE_HEADERS}"
-#        )
-#        # TODO: Detect Apple architecture. Currently assumes and requires arm64.
-#        #    add_compile_options(-flax-vector-conversions -framework Accelerate)
-#        add_compile_options(-framework Accelerate)
-#        #    TODO: Probably unneeded. Suppress deprecation warnings.
-#        add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
-#    endif ()
-#endmacro()
 
 ## Set Apple CPU-specific compiler flags
 macro(CONFIGURE_APPLE arch_apple)
@@ -199,13 +136,16 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
                 OUTPUT_VARIABLE BLAS_LIBRARIES
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-
+        message(STATUS "R BLAS_LIBS: ${BLAS_LIBRARIES}")
         ## Find R LAPACK_LIBS
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/R CMD config LAPACK_LIBS | sed s/-I//g"
                 OUTPUT_VARIABLE LAPACK_LIBRARIES
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
+        message(STATUS "R LAPACK_LIBS: ${LAPACK_LIBRARIES}")
+
+        CONFIGURE_BLAS_DEPENDS()
     endif ()
 
     target_include_directories(actionet
@@ -235,29 +175,6 @@ elseif (UNIX) # Build for Unix-alike configurations (including macOS)
     )
 
 endif ()
-
-## Configure Intel MKL if linked
-#foreach (lib ${BLAS_LIBRARIES})
-#    if (${lib} MATCHES "mkl")
-#        message("Using Intel MKL for BLAS and LAPACK")
-#        if (NOT DEFINED ENV{MKLROOT})
-#            message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
-#        endif ()
-#
-#        set(MKL_HEADERS "$ENV{MKLROOT}/include")
-#        if (EXISTS "${MKL_HEADERS}")
-#            message("MKL headers: ${MKL_HEADERS}")
-#            target_include_directories(
-#                    actionet
-#                    PRIVATE "${MKL_HEADERS}"
-#            )
-#            add_compile_definitions(LIBACTIONET_BLAS_MKL)
-#        else ()
-#            message("Not using MKL headers.")
-#        endif ()
-#        break()
-#    endif ()
-#endforeach ()
 
 ############ CONFIGURE BUILD
 if (LAPACK_LINKER_FLAGS)
@@ -293,11 +210,11 @@ endif ()
 
 ## Build diagnostics and debugging
 get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
-message("COMPILE_DEFINITIONS = ${CPP_Defs}")
-
-message("LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
-message("LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
-message("BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
-message("BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
+message(NOTICE "Debug info:")
+message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
+message(STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
+message(STATUS "LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
+message(STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
+message(STATUS "BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
