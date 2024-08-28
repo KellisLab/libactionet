@@ -16,54 +16,16 @@ project(actionet)
 ## Include third-part cmake modules
 list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
 
-if (APPLE)
-    ## Set default BLAS for macOS
-    set(BLA_VENDOR Apple)
-elseif (UNIX)
-    #    set(BLA_VENDOR something)
-endif ()
-
-macro(CONFIGURE_ACCELERATE)
-    ## Find and link Apple BLAS
-    message("Using Apple Accelerate for BLAS and LAPACK")
-    add_compile_definitions(LIBACTIONET_BLAS_ACCELERATE)
-
-    set(ACCELERATE_HEADERS "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
-    if (NOT EXISTS "${ACCELERATE_HEADERS}")
-        message(FATAL_ERROR "Cannot locate Apple Accelerate headers")
-    endif ()
-
-    message("Accelerate headers: ${ACCELERATE_HEADERS}")
-    target_include_directories(
-            actionet
-            PRIVATE "${ACCELERATE_HEADERS}"
-    )
-    # TODO: Detect Apple architecture. Currently assumes and requires arm64.
-    #    add_compile_options(-flax-vector-conversions -framework Accelerate)
-    add_compile_options(-framework Accelerate)
-    #    TODO: Probably unneeded. Suppress deprecation warnings.
-    add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
-endmacro()
-
-macro(CONFIGURE_APPLE arch_apple bla_vendor_apple)
-    message("cmake: Configuring for macOS")
-    message("Building for ${arch_apple}")
-    
-    if (${arch_apple} STREQUAL "arm64")
-        add_compile_options(-flax-vector-conversions)
-    endif ()
-
-    if ("${bla_vendor_apple}" STREQUAL "Apple")
-        CONFIGURE_ACCELERATE()
-    endif ()
-endmacro()
-
-# ########### Compiler options
+############# COMPILER OPTIONS
 # C++11 is not supported, as the code uses C++17 features
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+## Suppress warning
+add_compile_options(-w)
+#add_compile_options(-O3)
 
 ## Detect usable logical CPUs
 cmake_host_system_information(RESULT NPROC QUERY NUMBER_OF_LOGICAL_CORES)
@@ -73,10 +35,57 @@ if (NPROC GREATER_EQUAL 6)
     message("Using ${NPROC} cores")
 endif ()
 
-## Suppress warning
-add_compile_options(-w)
-#add_compile_options(-O3)
+############# FUNCTIONS AND MACROS
+## Set BLAS vendor default
+if (APPLE)
+    set(BLA_VENDOR Apple)
+elseif (UNIX)
+    #    set(BLA_VENDOR something)
+endif ()
 
+## Configure BLAS/LAPACK
+macro(CONFIGURE_BLAS)
+
+    find_package(BLAS REQUIRED) ## Find BLAS
+    find_package(LAPACK REQUIRED) ## Find LAPACK
+
+    if ("${BLA_VENDOR}" STREQUAL "Apple")
+        if (NOT APPLE)
+            message(FATAL_ERROR "Accelerate can only be used on macOS")
+        endif ()
+        ## Find and link Apple BLAS
+        message("Using Apple Accelerate for BLAS and LAPACK")
+        add_compile_definitions(LIBACTIONET_BLAS_ACCELERATE)
+
+        set(ACCELERATE_HEADERS "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
+        if (NOT EXISTS "${ACCELERATE_HEADERS}")
+            message(FATAL_ERROR "Cannot locate Apple Accelerate headers")
+        endif ()
+
+        message("Accelerate headers: ${ACCELERATE_HEADERS}")
+        target_include_directories(
+                actionet
+                PRIVATE "${ACCELERATE_HEADERS}"
+        )
+        # TODO: Detect Apple architecture. Currently assumes and requires arm64.
+        #    add_compile_options(-flax-vector-conversions -framework Accelerate)
+        add_compile_options(-framework Accelerate)
+        #    TODO: Probably unneeded. Suppress deprecation warnings.
+        add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
+    endif ()
+endmacro()
+
+## Set Apple CPU-specific compiler flags
+macro(CONFIGURE_APPLE arch_apple)
+    message("cmake: Configuring for macOS")
+    message("Building for ${arch_apple}")
+
+    if (${arch_apple} STREQUAL "arm64")
+        add_compile_options(-flax-vector-conversions)
+    endif ()
+endmacro()
+
+############# INITIALIZE BUILD
 ## Add all C/C++ code to sources for compilation
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(actionet STATIC ${SOURCES})
@@ -85,7 +94,6 @@ add_library(actionet STATIC ${SOURCES})
 find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
 target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
 
-############ Interface test
 ## Build mode for testing R interface
 set(TEST_BUILD_R 0)
 if (TEST_BUILD_R)
@@ -103,7 +111,7 @@ if (TEST_BUILD_R)
     )
 endif ()
 
-############ Build modes
+############ BUILD MODES
 if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     message("cmake: Configuring for R library")
     if (NOT DEFINED R_HOME)
@@ -113,6 +121,14 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     endif ()
     add_compile_definitions(LIBACTIONET_BUILD_R) # Set R build mode in config header
 
+    if (APPLE) ## Detect R architecture on Apple systems
+        execute_process(
+                COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(R.version[[\"arch\"]])'"
+                OUTPUT_VARIABLE arch
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        CONFIGURE_APPLE(${arch})
+    endif ()
 
     ## Find R headers
     execute_process(
@@ -140,15 +156,10 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
             OUTPUT_VARIABLE rcppArmaInclude
     )
 
-
-    if (APPLE)
-        execute_process(
-                COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(R.version[[\"arch\"]])'"
-                OUTPUT_VARIABLE arch
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        CONFIGURE_APPLE(${arch} ${BLA_VENDOR})
-    else ()
+    ## Set BLAS and LAPACK libraries
+    if (DEFINED BLA_VENDOR) ## User provided
+        CONFIGURE_BLAS()
+    else () ## Get BLAS/LAPACK from R
         ## Find R BLAS_LIBS
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/R CMD config BLAS_LIBS | sed s/-I//g"
@@ -172,20 +183,17 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     )
 elseif (UNIX) # Build for Unix-alike configurations (including macOS)
 
-    ## Find BLAS
-    find_package(BLAS REQUIRED)
-
-    ## Find LAPACK
-    find_package(LAPACK REQUIRED)
-
-    if (APPLE) ## Mac-specific configurations
+    if (APPLE) ## Detect CPU architecture for Apple systems
         execute_process(
                 COMMAND bash -c "uname -m"
                 OUTPUT_VARIABLE arch
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        CONFIGURE_APPLE(${arch} ${BLA_VENDOR})
+        CONFIGURE_APPLE(${arch})
     endif ()
+
+    ## Set BLAS and LAPACK libraries
+    CONFIGURE_BLAS()
 
     # Use packaged Armadillo
     target_include_directories(
@@ -218,6 +226,7 @@ foreach (lib ${BLAS_LIBRARIES})
     endif ()
 endforeach ()
 
+############ CONFIGURE BUILD
 if (LAPACK_LINKER_FLAGS)
     target_compile_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS})
 endif ()
