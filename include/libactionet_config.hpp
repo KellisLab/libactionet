@@ -30,22 +30,21 @@
 
 #else
 
-    // TODO: stdio macros
-    #define stdout_printf printf
-    #define stderr_printf printf
-    #define FLUSH fflush(stdout)
+// TODO: stdio macros
+#define stdout_printf printf
+#define stderr_printf printf
+#define FLUSH fflush(stdout)
 
-    #include "armadillo"
+#include "armadillo"
 
 #endif
 
 // Platform specific headers and macros
-// TODO: Move to cmake
-#if defined(LIBACTIONET_PLATFORM_APPLE)
-
-//  #include <Accelerate.h>
+#if defined(LIBACTIONET_BLAS_MKL)
+    #include <mkl_cblas.h>
+#elif defined(LIBACTIONET_BLAS_ACCELERATE)
+    //  #include <Accelerate.h>
     #include <cblas.h>
-
 #else
     #include <cblas.h>
 #endif
