@@ -1,29 +1,27 @@
-#[=======================================================================[.rst:
+#[=============================================================================[
 ConfigureBLAS.cmake
-===============
+================================================================================
+Configure BLAS and LAPACK for libactionet.
 
-Configure BLAS and LAPACK for libactionet
-
-This module wraps `FindBLAS` defines all its variables.
+This module wraps the `FindBLAS` module and defines all its variables.
 
 This module conditionally defines the following:
 
 ``LIBACTIONET_BLAS_MKL``
-    ``TRUE`` iff SuiteSparse and all dependencies have been found.
+    Preprocessor flag passed to `libactionet_config.hpp` to use Intel MKL.
 
 ``LIBACTIONET_BLAS_ACCELERATE``
-    Extracted from ``SuiteSparse_config.h`` (>= v4).
+    Preprocessor flag passed to `libactionet_config.hpp` to use Apple Accelerate.
 
 ``BLAS_HEADERS_USE``
-Equal to 4 if ``SuiteSparse_VERSION`` = 4.2.1
-
+    Location of required CBLAS headers for Intel MKL and Apple Accelerate. Unset if other BLAS is used.
 
 The following variables control the behaviour of this module:
 
 ``BLA_VENDOR``
-    Do not attempt to use the native SuiteSparse CMake package configuration.
+    Specify vendor for BLAS and LAPACK (optional)
 
-]=======================================================================]
+]==============================================================================]
 
 macro(CONFIGURE_BLAS_MKL)
     message(STATUS "Using Intel MKL for BLAS and LAPACK")

@@ -1,20 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
 
-# Specify macos arm64 compilers
-#set(USE_GCC "/opt/homebrew/Cellar/gcc/14.1.0_1/bin")
-
-## Specify macos x86 Rosetta2 compilers
-# set(USE_GCC "/usr/local/Cellar/gcc/14.1.0_1/bin/")
-# string(APPEND CMAKE_CXX_FLAGS_RELEASE " -arch x86_64")
-# string(APPEND CMAKE_CC_FLAGS_RELEASE " -arch x86_64")
-
-# Set compiler
-#set(CMAKE_C_COMPILER "${USE_GCC}/gcc-14")
-#set(CMAKE_CXX_COMPILER "${USE_GCC}/g++-14")
-
-# Test Apple cross-compilation
-#set(CMAKE_OSX_ARCHITECTURES x86_64)
-
 project(actionet)
 ## Include third-part cmake modules
 list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
@@ -28,7 +13,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Suppress warning
 add_compile_options(-w)
-#add_compile_options(-O3)
 
 ## Detect usable logical CPUs
 cmake_host_system_information(RESULT NPROC QUERY NUMBER_OF_LOGICAL_CORES)
@@ -81,7 +65,6 @@ endif ()
 
 ############ BUILD MODES
 if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
-
     if (APPLE) ## Detect R architecture on Apple systems
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(R.version[[\"arch\"]])'"
@@ -135,7 +118,6 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
         CONFIGURE_BLAS()
     else () ## Get BLAS/LAPACK from R
         message(NOTICE "Using BLAS/LAPACK from R")
-
         ## Find R BLAS_LIBS
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/R CMD config BLAS_LIBS | sed s/-I//g"
@@ -144,7 +126,6 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
         )
         separate_arguments(BLAS_LIBRARIES NATIVE_COMMAND ${BLAS_LIBRARIES})
         message(STATUS "R BLAS_LIBS: ${BLAS_LIBRARIES}")
-
         ## Find R LAPACK_LIBS
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/R CMD config LAPACK_LIBS | sed s/-I//g"
@@ -153,7 +134,7 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
         )
         separate_arguments(LAPACK_LIBRARIES NATIVE_COMMAND ${LAPACK_LIBRARIES})
         message(STATUS "R LAPACK_LIBS: ${LAPACK_LIBRARIES}")
-
+        ## Find BLAS dependencies
         CONFIGURE_BLAS_DEPENDS()
     endif ()
 
@@ -162,11 +143,9 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
             PRIVATE "${r_RcppInclude}"
             PRIVATE "${r_RcppArmaInclude}"
     )
-
     target_compile_options(actionet PRIVATE ${r_CPPFLAGS})
 
 elseif (UNIX) # Build for Unix-alike configurations (including macOS)
-
     if (APPLE) ## Detect CPU architecture for Apple systems
         execute_process(
                 COMMAND bash -c "uname -m"
@@ -221,12 +200,12 @@ else ()
 endif ()
 
 ## Build diagnostics and debugging
-get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
-message(NOTICE "Debug info:")
-message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
-message(STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
-message(STATUS "LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
-message(STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
-message(STATUS "BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
+#message(NOTICE "Debug info:")
+#message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
+#message(STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
+#message(STATUS "LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
+#message(STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
+#message(STATUS "BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
+#
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
