@@ -196,7 +196,8 @@ if (OpenMP_FOUND)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
     add_compile_definitions(ARMA_OPENMP_THREADS=${NPROC})
 else ()
-    message(STATUS "OpenMP not found")
+    message(NOTICE "OpenMP not found")
+    message(STATUS "Building without OpenMP")
 endif ()
 
 ## Build diagnostics and debugging
