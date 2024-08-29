@@ -63,7 +63,7 @@ target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
 
 ############# TEST MODES
 ## Test build for R interface
-set(TEST_BUILD_R 0)
+set(TEST_BUILD_R 1)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(
@@ -107,14 +107,6 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     )
     message(STATUS "R library headers: ${r_RInclude}")
 
-    ## Find R CPPFLAGS
-    execute_process(
-            COMMAND bash -c "${R_HOME}/bin/R CMD config CPPFLAGS | sed s/-I//g"
-            OUTPUT_VARIABLE r_CppFlags
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    message(STATUS "R CPPFLAGS: ${r_CppFlags}")
-
     ## Find Rcpp headers
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
@@ -129,6 +121,15 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     )
     message(STATUS "RcppArmadillo headers: ${r_RcppArmaInclude}")
 
+    ## Get R CPPFLAGS
+    execute_process(
+            COMMAND bash -c "${R_HOME}/bin/R CMD config CPPFLAGS"
+            OUTPUT_VARIABLE r_CPPFLAGS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    separate_arguments(r_CPPFLAGS NATIVE_COMMAND ${r_CPPFLAGS})
+    message(STATUS "R CPPFLAGS: ${r_CPPFLAGS}")
+
     ## Set BLAS and LAPACK libraries
     if ((DEFINED BLA_VENDOR) AND (NOT ${BLA_VENDOR} STREQUAL "All")) ## User provided
         CONFIGURE_BLAS()
@@ -141,13 +142,16 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
                 OUTPUT_VARIABLE BLAS_LIBRARIES
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
+        separate_arguments(BLAS_LIBRARIES NATIVE_COMMAND ${BLAS_LIBRARIES})
         message(STATUS "R BLAS_LIBS: ${BLAS_LIBRARIES}")
+
         ## Find R LAPACK_LIBS
         execute_process(
                 COMMAND bash -c "${R_HOME}/bin/R CMD config LAPACK_LIBS | sed s/-I//g"
                 OUTPUT_VARIABLE LAPACK_LIBRARIES
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
+        separate_arguments(LAPACK_LIBRARIES NATIVE_COMMAND ${LAPACK_LIBRARIES})
         message(STATUS "R LAPACK_LIBS: ${LAPACK_LIBRARIES}")
 
         CONFIGURE_BLAS_DEPENDS()
@@ -155,10 +159,12 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
 
     target_include_directories(actionet
             PRIVATE "${r_RInclude}"
-            PRIVATE "${r_CppFlags}"
             PRIVATE "${r_RcppInclude}"
             PRIVATE "${r_RcppArmaInclude}"
     )
+
+    target_compile_options(actionet PRIVATE ${r_CPPFLAGS})
+
 elseif (UNIX) # Build for Unix-alike configurations (including macOS)
 
     if (APPLE) ## Detect CPU architecture for Apple systems
@@ -210,6 +216,8 @@ if (OpenMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
     add_compile_definitions(ARMA_OPENMP_THREADS=${NPROC})
+else ()
+    message(STATUS "OpenMP not found")
 endif ()
 
 ## Build diagnostics and debugging
