@@ -25,7 +25,7 @@
     // Use RcppArmadillo for StatsLib
     #define USE_RCPP_ARMADILLO
 
-    #define ARMA_32BIT_WORD
+    // #define ARMA_32BIT_WORD // Automatically set by RcppArmadillo
     #include <RcppArmadillo.h>
 
 #else
