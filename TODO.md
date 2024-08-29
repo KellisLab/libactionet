@@ -4,7 +4,8 @@
 * Split colorspace from generate_layout.
 * Put OpenMP back
   * Current mini_thread implementation is shit
-  
+* Document C++ interface
+
 ## Secondary
 * Cleanup unused code and comments
 * Abstract `autocorrelation.cpp`
@@ -12,7 +13,8 @@
 * Compile to Windows x86
 * zscore is multithreaded???
 * Make interruptable from interface
-  
+* Figure our uwot situation
+
 ## Done
 * Automate link SuiteSparse on unix/macos
 * Upgrade Armadillo
