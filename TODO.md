@@ -1,22 +1,17 @@
 ## Primary
 * pybind 11 wrappers
-* Automatically link R BLAS/LAPACK
 * Eliminate external cholmod dependency
 * Split colorspace from generate_layout.
-
+* Put OpenMP back
+  * Current mini_thread implementation is shit
+  
 ## Secondary
 * Cleanup unused code and comments
 * Abstract `autocorrelation.cpp`
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
-* Compile to macOS
-  * Arm64 and x86
-  * Figure out cblas dependency
 * zscore is multithreaded???
-* Remove OpenMP dependency?
-  * May not even be there anymor
 * Make interruptable from interface
-  * Macros?
   
 ## Done
 * Automate link SuiteSparse on unix/macos
@@ -41,3 +36,7 @@
 * Rcpp wrappers
 * Update hnswlib
 * Condense redundant SVD functions
+* Automatically link R BLAS/LAPACK
+* Compile to macOS
+  * Arm64 and x86
+  * Figure out cblas dependency
