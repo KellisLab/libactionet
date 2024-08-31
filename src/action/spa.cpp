@@ -2,9 +2,8 @@
 #include "action/spa.hpp"
 
 namespace actionet {
-
-    SPA_results run_SPA(arma::mat &A, int k) {
-        SPA_results res;
+    ResSPA run_SPA(arma::mat& A, int k) {
+        ResSPA res;
 
         int n = A.n_cols;
         arma::uvec K(k); // selected columns from A
@@ -28,10 +27,12 @@ namespace actionet {
             arma::uvec b = arma::find((a * arma::ones(1, n) - normM) / a <= eps);
             if (b.n_elem == 0) {
                 break;
-            } else if (b.n_elem > 1) {
+            }
+            if (b.n_elem > 1) {
                 arma::uword idx = arma::index_max(normM1(b));
                 K(i - 1) = b(idx);
-            } else {
+            }
+            else {
                 K(i - 1) = b(0);
             }
 
@@ -42,7 +43,7 @@ namespace actionet {
             if (i > 1) {
                 for (int j = 1; j <= i - 1; j++) {
                     U.col(i - 1) =
-                            U.col(i - 1) - sum(U.col(j - 1) % U.col(i - 1)) * U.col(j - 1);
+                        U.col(i - 1) - sum(U.col(j - 1) % U.col(i - 1)) * U.col(j - 1);
                 }
             }
             double nm = arma::norm(U.col(i - 1), 2);
@@ -60,10 +61,9 @@ namespace actionet {
             normM.transform([](double val) { return (val < 0 ? 0 : val); });
         }
 
-        res.selected_columns = K;
+        res.selected_cols = K;
         res.column_norms = norm_trace;
 
         return res;
     }
-
 } // namespace actionet

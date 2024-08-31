@@ -1,4 +1,5 @@
 ## Primary
+* Fix various normalizations
 * pybind 11 wrappers
 * Eliminate external cholmod dependency
 * Split colorspace from generate_layout.

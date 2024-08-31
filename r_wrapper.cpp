@@ -2,7 +2,7 @@
 // [[Rcpp::interfaces(r, cpp)]]
 
 // Enable build configuration for R interface
-#define LIBACTIONET_BUILD_R
+// #define LIBACTIONET_BUILD_R
 // Header `libactionet.hpp` configures package and includes `RcppArmadillo.h`. It must precede `Rcpp.h`.
 #include "libactionet.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -370,200 +370,11 @@ arma::mat run_simplex_regression(arma::mat& A, arma::mat& B, bool computeXtX = f
     return X;
 }
 
-//' Runs Successive Projection Algorithm (SPA) to solve separable NMF
-//'
-//' @param A Input matrix
-//' @param k Number of columns to select
-//'
-//' @return A named list with entries 'selected_columns' and 'norms'
-//' @examples
-//' H = run_SPA(S_r, 10)
-// [[Rcpp::export]]
-Rcpp::List run_SPA(arma::mat& A, int k)
-{
-    actionet::SPA_results res = actionet::run_SPA(A, k);
-    arma::uvec selected_columns = res.selected_columns;
 
-    arma::vec cols(k);
-    for (int i = 0; i < k; i++)
-    {
-        cols[i] = selected_columns[i] + 1;
-    }
-
-    Rcpp::List out;
-    out["selected_columns"] = cols;
-    out["norms"] = res.column_norms;
-
-    return out;
-}
-
-//' Runs multi-level ACTION decomposition method
-//'
-//' @param S_r Reduced kernel matrix
-//' @param k_min Minimum number of archetypes to consider (default=2)
-//' @param k_max Maximum number of archetypes to consider, or "depth" of
-//' decomposition (default=30)
-//' @param thread_no Number of parallel threads (default = 0)
-//' @param max_it,min_delta Convergence parameters for archetypal analysis
-//'
-//' @return A named list with entries 'C' and 'H', each a list for different
-//' values of k ' @examples ' ACTION.out = run_ACTION(S_r, k_max = 10) ' H8 =
-//' ACTION.out$H[[8]] ' cell.assignments = apply(H8, 2, which.max)
-// [[Rcpp::export]]
-Rcpp::List run_ACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normalization = 1, int max_it = 100,
-                      double min_delta = 1e-6, int thread_no = 0)
-{
-    actionet::ACTION_results trace =
-        actionet::run_ACTION(S_r, k_min, k_max, normalization, max_it, min_delta, thread_no);
-
-    Rcpp::List res;
-
-    Rcpp::List C(k_max);
-    for (int i = k_min; i <= k_max; i++)
-    {
-        arma::mat cur_C = trace.C[i];
-        C[i - 1] = cur_C;
-    }
-    res["C"] = C;
-
-    Rcpp::List H(k_max);
-    for (int i = k_min; i <= k_max; i++)
-    {
-        arma::mat cur_H = trace.H[i];
-        H[i - 1] = cur_H;
-    }
-    res["H"] = H;
-
-    return res;
-}
-
-//' Runs basic archetypal analysis
-//'
-//' @param A Inpu matrix
-//' @param W0 Starting archetypes
-//' @param max_it,min_delta Convergence parameters for archetypal analysis
-//'
-//' @return A named list with entries 'C' and 'H', each a list for different
-//' values of k ' @examples ' S_r = t(reducedDims(ace)$ACTION) ' SPA.out =
-//' run_SPA(S_r, 10) ' W0 = S_r[, SPA.out$selected_columns] ' AA.out =
-//' run_AA(S_r, W0) ' H = AA.out$H ' cell.assignments = apply(H, 2, which.max)
-// [[Rcpp::export]]
-Rcpp::List run_AA(arma::mat& A, arma::mat& W0, int max_it = 100, double min_delta = 1e-6)
-{
-    arma::field<arma::mat> res = actionet::run_AA(A, W0, max_it, min_delta);
-
-    Rcpp::List out;
-    out["C"] = res(0);
-    out["H"] = res(1);
-    out["W"] = A * res(0);
-
-    return out;
-}
-
-//' Filters multi-level archetypes and concatenate filtered archetypes.
-//' (Pre-ACTIONet archetype processing)
-//'
-//' @param C_trace,H_trace Output of ACTION
-//' @param min_specificity_z_threshold Defines the stringency of pruning
-//' nonspecific archetypes. The larger the value, the more archetypes will be
-//' filtered out (default=-1)
-//'
-//' @return A named list: \itemize{
-//' \item selected_archs: List of final archetypes that passed the
-//' filtering/pruning step.
-//' \item C_stacked,H_stacked: Horizontal/Vertical
-//' concatenation of filtered C and H matrices, respectively.
-//' }
-//'
-//' @examples
-//' S = logcounts(sce)
-//' reduction.out = reduce(S, reduced_dim = 50)
-//' S_r = reduction.out$S_r
-//' ACTION.out = run_ACTION(S_r, k_max = 10)
-//' reconstruction.out = reconstruct_archetypes(S, ACTION.out$C, ACTION.out$H)
-// [[Rcpp::export]]
-Rcpp::List prune_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trace,
-                            double min_specificity_z_threshold = -3, int min_cells = 3)
-{
-    int n_list = H_trace.size();
-    arma::field<arma::mat> C_trace_vec(n_list + 1);
-    arma::field<arma::mat> H_trace_vec(n_list + 1);
-    for (int i = 0; i < n_list; i++)
-    {
-        if (Rf_isNull(H_trace[i]))
-        {
-            continue;
-        }
-        C_trace_vec[i + 1] = (Rcpp::as<arma::mat>(C_trace[i]));
-        H_trace_vec[i + 1] = (Rcpp::as<arma::mat>(H_trace[i]));
-    }
-
-    actionet::multilevel_archetypal_decomposition results =
-        actionet::prune_archetypes(C_trace_vec, H_trace_vec, min_specificity_z_threshold, min_cells);
-
-    Rcpp::List out_list;
-
-    for (int i = 0; i < results.selected_archs.n_elem; i++)
-        results.selected_archs[i]++;
-    out_list["selected_archs"] = results.selected_archs;
-
-    out_list["C_stacked"] = results.C_stacked;
-    out_list["H_stacked"] = results.H_stacked;
-
-    return out_list;
-}
-
-//' Identifies and aggregates redundant archetypes into equivalent classes
-//' (Post-ACTIONet archetype processing)
-//'
-//' @param G Adjacency matrix of the ACTIONet graph
-//' @param S_r Reduced kernel profile
-//' @param archetypes Archetype profile (S*C)
-//' @param C_stacked,H_stacked Output of reconstruct_archetypes()
-//' @param minPoints, minClusterSize, outlier_threshold HDBSCAN parameters
-//' @param reduced_dim Kernel reduction
-//'
-//' @return A named list: \itemize{
-//' \item archetype_groups: Equivalent classes of archetypes (non-redundant)
-//' \item C_unified,H_unified: C and H matrices of unified archetypes
-//' \item sample_assignments: Assignment of samples/cells to unified archetypes
-//' }
-//' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
-//'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
-//' cell.clusters = unification.out$sample_assignments
-// [[Rcpp::export]]
-Rcpp::List
-unify_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0, int thread_no = 0)
-{
-    actionet::unification_results results =
-        actionet::unify_archetypes(S_r, C_stacked, H_stacked, normalization, thread_no);
-
-    Rcpp::List out_list;
-
-    for (int i = 0; i < results.selected_archetypes.n_elem; i++)
-        results.selected_archetypes[i]++;
-    out_list["selected_archetypes"] = results.selected_archetypes;
-
-    out_list["C_unified"] = results.C_unified;
-    out_list["H_unified"] = results.H_unified;
-
-    for (int i = 0; i < results.assigned_archetypes.n_elem; i++)
-        results.assigned_archetypes[i]++;
-
-    out_list["assigned_archetypes"] = results.assigned_archetypes;
-    out_list["arch_membership_weights"] = results.arch_membership_weights;
-
-    out_list["ontology"] = results.dag_adj;
-    out_list["ontology_node_attributes"] = results.dag_node_annotations;
-
-    return out_list;
-}
 
 //' Builds an interaction network from the multi-level archetypal decompositions
 //'
-//' @param H_stacked Output of the prune_archetypes() function.
+//' @param H_stacked Output of the collect_archetypes() function.
 //' @param density Overall density of constructed graph. The higher the density,
 //' the more edges are retained (default = 1.0).
 //' @param thread_no Number of parallel threads (default = 0).
@@ -573,7 +384,7 @@ unify_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int n
 //' @return G Adjacency matrix of the ACTIONet graph.
 //'
 //' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
 // [[Rcpp::export]]
 arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
@@ -702,17 +513,17 @@ arma::mat compute_grouped_rowvars_full(arma::mat& S, arma::Col<unsigned long lon
 //' Compute feature specificity (from archetype footprints)
 //'
 //' @param S Input matrix (sparseMatrix)
-//' @param H A soft membership matrix - Typically H_unified from the unify_archetypes() function.
+//' @param H A soft membership matrix - Typically H_merged from the merge_archetypes() function.
 //'
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
-//' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_unified)
+//' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_merged)
 //' specificity.scores = logPvals.list$upper_significance
 // [[Rcpp::export]]
 Rcpp::List compute_archetype_feature_specificity(arma::sp_mat& S, arma::mat& H, int thread_no = 0)
@@ -730,17 +541,17 @@ Rcpp::List compute_archetype_feature_specificity(arma::sp_mat& S, arma::mat& H, 
 //' Compute feature specificity (from archetype footprints)
 //'
 //' @param S Input matrix ("matrix" type)
-//' @param H A soft membership matrix - Typically H_unified from the unify_archetypes() function.
+//' @param H A soft membership matrix - Typically H_merged from the merge_archetypes() function.
 //'
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
-//' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_unified)
+//' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_merged)
 //' specificity.scores = logPvals.list$upper_significance
 // [[Rcpp::export]]
 Rcpp::List compute_archetype_feature_specificity_full(arma::mat& S, arma::mat& H, int thread_no = 0)
@@ -763,9 +574,9 @@ Rcpp::List compute_archetype_feature_specificity_full(arma::mat& S, arma::mat& H
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
 //' logPvals.list = compute_cluster_feature_specificity(S.norm, cell.clusters)
@@ -791,9 +602,9 @@ Rcpp::List compute_cluster_feature_specificity(arma::sp_mat& S, arma::uvec sampl
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
 //' logPvals.list = compute_cluster_feature_specificity(S.norm, cell.clusters)
@@ -831,7 +642,7 @@ arma::uvec compute_core_number(arma::sp_mat& G)
 //' Compute coreness of subgraph vertices induced by each archetype
 //'
 //' @param G Input graph
-//' @param sample_assignments Archetype discretization (output of unify_archetypes())
+//' @param sample_assignments Archetype discretization (output of merge_archetypes())
 //'
 //' @return cn core-number of each graph node
 //'
@@ -884,7 +695,7 @@ arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, int 
 //' G = colNets(ace)$ACTIONet
 //' associations = gProfilerDB_human$SYMBOL$REAC
 //' common.genes = intersect(rownames(ace), rownames(associations))
-//' specificity_scores = rowFactors(ace)[["H_unified_upper_significance"]]
+//' specificity_scores = rowFactors(ace)[["H_merged_upper_significance"]]
 //' logPvals = compute_feature_specificity(
 //' specificity_scores[common.genes, ], annotations[common.genes, ]
 //' )

@@ -64,16 +64,16 @@ run_ACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, doubl
 //' @param A Input matrix
 //' @param k Number of columns to select
 //'
-//' @return A named list with entries 'selected_columns' and 'norms'
+//' @return A named list with entries 'selected_cols' and 'norms'
 //' @examples
 //' H = run_SPA(S_r, 10)
 Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
-    actionet::SPA_results res = run_SPA_rows_sparse(A, k);
-    arma::uvec selected_columns = res.selected_columns;
+    actionet::ResSPA res = run_SPA_rows_sparse(A, k);
+    arma::uvec selected_cols = res.selected_cols;
 
     arma::vec cols(k);
     for (int i = 0; i < k; i++) {
-        cols[i] = selected_columns[i] + 1;
+        cols[i] = selected_cols[i] + 1;
     }
 
     Rcpp::List out;
@@ -98,7 +98,7 @@ Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
 Rcpp::List run_ACTION_plus(arma::mat &S_r, int k_min = 2, int k_max = 30, int max_it = 100, double min_delta = 1e-6,
                            int max_trial = 3) {
 
-    ACTION_results trace = run_ACTION_plus(S_r, k_min, k_max, max_it, min_delta, max_trial);
+    ResACTION trace = run_ACTION_plus(S_r, k_min, k_max, max_it, min_delta, max_trial);
 
     Rcpp::List res;
 
@@ -178,7 +178,7 @@ run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> samples, int k_min = 2
 Rcpp::List run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min = 2, int k_max = 30, int thread_no = 0,
                                int max_it = 50, double min_delta = 1e-16) {
 
-    ACTION_results trace = run_weighted_ACTION(S_r, w, k_min, k_max, thread_no, max_it, min_delta);
+    ResACTION trace = run_weighted_ACTION(S_r, w, k_min, k_max, thread_no, max_it, min_delta);
 
     Rcpp::List res;
 
@@ -206,9 +206,9 @@ Rcpp::List run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min = 2, int k
 //' @return A list with the first entry being the renormalized input matrix
 //'
 //' @examples
-//' prune.out = prune_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = unify_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
 arma::sp_mat renormalize_input_matrix(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
@@ -228,12 +228,12 @@ arma::mat renormalize_input_matrix_full(arma::mat &S, arma::Col<unsigned long lo
 //' Compute feature specificity (from archetype footprints and binary input)
 //'
 //' @param S Input matrix (sparseMatrix - binary)
-//' @param H A soft membership matrix - Typically H_unified from the unify_archetypes() function.
+//' @param H A soft membership matrix - Typically H_merged from the merge_archetypes() function.
 //'
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//'	logPvals.list = compute_archetype_feature_specificity_bin(S.bin, unification.out$H_unified)
+//'	logPvals.list = compute_archetype_feature_specificity_bin(S.bin, unification.out$H_merged)
 //' specificity.scores = logPvals.list$upper_significance
 Rcpp::List compute_archetype_feature_specificity_bin(arma::sp_mat &S, arma::mat &H, int thread_no = 0) {
 
@@ -510,7 +510,7 @@ Rcpp::List PCA2ACTIONred_full(arma::mat &S, arma::mat x, arma::vec sdev, arma::m
 
 Rcpp::List run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_parent, int kk, int k_min, int k_max,
                          int thread_no, int max_it = 50, double min_delta = 1e-16) {
-    actionet::ACTION_results trace =
+    actionet::ResACTION trace =
             run_subACTION(S_r, W_parent, H_parent, kk - 1, k_min, k_max, thread_no, max_it, min_delta);
 
     Rcpp::List res;

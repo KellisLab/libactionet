@@ -8,14 +8,14 @@
 
 namespace actionet {
 
-    multilevel_archetypal_decomposition prune_archetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
-                                                         double min_specificity_z_threshold, int min_cells) {
+    ResCollectArch collect_archetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
+                                      double spec_th, int min_obs) {
 
         arma::mat C_stacked;
         arma::mat H_stacked;
         int depth = H_trace.size();
 
-        multilevel_archetypal_decomposition results;
+        ResCollectArch results;
 
         // Vector contains an element for k==0, this have to -1
         stdout_printf("Joining trace of C & H matrices (depth = %d) ... ", depth - 1);
@@ -67,7 +67,7 @@ namespace actionet {
         }
 
         arma::vec transitivity_z = zscore(transitivity);
-        arma::uvec nonspecific_idx = arma::find(transitivity_z < min_specificity_z_threshold);
+        arma::uvec nonspecific_idx = arma::find(transitivity_z < spec_th);
         pruned(nonspecific_idx).ones();
         stdout_printf("\tNon-specific archetypes: %d\n", (int) nonspecific_idx.n_elem);
         FLUSH;
@@ -93,13 +93,13 @@ namespace actionet {
             }
         }
 
-        stdout_printf("\tUnreliable archetypes: %d\n", bad_archs);
+        stdout_printf("\tUnreproducible archetypes: %d\n", bad_archs);
         FLUSH;
 
         arma::uvec idx = arma::find(C_stacked > 1e-6);
         arma::mat C_bin = C_stacked;
         C_bin(idx).ones();
-        arma::uvec trivial_idx = arma::find(arma::sum(C_bin) < min_cells);
+        arma::uvec trivial_idx = arma::find(arma::sum(C_bin) < min_obs);
         pruned(trivial_idx).ones();
 
         stdout_printf("\tTrivial archetypes: %d\n", (int) trivial_idx.n_elem);
@@ -113,48 +113,48 @@ namespace actionet {
         return (results);
     }
 
-    unification_results
-    unify_archetypes(arma::mat &S_r, arma::mat &C_stacked, arma::mat &H_stacked, int normalization, int thread_no) {
+    ResMergeArch
+    merge_archetypes(arma::mat &S_r, arma::mat &C_stacked, arma::mat &H_stacked, int normalization, int thread_no) {
 
         if (thread_no <= 0) {
             thread_no = SYS_THREADS_DEF;
         }
 
-        stdout_printf("Unifying %d archetypes (%d threads):\n", (int) C_stacked.n_cols, thread_no);
+        stdout_printf("Merging %d archetypes (%d threads):\n", (int) C_stacked.n_cols, thread_no);
         FLUSH;
 
-        unification_results output;
+        ResMergeArch output;
 
         H_stacked = arma::normalise(H_stacked, 1, 0);
         arma::sp_mat H_stacked_sp = arma::sp_mat(H_stacked);
         arma::mat H_arch = spmat_mat_product_parallel(H_stacked_sp, C_stacked, thread_no);
         H_arch.replace(arma::datum::nan, 0); // replace each NaN with 0
 
-        SPA_results SPA_out = run_SPA(H_arch, (int) H_arch.n_cols);
-        arma::uvec candidates = SPA_out.selected_columns;
+        ResSPA SPA_out = run_SPA(H_arch, (int) H_arch.n_cols);
+        arma::uvec candidates = SPA_out.selected_cols;
         arma::vec scores = SPA_out.column_norms;
         double x1 = arma::sum(scores);
         double x2 = arma::sum(arma::square(scores));
         int arch_no = std::round((x1 * x1) / x2);
         candidates = candidates(arma::span(0, arch_no - 1));
 
-        stdout_printf("# unified archetypes: %d\n", arch_no);
+        stdout_printf("Archetypes in merged set: %d\n", arch_no);
         FLUSH;
 
         output.selected_archetypes = candidates;
 
-        arma::mat C_unified = C_stacked.cols(candidates);
+        arma::mat C_merged = C_stacked.cols(candidates);
 
         arma::mat X_r = normalize_matrix(S_r, normalization, 0);
 
-        arma::mat W_r_unified = X_r * C_unified;
+        arma::mat W_r_merged = X_r * C_merged;
 
-        arma::mat H_unified = run_simplex_regression(W_r_unified, X_r, false);
+        arma::mat H_merged = run_simplex_regression(W_r_merged, X_r, false);
 
-        arma::uvec assigned_archetypes = arma::trans(arma::index_max(H_unified, 0));
+        arma::uvec assigned_archetypes = arma::trans(arma::index_max(H_merged, 0));
 
-        output.C_unified = C_unified;
-        output.H_unified = H_unified;
+        output.C_merged = C_merged;
+        output.H_merged = H_merged;
         output.assigned_archetypes = assigned_archetypes;
 
         return (output);

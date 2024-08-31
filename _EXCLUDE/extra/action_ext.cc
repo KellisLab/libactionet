@@ -111,7 +111,7 @@ void findConsensus(std::vector<arma::mat> S, full_trace &run_trace, int arch_no,
     }
 }
 
-actionet::ACTION_results run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min, int k_max, int thread_no,
+actionet::ResACTION run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min, int k_max, int thread_no,
                                              int max_it, double min_delta) {
     int feature_no = S_r.n_rows;
 
@@ -124,7 +124,7 @@ actionet::ACTION_results run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_
     k_min = std::max(k_min, 2);
     k_max = std::min(k_max, (int) S_r.n_cols);
 
-    actionet::ACTION_results trace;
+    actionet::ResACTION trace;
 
     trace.H = arma::field<arma::mat>(k_max + 1);
     trace.C = arma::field<arma::mat>(k_max + 1);
@@ -154,8 +154,8 @@ actionet::ACTION_results run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_
     FLUSH;
 
     mini_thread::parallelFor(k_min, k_max + 1, [&](size_t kk) {
-        actionet::SPA_results SPA_res = actionet::run_SPA(X_r_scaled, kk);
-        trace.selected_cols[kk] = SPA_res.selected_columns;
+        actionet::ResSPA SPA_res = actionet::run_SPA(X_r_scaled, kk);
+        trace.selected_cols[kk] = SPA_res.selected_cols;
 
         arma::mat W = X_r_scaled.cols(trace.selected_cols[kk]);
 
@@ -215,8 +215,8 @@ Online_ACTION_results run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> 
     FLUSH;
 
     mini_thread::parallelFor(k_min, k_max + 1, [&](size_t kk) {
-        actionet::SPA_results SPA_res = actionet::run_SPA(X_r_L1, kk);
-        trace.selected_cols[kk] = SPA_res.selected_columns;
+        actionet::ResSPA SPA_res = actionet::run_SPA(X_r_L1, kk);
+        trace.selected_cols[kk] = SPA_res.selected_cols;
 
         arma::mat W = X_r_L2.cols(trace.selected_cols[kk]);
 
@@ -242,7 +242,7 @@ Online_ACTION_results run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> 
     return trace;
 }
 
-actionet::ACTION_results
+actionet::ResACTION
 run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_delta, int max_trial) {
 
     stdout_printf("Running ACTION++ (%d threads):");
@@ -255,15 +255,15 @@ run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_del
     k_min = std::max(k_min, 2);
     k_max = std::min(k_max, D);
 
-    actionet::ACTION_results trace;
+    actionet::ResACTION trace;
 
     trace.H = arma::field<arma::mat>(k_max + 1, 1);
     trace.C = arma::field<arma::mat>(k_max + 1, 1);
     trace.selected_cols = arma::field<arma::uvec>(k_max + 1, 1);
 
     arma::mat X_r = arma::normalise(S_r, 1); // ATTENTION!
-    actionet::SPA_results SPA_res = actionet::run_SPA(X_r, D);
-    arma::uvec selected_cols = SPA_res.selected_columns;
+    actionet::ResSPA SPA_res = actionet::run_SPA(X_r, D);
+    arma::uvec selected_cols = SPA_res.selected_cols;
 
     arma::mat W = arma::mat(X_r.col(selected_cols(0)));
 
@@ -322,7 +322,7 @@ run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_del
     return trace;
 }
 
-actionet::ACTION_results run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_parent, int kk, int k_min,
+actionet::ResACTION run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_parent, int kk, int k_min,
                                        int k_max, int thread_no, int max_it, double min_delta) {
     int feature_no = S_r.n_rows;
 
@@ -348,7 +348,7 @@ actionet::ACTION_results run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma
         X_r_scaled.col(i) *= h[i];
     }
 
-    actionet::ACTION_results trace;
+    actionet::ResACTION trace;
     trace.H = arma::field<arma::mat>(k_max + 1);
     trace.C = arma::field<arma::mat>(k_max + 1);
     trace.selected_cols = arma::field<arma::uvec>(k_max + 1);
@@ -367,8 +367,8 @@ actionet::ACTION_results run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma
     mini_thread::parallelFor(
             k_min, k_max + 1,
             [&](size_t kkk) {
-                actionet::SPA_results SPA_res = actionet::run_SPA(X_r_scaled, kkk);
-                trace.selected_cols[kkk] = SPA_res.selected_columns;
+                actionet::ResSPA SPA_res = actionet::run_SPA(X_r_scaled, kkk);
+                trace.selected_cols[kkk] = SPA_res.selected_cols;
 
                 arma::mat W = X_r.cols(trace.selected_cols[kkk]);
                 arma::field<arma::mat> AA_res;
@@ -438,8 +438,8 @@ full_trace runACTION_muV(std::vector<arma::mat> S_r, int k_min, int k_max, arma:
                 // Solve ACTION for a fixed-k to "jump-start" the joint optimization
                 // problem.
                 for (int i = 0; i < S_r.size(); i++) {
-                    actionet::SPA_results SPA_res = actionet::run_SPA(S_r[i], kk);
-                    run_trace.indiv_trace[kk].selected_cols[i] = SPA_res.selected_columns;
+                    actionet::ResSPA SPA_res = actionet::run_SPA(S_r[i], kk);
+                    run_trace.indiv_trace[kk].selected_cols[i] = SPA_res.selected_cols;
 
                     arma::mat W = S_r[i].cols(run_trace.indiv_trace[kk].selected_cols[i]);
 

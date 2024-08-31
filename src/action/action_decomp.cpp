@@ -6,8 +6,8 @@
 
 namespace actionet {
 
-    ACTION_results
-    run_ACTION(arma::mat &S_r, int k_min, int k_max, int normalization, int max_it, double min_delta, int thread_no) {
+    ResACTION
+    run_ACTION(arma::mat &S_r, int k_min, int k_max, int normalization, int max_it, double tol, int thread_no) {
         if (thread_no <= 0) {
             thread_no = SYS_THREADS_DEF;
         }
@@ -21,7 +21,7 @@ namespace actionet {
         k_min = std::max(k_min, 2);
         k_max = std::min(k_max, (int) S_r.n_cols);
 
-        ACTION_results trace;
+        ResACTION trace;
 
         trace.H = arma::field<arma::mat>(k_max + 1);
         trace.C = arma::field<arma::mat>(k_max + 1);
@@ -40,12 +40,12 @@ namespace actionet {
         mini_thread::parallelFor(
                 k_min, k_max + 1,
                 [&](size_t kk) {
-                    SPA_results SPA_res = run_SPA(X_r, kk);
-                    trace.selected_cols[kk] = SPA_res.selected_columns;
+                    ResSPA SPA_res = run_SPA(X_r, kk);
+                    trace.selected_cols[kk] = SPA_res.selected_cols;
 
                     arma::mat W = X_r.cols(trace.selected_cols[kk]);
 
-                    arma::field<arma::mat> AA_res = run_AA(X_r, W, max_it, min_delta);
+                    arma::field<arma::mat> AA_res = run_AA(X_r, W, max_it, tol);
                     trace.C[kk] = AA_res(0);
                     trace.H[kk] = AA_res(1);
                     current_k++;

@@ -4,7 +4,7 @@
 
 namespace actionet {
 
-    arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double min_delta) {
+    arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double tol) {
         int sample_no = A.n_cols;
         int k = W0.n_cols; // AA components
 
@@ -58,7 +58,7 @@ namespace actionet {
             double delta_RSS = std::abs(RSS - old_RSS) / A_norm;
             old_RSS = RSS;
 
-            if (delta_RSS < min_delta)
+            if (delta_RSS < tol)
                 break;
         }
 

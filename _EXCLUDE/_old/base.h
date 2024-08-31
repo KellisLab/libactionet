@@ -117,14 +117,14 @@ namespace actionet
     //   };
 
     // To store the output of run_SPA()
-    // struct SPA_results
+    // struct ResSPA
     // {
-    //   uvec selected_columns;
+    //   uvec selected_cols;
     //   vec column_norms;
     // };
 
     // To store the output of run_ACTION()
-    // struct ACTION_results
+    // struct ResACTION
     // {
     //   field<uvec> selected_cols;
     //   field<mat> H;
@@ -142,7 +142,7 @@ namespace actionet
     // };
 
     // // To store the output of reconstruct_archetypes()
-    // struct multilevel_archetypal_decomposition
+    // struct ResCollectArch
     // {
     //     uvec selected_archs; // If hub removal requested, this will hold the indices
     //                          // of retained archetypes
@@ -152,17 +152,13 @@ namespace actionet
     //                          // archetypes
     // };
 
-    // To store the output of unify_archetypes()
-    // struct unification_results
+    // To store the output of merge_archetypes()
+    // struct ResMergeArch
     // {
-    //     mat dag_adj;
-    //     vec dag_node_annotations;
     //     uvec selected_archetypes;
-    //     mat C_unified;
-    //     mat H_unified;
+    //     mat C_merged;
+    //     mat H_merged;
     //     uvec assigned_archetypes;
-    //     vec archetype_group;
-    //     mat arch_membership_weights;
     // };
 
     // Low-level functions
@@ -178,8 +174,8 @@ namespace actionet
     // field<mat> IRLB_SVD(sp_mat &A, int dim, int iters, int seed, int verbose);
 
     // Successive Projection Algorithm (SPA) to solve separable NMF
-    // SPA_results run_SPA(mat &M, int k);
-    // SPA_results run_SPA_rows_sparse(sp_mat &A, int k);
+    // ResSPA run_SPA(mat &M, int k);
+    // ResSPA run_SPA_rows_sparse(sp_mat &A, int k);
 
     // Simplex regression ofr AA: min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
     // mat run_simplex_regression(mat &A, mat &B, bool computeXtX);
@@ -226,31 +222,31 @@ namespace actionet
     // field<mat> orthogonalize_basal(mat &S, field<mat> SVD_results, mat &basal);
 
     // ACTION decomposition
-    // ACTION_results run_ACTION(mat &S_r, int k_min, int k_max, int thread_no,
+    // ResACTION run_ACTION(mat &S_r, int k_min, int k_max, int thread_no,
     //                           int max_it, double min_delta, int normalization);
-    // ACTION_results run_subACTION(mat &S_r, mat &W_parent, mat &H_parent, int kk,
+    // ResACTION run_subACTION(mat &S_r, mat &W_parent, mat &H_parent, int kk,
     //                              int k_min, int k_max, int thread_no, int max_it,
     //                              double min_delta);
 
-    // ACTION_results run_weighted_ACTION(mat &S_r, vec w, int k_min, int k_max,
+    // ResACTION run_weighted_ACTION(mat &S_r, vec w, int k_min, int k_max,
     //                                    int thread_no, int max_it, double min_delta);
 
-    // ACTION_results run_ACTION_plus(mat &S_r, int k_min, int k_max, int max_it,
+    // ResACTION run_ACTION_plus(mat &S_r, int k_min, int k_max, int max_it,
     //                                double min_delta, int max_trial);
 
     // Pre-ACTIONet archetype filtering/aggregation
     // To prune archetypes across different levels and concatenate the resulting
     // archetypes
-    // multilevel_archetypal_decomposition prune_archetypes(
-    //     field<mat> C_trace, field<mat> H_trace, double min_specificity_z_threshold,
-    //     int min_cells);
+    // ResCollectArch collect_archetypes(
+    //     field<mat> C_trace, field<mat> H_trace, double spec_th,
+    //     int min_obs);
 
     // Post-ACTIONet archetype filtering/aggregation
     // To unify redundant archetypes across different levels
-    // unification_results unify_archetypes(sp_mat &G, mat &S_r, mat &archetypes,
+    // ResMergeArch merge_archetypes(sp_mat &G, mat &S_r, mat &archetypes,
     // mat &C_stacked, mat &H_stacked, int minPoints, int minClusterSize, double
     // outlier_threshold, int reduced_dim);
-    // unification_results unify_archetypes(mat &S_r, mat &C_stacked, mat &H_stacked,
+    // ResMergeArch merge_archetypes(mat &S_r, mat &C_stacked, mat &H_stacked,
     //                                      double backbone_density = 0.5,
     //                                      double resolution = 1.0,
     //                                      int min_cluster_size = 3,

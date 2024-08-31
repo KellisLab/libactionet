@@ -2,7 +2,7 @@
 #define ACTIONET_LIBACTIONET_HPP
 
 // Set variables, macros, and headers for package compilation and linking.
-#include "libactionet_config.hpp"
+// #include "libactionet_config.hpp"
 
 // Exported modules: Symbols defined in these headers are accessible through
 // the `action` namespace and visible to interfaces.
