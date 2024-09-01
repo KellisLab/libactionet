@@ -753,3 +753,36 @@ Rcpp::List SVD2PCA_full(arma::mat &S, arma::mat u, arma::vec d, arma::mat v) {
 
     return res;
 }
+
+// [[Rcpp::export]]
+arma::sp_mat LSI(arma::sp_mat& X, double size_factor = 100000) {
+    arma::sp_mat TFIDF = actionet::LSI(X, size_factor);
+
+    return (TFIDF);
+}
+
+// [[Rcpp::export]]
+arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
+                                                int network_normalization_method = 0,
+                                                int expression_normalization_method = 0, int gene_scaling_method = 0,
+                                                double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
+    arma::mat stats = actionet::aggregate_genesets_mahalanobis_2archs(G, S, marker_mat, network_normalization_method,
+                                                                      expression_normalization_method,
+                                                                      gene_scaling_method,
+                                                                      pre_alpha, post_alpha, thread_no);
+
+    return (stats);
+}
+
+// [[Rcpp::export]]
+arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
+                                              int network_normalization_method = 0,
+                                              int expression_normalization_method = 0, int gene_scaling_method = 0,
+                                              double pre_alpha = 0.85, double post_alpha = 0.85, int thread_no = 0) {
+    arma::mat stats = actionet::aggregate_genesets_mahalanobis_2gmm(G, S, marker_mat, network_normalization_method,
+                                                                    expression_normalization_method,
+                                                                    gene_scaling_method,
+                                                                    pre_alpha, post_alpha, thread_no);
+
+    return (stats);
+}

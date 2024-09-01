@@ -116,33 +116,4 @@ namespace actionet
         return (normalized_scores);
     }
 
-    // TODO: TF-IDF normalization (change name)
-    // Formula might be wrong.
-    arma::sp_mat LSI(const arma::sp_mat& S, double size_factor)
-    {
-        arma::sp_mat X = S;
-
-        arma::vec col_sum_vec = arma::zeros(X.n_cols);
-        arma::vec row_sum_vec = arma::zeros(X.n_rows);
-
-        arma::sp_mat::iterator it = X.begin();
-        arma::sp_mat::iterator it_end = X.end();
-        for (; it != it_end; ++it)
-        {
-            col_sum_vec(it.col()) += (*it);
-            row_sum_vec(it.row()) += (*it);
-        }
-
-        arma::vec kappa = size_factor / col_sum_vec;
-        arma::vec IDF = arma::log(1 + (X.n_cols / row_sum_vec));
-
-        for (it = X.begin(); it != X.end(); ++it)
-        {
-            double x = (*it) * kappa(it.col());
-            x = std::log(1 + x) * IDF(it.row());
-            *it = x;
-        }
-
-        return (X);
-    }
 } // namespace actionet

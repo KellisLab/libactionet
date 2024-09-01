@@ -496,3 +496,175 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
 
     return (stats);
 }
+
+    arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
+                                                    int network_normalization_method,
+                                                    int expression_normalization_method, int gene_scaling_method,
+                                                    double pre_alpha, double post_alpha, int thread_no) {
+        if (S.n_rows != marker_mat.n_rows) {
+            stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
+            FLUSH;
+            return (arma::mat());
+        }
+        if (S.n_cols != G.n_rows) {
+            stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
+            FLUSH;
+            return (arma::mat());
+        }
+
+        // 0: pagerank, 2: sym_pagerank
+        arma::sp_mat P;
+        if (pre_alpha != 0 || post_alpha != 0) {
+            P = normalize_adj(G, network_normalization_method);
+        }
+
+        arma::mat T = arma::mat(S);
+
+        if (pre_alpha != 0) {
+            arma::mat T_t = trans(T);
+            T = compute_network_diffusion_approx(P, T_t, thread_no, pre_alpha);
+            T = arma::trans(T);
+        }
+
+        arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
+        mini_thread::parallelFor(
+            0, marker_mat.n_cols, [&](int j) {
+                arma::vec w = arma::vec(marker_mat.col(j));
+                arma::uvec nnz_idx = find(w != 0);
+                if (nnz_idx.n_elem != 0) {
+                    arma::mat T_scaled = T.rows(nnz_idx);
+                    //0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
+                    if (gene_scaling_method != 0) {
+                        T_scaled = normalize_scores(T_scaled, gene_scaling_method, thread_no);
+                    }
+                    T_scaled = T_scaled.each_col() % w(nnz_idx);
+
+                    arma::uvec idx(2);
+                    arma::rowvec ss = arma::sum(T_scaled);
+                    idx(0) = arma::index_min(ss);
+                    idx(1) = arma::index_max(ss);
+
+                    arma::mat W0 = T_scaled.cols(idx);
+
+                    arma::field<arma::mat> AA_res = run_AA(T_scaled, W0, 100);
+                    arma::mat C = AA_res(0);
+                    arma::mat H = AA_res(1);
+                    arma::mat W = T_scaled * C;
+                    arma::uword selected_arch0 = arma::index_min(sum(W));
+                    arma::vec mu = W.col(selected_arch0);
+
+                    double p = T_scaled.n_rows;
+                    double n = T_scaled.n_cols;
+
+                    arma::mat Delta = T_scaled.each_col() - mu;
+
+                    arma::mat sigma = Delta * arma::trans(Delta) / (n - 1);
+                    arma::mat sigma_inv = arma::pinv(sigma);
+
+                    for (int k = 0; k < n; k++) {
+                        arma::vec delta = Delta.col(k);
+                        double dist = dot(delta, sigma_inv * delta);
+                        double z = (dist - p) / sqrt(2 * p);
+                        z = z < 0 ? 0 : z;
+
+                        marker_stats(k, j) = arma::sign(arma::mean(delta)) * z;
+                    }
+                }
+            },
+            thread_no);
+
+        marker_stats.replace(arma::datum::nan, 0);
+
+        arma::mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
+        if (post_alpha != 0) {
+            stdout_printf("Post-smoothing expression values ... ");
+            marker_stats_smoothed = compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
+                                                                        post_alpha);
+            stdout_printf("done\n");
+            FLUSH;
+        }
+
+        return (marker_stats_smoothed);
+    }
+
+    arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
+                                                  int network_normalization_method, int expression_normalization_method,
+                                                  int gene_scaling_method, double pre_alpha, double post_alpha,
+                                                  int thread_no) {
+        if (S.n_rows != marker_mat.n_rows) {
+            stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
+            FLUSH;
+            return (arma::mat());
+        }
+        if (S.n_cols != G.n_rows) {
+            stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
+            FLUSH;
+            return (arma::mat());
+        }
+
+        // 0: pagerank, 2: sym_pagerank
+        arma::sp_mat P;
+        if (pre_alpha != 0 || post_alpha != 0) {
+            P = normalize_adj(G, network_normalization_method);
+        }
+
+        arma::mat T = arma::mat(S);
+
+        if (pre_alpha != 0) {
+            arma::mat T_t = arma::trans(T);
+            T = compute_network_diffusion_approx(P, T_t, thread_no, pre_alpha);
+            T = arma::trans(T);
+        }
+
+        arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
+        mini_thread::parallelFor(0, marker_mat.n_cols, [&](int j) {
+                                     arma::vec w = arma::vec(marker_mat.col(j));
+                                     arma::uvec nnz_idx = arma::find(w != 0);
+                                     if (nnz_idx.n_elem != 0) {
+                                         arma::mat T_scaled = T.rows(nnz_idx);
+                                         //0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
+                                         if (gene_scaling_method != 0) {
+                                             T_scaled = normalize_scores(T_scaled, gene_scaling_method, thread_no);
+                                         }
+                                         T_scaled = T_scaled.each_col() % w(nnz_idx);
+
+                                         arma::gmm_full model;
+
+                                         arma::mat W = model.means;
+
+                                         arma::uword selected_arch0 = arma::index_min(arma::sum(W));
+                                         arma::vec mu = W.col(selected_arch0);
+
+                                         double p = T_scaled.n_rows;
+                                         double n = T_scaled.n_cols;
+
+                                         arma::mat Delta = T_scaled.each_col() - mu;
+
+                                         arma::mat sigma = Delta * arma::trans(Delta) / (n - 1);
+                                         arma::mat sigma_inv = arma::pinv(sigma);
+
+                                         for (int k = 0; k < n; k++) {
+                                             arma::vec delta = Delta.col(k);
+                                             double dist = arma::dot(delta, sigma_inv * delta);
+                                             double z = (dist - p) / std::sqrt(2 * p);
+                                             z = z < 0 ? 0 : z;
+
+                                             marker_stats(k, j) = arma::sign(arma::mean(delta)) * z;
+                                         }
+                                     }
+                                 },
+                                 thread_no);
+
+        marker_stats.replace(arma::datum::nan, 0);
+
+        arma::mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
+        if (post_alpha != 0) {
+            stdout_printf("Post-smoothing expression values ... ");
+            marker_stats_smoothed = compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
+                                                                        post_alpha);
+            stdout_printf("done\n");
+            FLUSH;
+        }
+
+        return (marker_stats_smoothed);
+    }
