@@ -104,15 +104,12 @@ Rcpp::List run_ACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normali
 //' reconstruction.out = reconstruct_archetypes(S, ACTION.out$C, ACTION.out$H)
 // [[Rcpp::export]]
 Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trace,
-                            double spec_th = -3, int min_obs = 3)
-{
+                              double spec_th = -3, int min_obs = 3) {
     int n_list = H_trace.size();
     arma::field<arma::mat> C_trace_vec(n_list + 1);
     arma::field<arma::mat> H_trace_vec(n_list + 1);
-    for (int i = 0; i < n_list; i++)
-    {
-        if (Rf_isNull(H_trace[i]))
-        {
+    for (int i = 0; i < n_list; i++) {
+        if (Rf_isNull(H_trace[i])) {
             continue;
         }
         C_trace_vec[i + 1] = (Rcpp::as<arma::mat>(C_trace[i]));
@@ -156,8 +153,8 @@ Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_tra
 //' cell.clusters = unification.out$sample_assignments
 // [[Rcpp::export]]
 Rcpp::List
-merge_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0, int thread_no = 0)
-{
+    merge_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0,
+                     int thread_no = 0) {
     actionet::ResMergeArch results =
         actionet::merge_archetypes(S_r, C_stacked, H_stacked, normalization, thread_no);
 
@@ -180,6 +177,114 @@ merge_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int n
 
 // reduce_kernel =======================================================================================================
 
+Rcpp::List reduce_kernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
+                         int SVD_algorithm = 0, int verbose = 1) {
+    arma::field<arma::mat> reduction =
+        actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+
+    Rcpp::List res;
+    res["S_r"] = reduction(0);
+    res["sigma"] = reduction(1);
+    res["V"] = reduction(2);
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, int seed = 0, int SVD_algorithm = 0,
+                              bool prenormalize = false, int verbose = 1) {
+    arma::field<arma::mat> reduction =
+        actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+
+    Rcpp::List res;
+    res["S_r"] = reduction(0);
+    res["sigma"] = reduction(1);
+    res["V"] = reduction(2);
+    res["A"] = reduction(3);
+    res["B"] = reduction(4);
+
+    return res;
+}
+
+//' Computes reduced kernel matrix for a given (single-cell) profile
+//'
+//' @param S Input matrix ("sparseMatrix")
+//' @param reduced_dim Dimension of the reduced kernel matrix (default=50)
+//' @param iters Number of SVD iterations (default=5)
+//' @param seed Random seed (default=0)
+//' @param reduction_algorithm Kernel reduction algorithm. Currently only ACTION
+//' method (1) is implemented (default=1)
+//' @param SVD_algorithm SVD algorithm to use. Currently supported methods
+//' are Halko (1) and Feng (2) (default=1)
+//'
+//' @return A named list with S_r, V, lambda, and exp_var. \itemize{
+//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
+//' \item V: Associated left singular-vectors (useful for reconstructing
+//' discriminative scores for features, such as genes).
+//' \item lambda, exp_var: Summary statistics of the sigular-values.
+//' }
+//'
+//' @examples
+//' S = logcounts(sce)
+//' reduction.out = reduce(S, reduced_dim = 50)
+//' S_r = reduction.out$S_r
+// [[Rcpp::export]]
+// Rcpp::List reduce_kernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
+//                          int SVD_algorithm = 0, int verbose = 1) {
+//     arma::field<arma::mat> reduction =
+//         actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+//
+//     Rcpp::List res;
+//     res["V"] = reduction(0);
+//
+//     arma::vec sigma = reduction(1).col(0);
+//     res["sigma"] = sigma;
+//
+//     double epsilon = 0.01 / std::sqrt(reduction(2).n_rows);
+//     arma::mat V = arma::round(reduction(2) / epsilon) * epsilon;
+//
+//     for (int i = 0; i < V.n_cols; i++) {
+//         arma::vec v = V.col(i) * sigma(i);
+//         V.col(i) = v;
+//     }
+//     V = arma::trans(V);
+//     res["S_r"] = V.eval();
+//
+//     res["A"] = reduction(3);
+//     res["B"] = reduction(4);
+//
+//     return res;
+// }
+
+// [[Rcpp::export]]
+// Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, int seed = 0, int SVD_algorithm = 0,
+//                               bool prenormalize = false, int verbose = 1) {
+//     arma::field<arma::mat> reduction =
+//         actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+//
+//     Rcpp::List res;
+//     res["V"] = reduction(0);
+//
+//     arma::vec sigma = reduction(1).col(0);
+//     res["sigma"] = sigma;
+//
+//     double epsilon = 0.01 / std::sqrt(reduction(2).n_rows);
+//     arma::mat V = arma::round(reduction(2) / epsilon) * epsilon;
+//
+//     for (int i = 0; i < V.n_cols; i++) {
+//         arma::vec v = V.col(i) * sigma(i);
+//         V.col(i) = v;
+//     }
+//     V = arma::trans(V);
+//     res["S_r"] = V.eval();
+//
+//     res["A"] = reduction(3);
+//     res["B"] = reduction(4);
+//
+//     return res;
+// }
 
 // simplex_regression ==================================================================================================
 
@@ -195,14 +300,12 @@ merge_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int n
 //' @examples
 //' H = run_SPA(S_r, 10)
 // [[Rcpp::export]]
-Rcpp::List run_SPA(arma::mat& A, int k)
-{
+Rcpp::List run_SPA(arma::mat& A, int k) {
     actionet::ResSPA res = actionet::run_SPA(A, k);
     arma::uvec selected_cols = res.selected_cols;
 
     arma::vec cols(k);
-    for (int i = 0; i < k; i++)
-    {
+    for (int i = 0; i < k; i++) {
         cols[i] = selected_cols[i] + 1;
     }
 
