@@ -4,7 +4,6 @@
 #define RCPP_ARMADILLO_RETURN_ANYVEC_AS_VECTOR
 
 #include <RcppArmadillo.h>
-#include "libactionet.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
 
 //' Set the RNG Seed from within Rcpp
