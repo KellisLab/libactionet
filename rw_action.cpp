@@ -10,14 +10,12 @@
 
 //' Runs archetypal analysis (AA)
 //'
-//' Run archetypal analysis (AA)
+//' @param A Input matrix.
+//' @param W0 Matrix with <em>k</em> columns representing initial archetypes.
+//' @param max_it Maximum number of iterations.
+//' @param tol Convergence tolerance.
 //'
-/// @param A Input matrix.
-/// @param W0 Matrix with <em>k</em> columns representing initial archetypes.
-/// @param max_it Maximum number of iterations.
-/// @param tol Convergence tolerance.
-//'
-/// @return Field with matrices <b>C</b> (<b>A.n_cols</b> x <em>k</em>) and <b>H</b> (<em>k</em> x <b>A.n_cols</b>).
+//' @return Field with matrices <b>C</b> (<b>A.n_cols</b> x <em>k</em>) and <b>H</b> (<em>k</em> x <b>A.n_cols</b>).
 //'
 //' @examples
 //' S_r = t(reducedDims(ace)$ACTION)
@@ -42,13 +40,13 @@ Rcpp::List run_AA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e
 
 //' Run ACTION decomposition algorithm
 //'
-/// @param S_r Input matrix. Usually a reduced representation of the raw data.
-/// @param k_min Minimum number of archetypes (>= 2) to search for, and the beginning of the search range.
-/// @param k_max Maximum number of archetypes (<= <b>S_r.n_cols</b>) to search for, and the end of the search range.
-/// @param normalization Normalization method to apply on <b>S_r</b> before running ACTION.
-/// @param max_it Maximum number of iterations for <code>run_AA()</code>.
-/// @param tol Convergence tolerance for <code>run_AA()</code>.
-/// @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
+//' @param S_r Input matrix. Usually a reduced representation of the raw data.
+//' @param k_min Minimum number of archetypes (>= 2) to search for, and the beginning of the search range.
+//' @param k_max Maximum number of archetypes (<= <b>S_r.n_cols</b>) to search for, and the end of the search range.
+//' @param normalization Normalization method to apply on <b>S_r</b> before running ACTION.
+//' @param max_it Maximum number of iterations for <code>run_AA()</code>.
+//' @param tol Convergence tolerance for <code>run_AA()</code>.
+//' @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
 //'
 //' @return A named list with entries 'C' and 'H', each a list for different values of k
 //'
@@ -85,10 +83,10 @@ Rcpp::List run_ACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normali
 
 //' Filter and aggregate multi-level archetypes
 //'
-/// @param C_trace Field containing C matrices. Output of <code>run_ACTION()</code> in <code>ResACTION["C"]</code>.
-/// @param H_trace Field containing H matrices. Output of <code>run_ACTION()</code> in <code>ResACTION["H"]</code>.
-/// @param spec_th Minimum threshold (as z-score) to filter archetypes by specificity.
-/// @param min_obs Minimum number of observations assigned to an archetypes needed to retain that archetype.
+//' @param C_trace Field containing C matrices. Output of <code>run_ACTION()</code> in <code>ResACTION["C"]</code>.
+//' @param H_trace Field containing H matrices. Output of <code>run_ACTION()</code> in <code>ResACTION["H"]</code>.
+//' @param spec_th Minimum threshold (as z-score) to filter archetypes by specificity.
+//' @param min_obs Minimum number of observations assigned to an archetypes needed to retain that archetype.
 //'
 //' @return A named list: \itemize{
 //' \item selected_archs: List of final archetypes that passed the
@@ -134,13 +132,13 @@ Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_tra
 
 //' Identify and merge redundant archetypes into a representative subset
 //'
-/// @param S_r Reduced data matrix from which archetypes were found.
-/// @param C_stacked Concatenated (and filtered) <code>C</code> (<b>S_r.n</b> x <em>n</em>) matrix.
-/// Output of <code>collect_archetypes()</code> in <code>ResCollectArch["C_stacked"]</code>.
-/// @param H_stacked Concatenated (and filtered) <code>H</code> (<b>S_r.n</b> x <em>n</em>) matrix.
-/// Output of <code>collect_archetypes()</code> in <code>ResCollectArch["H_stacked"]</code>.
-/// @param normalization Normalization method to apply to <b>S_r</b>.
-/// @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
+//' @param S_r Reduced data matrix from which archetypes were found.
+//' @param C_stacked Concatenated (and filtered) <code>C</code> (<b>S_r.n</b> x <em>n</em>) matrix.
+//' Output of <code>collect_archetypes()</code> in <code>ResCollectArch["C_stacked"]</code>.
+//' @param H_stacked Concatenated (and filtered) <code>H</code> (<b>S_r.n</b> x <em>n</em>) matrix.
+//' Output of <code>collect_archetypes()</code> in <code>ResCollectArch["H_stacked"]</code>.
+//' @param normalization Normalization method to apply to <b>S_r</b>.
+//' @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
 //'
 //' @return A named list: \itemize{
 //' \item archetype_groups: Equivalent classes of archetypes (non-redundant)
@@ -178,6 +176,28 @@ Rcpp::List
 
 // reduce_kernel =======================================================================================================
 
+//' Compute reduced kernel matrix
+//'
+//' @param S Input matrix (<em>vars</em> x <em>obs</em>).
+//' May be <code>arma::mat</code> or <code>arma::sp_mat</code>.
+//' @param dim Number of singular vectors to estimate. Passed to <code>runSVD()</code>.
+//' @param svd_alg Singular value decomposition algorithm. See to <code>runSVD()</code> for options.
+//' @param max_it Maximum number of iterations. Passed to <code>runSVD()</code>.
+//' @param seed Random seed.
+//' @param verbose Print status messages.
+//'
+//' @return Field with 5 elements:
+//' - 0: <code>arma::mat</code> Reduced kernel matrix.
+//' - 1: <code>arma::vec</code> Singular values.
+//' - 2: <code>arma::mat</code> Left singular vectors.
+//' - 3: <code>arma::mat</code> <b>A</b> perturbation matrix.
+//' - 4: <code>arma::mat</code> <b>B</b> perturbation matrix.
+//'
+//' @examples
+//' S = logcounts(sce)
+//' reduction.out = reduce(S, reduced_dim = 50)
+//' S_r = reduction.out$S_r
+// [[Rcpp::export]]
 Rcpp::List reduce_kernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
                          int SVD_algorithm = 0, int verbose = 1) {
     arma::field<arma::mat> reduction =
@@ -209,84 +229,6 @@ Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, 
     return res;
 }
 
-//' Computes reduced kernel matrix for a given (single-cell) profile
-//'
-//' @param S Input matrix ("sparseMatrix")
-//' @param reduced_dim Dimension of the reduced kernel matrix (default=50)
-//' @param iters Number of SVD iterations (default=5)
-//' @param seed Random seed (default=0)
-//' @param reduction_algorithm Kernel reduction algorithm. Currently only ACTION
-//' method (1) is implemented (default=1)
-//' @param SVD_algorithm SVD algorithm to use. Currently supported methods
-//' are Halko (1) and Feng (2) (default=1)
-//'
-//' @return A named list with S_r, V, lambda, and exp_var. \itemize{
-//' \item S_r: reduced kernel matrix of size reduced_dim x #samples.
-//' \item V: Associated left singular-vectors (useful for reconstructing
-//' discriminative scores for features, such as genes).
-//' \item lambda, exp_var: Summary statistics of the sigular-values.
-//' }
-//'
-//' @examples
-//' S = logcounts(sce)
-//' reduction.out = reduce(S, reduced_dim = 50)
-//' S_r = reduction.out$S_r
-// [[Rcpp::export]]
-// Rcpp::List reduce_kernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
-//                          int SVD_algorithm = 0, int verbose = 1) {
-//     arma::field<arma::mat> reduction =
-//         actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
-//
-//     Rcpp::List res;
-//     res["V"] = reduction(0);
-//
-//     arma::vec sigma = reduction(1).col(0);
-//     res["sigma"] = sigma;
-//
-//     double epsilon = 0.01 / std::sqrt(reduction(2).n_rows);
-//     arma::mat V = arma::round(reduction(2) / epsilon) * epsilon;
-//
-//     for (int i = 0; i < V.n_cols; i++) {
-//         arma::vec v = V.col(i) * sigma(i);
-//         V.col(i) = v;
-//     }
-//     V = arma::trans(V);
-//     res["S_r"] = V.eval();
-//
-//     res["A"] = reduction(3);
-//     res["B"] = reduction(4);
-//
-//     return res;
-// }
-
-// [[Rcpp::export]]
-// Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, int seed = 0, int SVD_algorithm = 0,
-//                               bool prenormalize = false, int verbose = 1) {
-//     arma::field<arma::mat> reduction =
-//         actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
-//
-//     Rcpp::List res;
-//     res["V"] = reduction(0);
-//
-//     arma::vec sigma = reduction(1).col(0);
-//     res["sigma"] = sigma;
-//
-//     double epsilon = 0.01 / std::sqrt(reduction(2).n_rows);
-//     arma::mat V = arma::round(reduction(2) / epsilon) * epsilon;
-//
-//     for (int i = 0; i < V.n_cols; i++) {
-//         arma::vec v = V.col(i) * sigma(i);
-//         V.col(i) = v;
-//     }
-//     V = arma::trans(V);
-//     res["S_r"] = V.eval();
-//
-//     res["A"] = reduction(3);
-//     res["B"] = reduction(4);
-//
-//     return res;
-// }
-
 // simplex_regression ==================================================================================================
 
 
@@ -294,8 +236,8 @@ Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, 
 
 //' Run successive projections algorithm (SPA) to solve separable NMF
 //'
-/// @param A Input matrix.
-/// @param k Number of candidate vertices to solve for.
+//' @param A Input matrix.
+//' @param k Number of candidate vertices to solve for.
 //'
 //' @return A named list with entries 'selected_cols' and 'norms'
 //' @examples
