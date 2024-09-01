@@ -47,7 +47,7 @@ target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
 
 ############# TEST MODES
 ## Test build for R interface
-set(TEST_BUILD_R 1)
+set(TEST_BUILD_R 0)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(

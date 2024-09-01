@@ -2,25 +2,28 @@
 * Fix various normalizations
 * pybind 11 wrappers
 * Eliminate external cholmod dependency
+  * Might no longer be necessary with new cmake
 * Split colorspace from generate_layout.
 * Put OpenMP back
   * Current mini_thread implementation is shit
 * Document C++ interface
+* Abstract `autocorrelation.cpp`
+* Abstract and separate specificity module
 
 ## Secondary
 * Cleanup unused code and comments
-* Abstract `autocorrelation.cpp`
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
 * zscore is multithreaded???
-* Make interruptable from interface
 * Figure our uwot situation
 
 ## Done
 * Automate link SuiteSparse on unix/macos
 * Upgrade Armadillo
-* Remove obsolete igraph
+* Remove obsolete and broken igraph.
+  * Fails to compile on ARM and newer x86.
 * Remove obsolete libleidenalg
+  * Fails to compile because of above. Unnecessarily complicated dependency.
 * Compile to Unix x86
 * Compile to Apple arm64 native
 * Compile to Apple x86 via Rosetta2
@@ -28,18 +31,33 @@
 * Create "utils" module
 * Duplicate JSD functions (wtf?) in "network_construction" and hnsw (space_js.h)
     * Moved to "network_construction_ext"
-* Replace and remove "ParallelFor" in build_network.
+* Replace and remove inlined "ParallelFor" in build_network.
 * Update StatsLib
 * Fix duplicate PCG headers
 * Fix threading (RcppThread, mini_thread, inline, OpenMP)
+  * Now using mini_thread exclusively. Not great. Will probably change.
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
 * Fix namespace usage in headers
 * Consistent header guards
 * Rcpp wrappers
+  * Condensed and modularized.
 * Update hnswlib
+  * Fixed redefinition bug
 * Condense redundant SVD functions
+  * New interface for SVD
 * Automatically link R BLAS/LAPACK
-* Compile to macOS
-  * Arm64 and x86
-  * Figure out cblas dependency
+* Removed packaged cblas.h
+  * Automatically finds headers used by installed BLAS/LAPACK
+* Completely automate build system.
+  * Fully portable and cross-platform
+  * Automatically detects if built by R or stand-alone
+  * Uses R build system in R package mode (99% CRAN compliant)
+* Select armadillo based on build mode
+  * Compiles with RcppArmadillo in R build mode and packaged arma in stand-alone.
+* Automatically find BLAS/LAPACK
+  * System BLAS (Linux), OpenBLAS, Accelerate, MKL supported.
+  * Prefers BLAS used by R if in R build mode.
+* Restructured R wrappers 
+  * Added config for wrappers in R build mode
+  * Conversion from arma::vec to Rcpp::NumricVector now automatic
