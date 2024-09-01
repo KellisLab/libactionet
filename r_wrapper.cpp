@@ -3,7 +3,8 @@
 
 // Enable build configuration for R interface
 // #define LIBACTIONET_BUILD_R
-// Header `libactionet.hpp` configures package and includes `RcppArmadillo.h`. It must precede `Rcpp.h`.
+#include <RcppArmadillo.h>
+#include "libactionet.hpp"
 #include "libactionet.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
 

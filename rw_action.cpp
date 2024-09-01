@@ -2,6 +2,7 @@
 // Organized by module header in th order imported.
 // [[Rcpp::interfaces(r, cpp)]]
 
+#include <RcppArmadillo.h>
 #include "libactionet.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
 

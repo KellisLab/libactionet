@@ -44,13 +44,13 @@ namespace actionet {
         }
         V = arma::trans(V);
 
-        out(0) = V.eval(); // S_r (.trans() is delayed evaluation)
+        out(0) = V.eval(); // S_r (trans() is delayed evaluation)
         out(1) = sigma; // sigma
         out(2) = reduction(0); // V
         out(3) = reduction(3); // A
         out(4) = reduction(4); // B
 
-        return reduction;
+        return out;
     }
 
     template arma::field<arma::mat> reduce_kernel<arma::mat>(arma::mat& S, int dim, int svd_alg,
