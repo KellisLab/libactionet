@@ -4,6 +4,7 @@
 #ifndef ACTIONET_R_CONFIG_H
 #define ACTIONET_R_CONFIG_H
 
+// Automatically return all arma::vec and related as Rcpp:NumericVector instead of 1-D matrix
 #define RCPP_ARMADILLO_RETURN_ANYVEC_AS_VECTOR
 
 #include <RcppArmadillo.h>
