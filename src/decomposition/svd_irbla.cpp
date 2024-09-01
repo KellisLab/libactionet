@@ -4,14 +4,14 @@
 #include "utils_internal/utils_decomp.hpp"
 #include <cholmod.h>
 
-arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, int verbose) {
+arma::field<arma::mat> IRLB_SVD(arma::sp_mat& A, int dim, int iters, int seed, int verbose) {
     int m = A.n_rows;
     int n = A.n_cols;
 
     dim = std::min(dim, std::min(m, n) - 1);
 
     if (verbose) {
-        stdout_printf("IRLB (sparse) -- A: %d x %d\n", (int) A.n_rows, (int) A.n_cols);
+        stdout_printf("IRLB (sparse) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
         FLUSH;
     }
 
@@ -19,7 +19,7 @@ arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, i
     cholmod_start(&chol_c);
     chol_c.final_ll = 1; /* LL' form of simplicial factorization */
 
-    cholmod_sparse *AS = as_cholmod_sparse(A, AS, &chol_c);
+    cholmod_sparse* AS = as_cholmod_sparse(A, AS, &chol_c);
 
     double eps = 3e-13;
     double tol = 1e-05, svtol = 1e-5;
@@ -27,22 +27,22 @@ arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, i
     int work = dim + 7;
     int lwork = 7 * work * (1 + work);
 
-    double *s = new double[dim];
-    double *U = new double[m * work];
-    double *V = new double[n * work];
+    double* s = new double[dim];
+    double* U = new double[m * work];
+    double* V = new double[n * work];
 
-    double *V1 = new double[n * work];
-    double *U1 = new double[m * work];
-    double *W = new double[m * work];
-    double *F = new double[n];
-    double *B = new double[work * work];
-    double *BU = new double[work * work];
-    double *BV = new double[work * work];
-    double *BS = new double[work];
-    double *BW = new double[lwork];
-    double *res = new double[work];
-    double *T = new double[lwork];
-    double *svratio = new double[work];
+    double* V1 = new double[n * work];
+    double* U1 = new double[m * work];
+    double* W = new double[m * work];
+    double* F = new double[n];
+    double* B = new double[work * work];
+    double* BU = new double[work * work];
+    double* BV = new double[work * work];
+    double* BS = new double[work];
+    double* BW = new double[lwork];
+    double* res = new double[work];
+    double* T = new double[lwork];
+    double* svratio = new double[work];
 
     arma::mat tmp(B, work, work, false);
     arma::mat BUmat(BU, work, work, false);
@@ -50,7 +50,7 @@ arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, i
     arma::mat BVmat(BV, work, work, false);
 
     double d, S, R, R_F, SS;
-    double *x;
+    double* x;
     int jj, kk;
     int converged;
     int j, k = 0;
@@ -84,7 +84,8 @@ arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, i
             d = cblas_dnrm2(n, V, inc);
             d = 1 / d;
             cblas_dscal(n, d, V, inc);
-        } else
+        }
+        else
             j = k;
 
         // Compute Ax
@@ -154,9 +155,11 @@ arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, i
                     SS = 1.0 / S;
                     cblas_dscal(m, SS, W + (j + 1) * m, inc);
                     S = 0;
-                } else
+                }
+                else
                     cblas_dscal(m, SS, W + (j + 1) * m, inc);
-            } else {
+            }
+            else {
                 B[j * work + j] = S;
             }
 
@@ -252,7 +255,7 @@ arma::field<arma::mat> IRLB_SVD(arma::sp_mat &A, int dim, int iters, int seed, i
     return (orient_SVD(out));
 }
 
-arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int verbose) {
+arma::field<arma::mat> IRLB_SVD(arma::mat& A, int dim, int iters, int seed, int verbose) {
     double eps = 3e-13;
     double tol = 1e-05, svtol = 1e-5;
 
@@ -265,26 +268,26 @@ arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int 
     int lwork = 7 * work * (1 + work);
 
     if (verbose) {
-        stdout_printf("IRLB (dense) -- A: %d x %d\n", (int) A.n_rows, (int) A.n_cols);
+        stdout_printf("IRLB (dense) -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
         FLUSH;
     }
 
-    double *s = new double[dim];
-    double *U = new double[m * work];
-    double *V = new double[n * work];
+    double* s = new double[dim];
+    double* U = new double[m * work];
+    double* V = new double[n * work];
 
-    double *V1 = new double[n * work];
-    double *U1 = new double[m * work];
-    double *W = new double[m * work];
-    double *F = new double[n];
-    double *B = new double[work * work];
-    double *BU = new double[work * work];
-    double *BV = new double[work * work];
-    double *BS = new double[work];
-    double *BW = new double[lwork];
-    double *res = new double[work];
-    double *T = new double[lwork];
-    double *svratio = new double[work];
+    double* V1 = new double[n * work];
+    double* U1 = new double[m * work];
+    double* W = new double[m * work];
+    double* F = new double[n];
+    double* B = new double[work * work];
+    double* BU = new double[work * work];
+    double* BV = new double[work * work];
+    double* BS = new double[work];
+    double* BW = new double[lwork];
+    double* res = new double[work];
+    double* T = new double[lwork];
+    double* svratio = new double[work];
 
     arma::mat tmp(B, work, work, false);
     arma::mat BUmat(BU, work, work, false);
@@ -292,7 +295,7 @@ arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int 
     arma::mat BVmat(BV, work, work, false);
 
     double d, S, R, R_F, SS;
-    double *x;
+    double* x;
     int jj, kk;
     int converged;
     int j, k = 0;
@@ -321,7 +324,8 @@ arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int 
             d = cblas_dnrm2(n, V, inc);
             d = 1 / d;
             cblas_dscal(n, d, V, inc);
-        } else
+        }
+        else
             j = k;
 
         // Compute Ax
@@ -388,9 +392,11 @@ arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int 
                     SS = 1.0 / S;
                     cblas_dscal(m, SS, W + (j + 1) * m, inc);
                     S = 0;
-                } else
+                }
+                else
                     cblas_dscal(m, SS, W + (j + 1) * m, inc);
-            } else {
+            }
+            else {
                 B[j * work + j] = S;
             }
 
@@ -454,7 +460,8 @@ arma::field<arma::mat> IRLB_SVD(arma::mat &A, int dim, int iters, int seed, int 
                 n, BV, work, beta, V1, n);
     std::memmove(V, V1, n * dim * sizeof(double));
 
-    arma::field<arma::mat> out(3);
+    arma::field<arma::mat> out(3); // out: U, sigma, V
+
     out(0) = arma::mat(U, m, dim);
     out(1) = arma::vec(s, dim);
     out(2) = arma::mat(V, n, dim);

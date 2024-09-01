@@ -2,8 +2,8 @@
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
-template<typename T>
-arma::field<arma::mat> FengSVD(T &A, int dim, int max_it, int seed, int verbose) {
+template <typename T>
+arma::field<arma::mat> FengSVD(T& A, int dim, int max_it, int seed, int verbose) {
     int s = 5;
     int m = A.n_rows;
     int n = A.n_cols;
@@ -11,21 +11,22 @@ arma::field<arma::mat> FengSVD(T &A, int dim, int max_it, int seed, int verbose)
     dim = std::min(dim, std::min(m, n) + s - 1);
 
     if (verbose) {
-        stdout_printf("Feng -- A: %d x %d\n", (int) A.n_rows, (int) A.n_cols);
+        stdout_printf("Feng -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
         FLUSH;
     }
 
-    arma::vec S;
+    arma::vec sigma;
     arma::mat Q, L, U, V;
-    arma::field<arma::mat> SVD_out;
+    arma::field<arma::mat> svd_out;
 
     if (m < n) {
         Q = randNorm(n, dim + s, seed);
         Q = A * Q;
         if (max_it == 0) {
-            SVD_out = eigSVD(Q);
-            Q = SVD_out(0);
-        } else {
+            svd_out = eigSVD(Q);
+            Q = svd_out(0);
+        }
+        else {
             arma::lu(L, U, Q);
             Q = L;
         }
@@ -36,29 +37,32 @@ arma::field<arma::mat> FengSVD(T &A, int dim, int max_it, int seed, int verbose)
                 FLUSH;
             }
             if (i == max_it) {
-                SVD_out = eigSVD(A * (arma::trans(A) * Q));
-                Q = SVD_out(0);
-            } else {
+                svd_out = eigSVD(A * (arma::trans(A) * Q));
+                Q = svd_out(0);
+            }
+            else {
                 lu(L, U, A * (arma::trans(A) * Q));
                 Q = L;
             }
         }
 
-        SVD_out = eigSVD(trans(A) * Q);
-        V = SVD_out(0);
-        S = arma::vec(SVD_out(1));
-        U = SVD_out(2);
+        svd_out = eigSVD(trans(A) * Q);
+        V = svd_out(0);
+        sigma = arma::vec(svd_out(1));
+        U = svd_out(2);
 
         U = Q * arma::fliplr(U.cols(s, dim + s - 1));
         V = arma::fliplr(V.cols(s, dim + s - 1));
-        S = arma::flipud(S(arma::span(s, dim + s - 1)));
-    } else {
+        sigma = arma::flipud(sigma(arma::span(s, dim + s - 1)));
+    }
+    else {
         Q = randNorm(m, dim + s, seed);
         Q = arma::trans(A) * Q;
         if (max_it == 0) {
-            SVD_out = eigSVD(Q);
-            Q = SVD_out(0);
-        } else {
+            svd_out = eigSVD(Q);
+            Q = svd_out(0);
+        }
+        else {
             arma::lu(L, U, Q);
             Q = L;
         }
@@ -69,22 +73,23 @@ arma::field<arma::mat> FengSVD(T &A, int dim, int max_it, int seed, int verbose)
                 FLUSH;
             }
             if (i == max_it) {
-                SVD_out = eigSVD(trans(A) * (A * Q));
-                Q = SVD_out(0);
-            } else {
+                svd_out = eigSVD(trans(A) * (A * Q));
+                Q = svd_out(0);
+            }
+            else {
                 arma::lu(L, U, arma::trans(A) * (A * Q));
                 Q = L;
             }
         }
 
-        SVD_out = eigSVD(A * Q);
-        U = SVD_out(0);
-        S = arma::vec(SVD_out(1));
-        V = SVD_out(2);
+        svd_out = eigSVD(A * Q);
+        U = svd_out(0);
+        sigma = arma::vec(svd_out(1));
+        V = svd_out(2);
 
         U = arma::fliplr(U.cols(s, dim + s - 1));
         V = Q * arma::fliplr(V.cols(s, dim + s - 1));
-        S = arma::flipud(S(arma::span(s, dim + s - 1)));
+        sigma = arma::flipud(sigma(arma::span(s, dim + s - 1)));
     }
 
     if (verbose) {
@@ -92,14 +97,15 @@ arma::field<arma::mat> FengSVD(T &A, int dim, int max_it, int seed, int verbose)
         FLUSH;
     }
 
-    arma::field<arma::mat> out(3);
+
+    arma::field<arma::mat> out(3); // out: U, sigma, V
     out(0) = U;
-    out(1) = S;
+    out(1) = sigma;
     out(2) = V;
 
     return (orient_SVD(out));
 }
 
-template arma::field<arma::mat> FengSVD<arma::mat>(arma::mat &A, int dim, int max_it, int seed, int verbose);
+template arma::field<arma::mat> FengSVD<arma::mat>(arma::mat& A, int dim, int max_it, int seed, int verbose);
 
-template arma::field<arma::mat> FengSVD<arma::sp_mat>(arma::sp_mat &A, int dim, int max_it, int seed, int verbose);
+template arma::field<arma::mat> FengSVD<arma::sp_mat>(arma::sp_mat& A, int dim, int max_it, int seed, int verbose);

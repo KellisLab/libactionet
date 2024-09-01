@@ -95,10 +95,10 @@ arma::field<arma::mat> eigSVD(const arma::mat &A) {
 
 arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res) {
     arma::mat U = SVD_res(0);
-    arma::vec s = SVD_res(1);
+    arma::vec sigma = SVD_res(1);
     arma::mat V = SVD_res(2);
 
-    int dim = s.n_elem;
+    int dim = sigma.n_elem;
     arma::uvec mask_idx;
 
     for (int i = 0; i < dim; i++) {
@@ -140,7 +140,7 @@ arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res) {
 
     arma::field<arma::mat> out(3);
     out(0) = U;
-    out(1) = s;
+    out(1) = sigma;
     out(2) = V;
 
     return (out);
