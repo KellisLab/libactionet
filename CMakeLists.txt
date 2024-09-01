@@ -47,7 +47,7 @@ target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
 
 ############# TEST MODES
 ## Test build for R interface
-set(TEST_BUILD_R 0)
+set(TEST_BUILD_R 1)
 if (TEST_BUILD_R)
     set(LIBACTIONET_BUILD_R 1)
     execute_process(
@@ -58,9 +58,12 @@ if (TEST_BUILD_R)
 
     ## Test Rcpp wrappers
     target_sources(actionet
-            PRIVATE r_wrapper.cpp ## Remove
-            PRIVATE r_wrapper_experimental.cpp ## Remove
-            PRIVATE rw_action.cpp
+            PRIVATE wrappers_r/wr_action.cpp
+            PRIVATE wrappers_r/wr_annotation.cpp
+            PRIVATE wrappers_r/wr_decomposition.cpp
+            PRIVATE wrappers_r/wr_network.cpp
+            PRIVATE wrappers_r/wr_tools.cpp
+            PRIVATE wrappers_r/wr_visualization.cpp
     )
 endif ()
 

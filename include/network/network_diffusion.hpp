@@ -17,7 +17,7 @@ namespace actionet {
                                              int max_it = 5);
 
     // Fast approximate PageRank
-    arma::mat compute_network_diffusion_Chebyshev(arma::sp_mat &P, arma::mat &X, int thread_no = 0, double alpha = 0.85,
+    arma::mat compute_network_diffusion_approx(arma::sp_mat &P, arma::mat &X, int thread_no = 0, double alpha = 0.85,
                                                   int max_it = 5, double res_threshold = 1e-8);
 
 } // namespace actionet

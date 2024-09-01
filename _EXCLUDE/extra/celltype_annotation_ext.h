@@ -9,6 +9,10 @@ arma::mat doubleNorm(arma::mat &X);
 
 arma::sp_mat scale_expression(arma::sp_mat &S);
 
+arma::mat aggregate_genesets(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+                                 int network_normalization_method = 0, int expression_normalization_method = 0,
+                                 int gene_scaling_method = 0, int thread_no = 0);
+
 arma::mat compute_marker_aggregate_stats_basic_sum(arma::sp_mat &S, arma::sp_mat &marker_mat);
 
 arma::mat compute_marker_aggregate_stats_basic_sum_perm(arma::sp_mat &S, arma::sp_mat &marker_mat, int perm_no = 100,

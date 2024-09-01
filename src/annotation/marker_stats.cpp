@@ -6,12 +6,13 @@
 #include "utils_internal/utils_matrix.hpp"
 
 // TODO: Remove and replace with generic mat normalization functions
-arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization) {
+arma::sp_mat normalize_expression_profile(arma::sp_mat& S, int normalization) {
     arma::sp_mat T;
     if (normalization == 0) {
         // No normalization
         T = S;
-    } else if (normalization == 1) {
+    }
+    else if (normalization == 1) {
         // LSI normalization
         T = actionet::LSI(S);
     }
@@ -20,7 +21,7 @@ arma::sp_mat normalize_expression_profile(arma::sp_mat &S, int normalization) {
 }
 
 namespace actionet {
-    arma::mat compute_marker_aggregate_stats(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat, double alpha,
+    arma::mat compute_marker_aggregate_stats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat, double alpha,
                                              int max_it, int thread_no, bool ignore_baseline_expression) {
         arma::mat stats = arma::zeros(S.n_cols, marker_mat.n_cols);
 
@@ -29,7 +30,7 @@ namespace actionet {
         arma::vec pr = compute_network_diffusion_fast(G, o, thread_no, alpha, max_it).col(0);
 
         for (int i = 0; i < marker_mat.n_cols; i++) {
-            int marker_count = (int) sum(sum(spones(marker_mat.col(i))));
+            int marker_count = (int)sum(sum(spones(marker_mat.col(i))));
 
             int idx = 0;
             arma::vec w = arma::zeros(marker_count);
@@ -65,57 +66,8 @@ namespace actionet {
         return (stats);
     }
 
-    arma::mat aggregate_genesets(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
-                                 int network_normalization_method, int expression_normalization_method,
-                                 int gene_scaling_method, double diffusion_alpha, int thread_no) {
-        if (S.n_rows != marker_mat.n_rows) {
-            stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
-            FLUSH;
-            return (arma::mat());
-        }
-        if (S.n_cols != G.n_rows) {
-            stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
-            FLUSH;
-            return (arma::mat());
-        }
 
-        arma::sp_mat markers_mat_bin = arma::spones(marker_mat);
-        arma::vec marker_counts = arma::vec(arma::trans(arma::sum(markers_mat_bin)));
-
-        // 0: no normalization, 1: TF/IDF
-        arma::sp_mat T = normalize_expression_profile(S, expression_normalization_method);
-
-        // 0: pagerank, 2: sym_pagerank
-        arma::sp_mat P = normalize_adj(G, network_normalization_method);
-
-        arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
-        for (int j = 0; j < marker_mat.n_cols; j++) {
-            arma::mat marker_expr(T.n_cols, marker_counts(j));
-
-            int idx = 0;
-            for (arma::sp_mat::col_iterator it = marker_mat.begin_col(j); it != marker_mat.end_col(j); it++) {
-                double w = (*it);
-                marker_expr.col(idx) = w * arma::vec(arma::trans(T.row(it.row())));
-                idx++;
-            }
-
-            // 0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
-            arma::mat marker_expr_scaled = normalize_scores(marker_expr, gene_scaling_method, thread_no);
-            arma::mat marker_expr_imputed = compute_network_diffusion_Chebyshev(P, marker_expr_scaled, thread_no);
-
-            arma::mat Sigma = arma::cov(marker_expr_imputed);
-            double norm_factor = std::sqrt(arma::sum(Sigma.diag()));
-
-            arma::vec aggr_stats = arma::sum(marker_expr_imputed, 1); // each column is a marker gene
-            aggr_stats = aggr_stats / norm_factor;
-            marker_stats.col(j) = aggr_stats;
-        }
-        arma::mat marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats, thread_no);
-
-        return (marker_stats_smoothed);
-    }
-
-    arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+    arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
                                                      int network_normalization_method, double alpha, int thread_no) {
         arma::field<arma::mat> out(3);
 
@@ -171,7 +123,7 @@ namespace actionet {
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
             stdout_printf("Smoothing geneset scores ... ");
-            marker_stats_smoothed = actionet::compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no,
+            marker_stats_smoothed = actionet::compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
                 alpha);
             stdout_printf("done\n");
             FLUSH;
@@ -184,7 +136,7 @@ namespace actionet {
         return (out);
     }
 
-    arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+    arma::mat aggregate_genesets_mahalanobis_2archs(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
                                                     int network_normalization_method,
                                                     int expression_normalization_method, int gene_scaling_method,
                                                     double pre_alpha, double post_alpha, int thread_no) {
@@ -210,7 +162,7 @@ namespace actionet {
 
         if (pre_alpha != 0) {
             arma::mat T_t = trans(T);
-            T = compute_network_diffusion_Chebyshev(P, T_t, thread_no, pre_alpha);
+            T = compute_network_diffusion_approx(P, T_t, thread_no, pre_alpha);
             T = arma::trans(T);
         }
 
@@ -266,7 +218,7 @@ namespace actionet {
         arma::mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
         if (post_alpha != 0) {
             stdout_printf("Post-smoothing expression values ... ");
-            marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no,
+            marker_stats_smoothed = compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
                                                                         post_alpha);
             stdout_printf("done\n");
             FLUSH;
@@ -275,7 +227,7 @@ namespace actionet {
         return (marker_stats_smoothed);
     }
 
-    arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+    arma::mat aggregate_genesets_mahalanobis_2gmm(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat,
                                                   int network_normalization_method, int expression_normalization_method,
                                                   int gene_scaling_method, double pre_alpha, double post_alpha,
                                                   int thread_no) {
@@ -301,7 +253,7 @@ namespace actionet {
 
         if (pre_alpha != 0) {
             arma::mat T_t = arma::trans(T);
-            T = compute_network_diffusion_Chebyshev(P, T_t, thread_no, pre_alpha);
+            T = compute_network_diffusion_approx(P, T_t, thread_no, pre_alpha);
             T = arma::trans(T);
         }
 
@@ -349,7 +301,7 @@ namespace actionet {
         arma::mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
         if (post_alpha != 0) {
             stdout_printf("Post-smoothing expression values ... ");
-            marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats_smoothed, thread_no,
+            marker_stats_smoothed = compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
                                                                         post_alpha);
             stdout_printf("done\n");
             FLUSH;

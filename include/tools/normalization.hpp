@@ -13,7 +13,7 @@ namespace actionet
 
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);
 
-    // TODO: TF-IDF normalization (change name)
+    // TODO: TF-IDF normalization. Change name and fix, or replace.
     arma::sp_mat LSI(const arma::sp_mat& S, double size_factor = 100000);
 } // namespace actionet
 

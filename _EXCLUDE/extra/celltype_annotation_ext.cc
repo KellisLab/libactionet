@@ -42,6 +42,56 @@ arma::sp_mat scale_expression(arma::sp_mat &S) {
     return (T);
 }
 
+    arma::mat aggregate_genesets(arma::sp_mat &G, arma::sp_mat &S, arma::sp_mat &marker_mat,
+                                 int network_normalization_method, int expression_normalization_method,
+                                 int gene_scaling_method, int thread_no) {
+        if (S.n_rows != marker_mat.n_rows) {
+            stderr_printf("Number of genes in the expression matrix (S) and marker matrix (marker_mat) do not match\n");
+            FLUSH;
+            return (arma::mat());
+        }
+        if (S.n_cols != G.n_rows) {
+            stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
+            FLUSH;
+            return (arma::mat());
+        }
+
+        arma::sp_mat markers_mat_bin = arma::spones(marker_mat);
+        arma::vec marker_counts = arma::vec(arma::trans(arma::sum(markers_mat_bin)));
+
+        // 0: no normalization, 1: TF/IDF
+        arma::sp_mat T = normalize_expression_profile(S, expression_normalization_method);
+
+        // 0: pagerank, 2: sym_pagerank
+        arma::sp_mat P = normalize_adj(G, network_normalization_method);
+
+        arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
+        for (int j = 0; j < marker_mat.n_cols; j++) {
+            arma::mat marker_expr(T.n_cols, marker_counts(j));
+
+            int idx = 0;
+            for (arma::sp_mat::col_iterator it = marker_mat.begin_col(j); it != marker_mat.end_col(j); it++) {
+                double w = (*it);
+                marker_expr.col(idx) = w * arma::vec(arma::trans(T.row(it.row())));
+                idx++;
+            }
+
+            // 0: no normalization, 1: z-score, 2: RINT, 3: robust z-score
+            arma::mat marker_expr_scaled = normalize_scores(marker_expr, gene_scaling_method, thread_no);
+            arma::mat marker_expr_imputed = compute_network_diffusion_Chebyshev(P, marker_expr_scaled, thread_no);
+
+            arma::mat Sigma = arma::cov(marker_expr_imputed);
+            double norm_factor = std::sqrt(arma::sum(Sigma.diag()));
+
+            arma::vec aggr_stats = arma::sum(marker_expr_imputed, 1); // each column is a marker gene
+            aggr_stats = aggr_stats / norm_factor;
+            marker_stats.col(j) = aggr_stats;
+        }
+        arma::mat marker_stats_smoothed = compute_network_diffusion_Chebyshev(P, marker_stats, thread_no);
+
+        return (marker_stats_smoothed);
+    }
+
 arma::mat compute_marker_aggregate_stats_basic_sum(arma::sp_mat &S, arma::sp_mat &marker_mat) {
     marker_mat = arma::normalise(marker_mat, 1, 0);
     arma::sp_mat X = arma::trans(marker_mat);

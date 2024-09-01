@@ -93,10 +93,9 @@ namespace actionet {
     }
 
     // P is already a stochastic (normalized) adjacency matrix
-    arma::mat compute_network_diffusion_Chebyshev(arma::sp_mat &P, arma::mat &X0, int thread_no, double alpha,
+    arma::mat compute_network_diffusion_approx(arma::sp_mat &P, arma::mat &X0, int thread_no, double alpha,
                                                   int max_it, double res_threshold) {
         if (alpha == 1) {
-            //            fprintf(stderr, "alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
             stderr_printf("alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
             FLUSH;
             return (X0);
