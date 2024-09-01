@@ -28,7 +28,7 @@ namespace actionet {
     ///
     /// @return <code>struct</code> of type <code>ResSPA</code>.
     ///
-    /// See <code>ResSPA</code>.
+    /// @remark See <code>ResSPA</code>.
     ResSPA run_SPA(arma::mat &A, int k);
 
 } // namespace actionet
