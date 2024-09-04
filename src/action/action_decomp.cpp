@@ -9,9 +9,9 @@ namespace actionet {
 
     ResACTION
     run_ACTION(arma::mat &S_r, int k_min, int k_max, int normalization, int max_it, double tol, int thread_no) {
-        if (thread_no <= 0) {
-            thread_no = SYS_THREADS_DEF;
-        }
+        // if (thread_no <= 0) {
+        //     thread_no = SYS_THREADS_DEF;
+        // }
 
         if (k_max == -1)
             k_max = (int) S_r.n_cols;
