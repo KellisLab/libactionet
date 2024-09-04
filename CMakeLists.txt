@@ -196,8 +196,17 @@ target_include_directories(
 message(NOTICE "Detecting OpenMP capabilities")
 find_package(OpenMP)
 if (OpenMP_FOUND)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS}")
+#    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS}")
+    target_link_libraries(actionet
+            PRIVATE OpenMP::OpenMP_C
+            PRIVATE OpenMP::OpenMP_CXX
+    )
+#    target_include_directories(
+#            actionet
+#            PRIVATE ${OpenMP_C_INCLUDE_DIRS}
+#            PRIVATE ${OpenMP_CXX_INCLUDE_DIRS}
+#    )
     add_compile_definitions(ARMA_OPENMP_THREADS=${NPROC})
 else ()
     message(NOTICE "OpenMP not found")
@@ -205,12 +214,14 @@ else ()
 endif ()
 
 ## Build diagnostics and debugging
-#get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
-#message(NOTICE "Debug info:")
-#message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
+get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
+message(NOTICE "Debug info:")
+message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
 #message(STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
 #message(STATUS "LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
 #message(STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
 #message(STATUS "BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
+#message(STATUS "OpenMP_C_INCLUDE_DIRS: ${OpenMP_C_INCLUDE_DIRS}")
+#message(STATUS "OpenMP_CXX_INCLUDE_DIRS: ${OpenMP_CXX_INCLUDE_DIRS}")
 #
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

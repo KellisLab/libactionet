@@ -3,7 +3,7 @@
 pybind11/
 build/
 build_test/
-cmake-build-debug/
+cmake-build-*/
 .Rproj.user
 .Rhistory
 .RData
