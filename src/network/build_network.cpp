@@ -12,9 +12,8 @@ std::set<std::string> nn_approaches = {"k*nn", "knn"};
 
 // k^{*}-Nearest Neighbors: From Global to Local (NIPS 2016)
 arma::sp_mat
-buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, double ef_construction, double ef,
-                     bool mutual_edges_only, std::string distance_metric) {
-
+    buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, double ef_construction, double ef,
+                         bool mutual_edges_only, std::string distance_metric) {
     double LC = 1.0 / density;
     // verify that a support distance metric has been specified
     //  the following distance metrics are supported in hnswlib: https://github.com/hnswlib/hnswlib#supported-distances
@@ -23,9 +22,9 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
         throw distMetException;
     }
 
-    if (thread_no <= 0) {
-        thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
-    }
+    // if (thread_no <= 0) {
+    //     thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
+    // }
 
     stdout_printf("Building adaptive network (density = %.2f)\n", density);
     FLUSH;
@@ -38,22 +37,30 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
     double kappa = 5.0;
     int sample_no = H.n_cols;
     int kNN = std::min(
-            sample_no - 1,
-            (int) (kappa * round(std::sqrt(sample_no)))); // start with uniform k=sqrt(N) ["Pattern
+        sample_no - 1,
+        (int)(kappa * round(std::sqrt(sample_no)))); // start with uniform k=sqrt(N) ["Pattern
     // Classification" book by Duda et al.]
 
     ef_construction = ef = kNN;
 
-    hnswlib::HierarchicalNSW<float> *appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
+    hnswlib::HierarchicalNSW<float>* appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
     appr_alg->setEf(ef);
 
     int max_elements = H.n_cols;
     stdout_printf("\tBuilding index ... ");
     arma::fmat X = arma::conv_to<arma::fmat>::from(H);
 
-    mini_thread::parallelFor(
-            0, max_elements, [&](size_t j) { appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j)); },
-            thread_no);
+    int threads_use = (thread_no == 0)
+                          ? std::min(SYS_THREADS_DEF, max_elements)
+                          : std::min(thread_no, SYS_THREADS_DEF + 2);
+    #pragma omp parallel for num_threads(threads_use)
+    for (int j = 0; j < max_elements; j++) {
+        appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j));
+    }
+
+    // mini_thread::parallelFor(
+    //     0, max_elements, [&](size_t j) { appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j)); },
+    //     thread_no);
     stdout_printf("done\n");
     FLUSH;
 
@@ -62,17 +69,31 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
     arma::mat idx = arma::zeros(sample_no, kNN + 1);
     arma::mat dist = arma::zeros(sample_no, kNN + 1);
 
-    mini_thread::parallelFor(0, sample_no, [&](size_t i) {
+    threads_use = (thread_no == 0) ? std::min(SYS_THREADS_DEF, sample_no) : std::min(thread_no, SYS_THREADS_DEF + 2);
+    #pragma omp parallel for num_threads(threads_use)
+    for (int i = 0; i < sample_no; i++) {
         std::priority_queue<std::pair<float, hnswlib::labeltype>> result = appr_alg->searchKnn(X.colptr(i), kNN + 1);
 
         for (size_t j = 0; j <= kNN; j++) {
-            auto &result_tuple = result.top();
+            auto& result_tuple = result.top();
             dist(i, kNN - j) = result_tuple.first;
             idx(i, kNN - j) = result_tuple.second;
 
             result.pop();
         }
-    });
+    }
+
+    // mini_thread::parallelFor(0, sample_no, [&](size_t i) {
+    //     std::priority_queue<std::pair<float, hnswlib::labeltype>> result = appr_alg->searchKnn(X.colptr(i), kNN + 1);
+    //
+    //     for (size_t j = 0; j <= kNN; j++) {
+    //         auto& result_tuple = result.top();
+    //         dist(i, kNN - j) = result_tuple.first;
+    //         idx(i, kNN - j) = result_tuple.second;
+    //
+    //         result.pop();
+    //     }
+    // });
 
     stdout_printf("done\n");
     FLUSH;
@@ -97,8 +118,8 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
         beta_sum += beta.col(k);
         beta_sq_sum += arma::square(beta.col(k));
 
-        lambda.col(k) = (1.0 / (double) k) *
-                        (beta_sum + arma::sqrt(k + arma::square(beta_sum) - k * beta_sq_sum));
+        lambda.col(k) = (1.0 / (double)k) *
+            (beta_sum + arma::sqrt(k + arma::square(beta_sum) - k * beta_sq_sum));
     }
     lambda.replace(arma::datum::nan, 0);
 
@@ -111,7 +132,9 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
 
     arma::sp_mat G(sample_no, sample_no);
 
-    mini_thread::parallelFor(0, sample_no, [&](size_t v) {
+    threads_use = (thread_no == 0) ? std::min(SYS_THREADS_DEF, sample_no) : std::min(thread_no, SYS_THREADS_DEF + 2);
+    #pragma omp parallel for num_threads(threads_use)
+    for (int v = 0; v < sample_no; v++) {
         arma::vec delta = Delta.col(v);
 
         // uvec rows = find(delta > 0, 1, "last");
@@ -126,7 +149,25 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
             int src = v_idx(i);
             G(src, dst) = v_dist(i);
         }
-    }, thread_no);
+    }
+
+
+    // mini_thread::parallelFor(0, sample_no, [&](size_t v) {
+    //     arma::vec delta = Delta.col(v);
+    //
+    //     // uvec rows = find(delta > 0, 1, "last");
+    //     arma::uvec rows = arma::find(delta < 0, 1, "first");
+    //     int neighbor_no = rows.n_elem == 0 ? kNN : (rows(0));
+    //
+    //     int dst = v;
+    //     arma::rowvec v_dist = dist.row(v);
+    //     arma::rowvec v_idx = idx.row(v);
+    //
+    //     for (int i = 1; i < neighbor_no; i++) {
+    //         int src = v_idx(i);
+    //         G(src, dst) = v_dist(i);
+    //     }
+    // }, thread_no);
     stdout_printf("done\n");
     FLUSH;
 
@@ -154,8 +195,10 @@ buildNetwork_KstarNN(arma::mat H, double density, int thread_no, double M, doubl
     arma::sp_mat G_sym;
     if (mutual_edges_only == false) {
         G_sym = (G + Gt);
-        G_sym.for_each([](arma::sp_mat::elem_type &val) { val /= 2.0; });
-    } else { // Default to MNN
+        G_sym.for_each([](arma::sp_mat::elem_type& val) { val /= 2.0; });
+    }
+    else {
+        // Default to MNN
         stdout_printf("\n\t\tKeeping mutual nearest-neighbors only ... ");
         G_sym = arma::sqrt(G % Gt);
     }
@@ -176,7 +219,7 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
         throw distMetException;
     }
 
-    stdout_printf("Building fixed-degree network (k = %d)\n", (int) k);
+    stdout_printf("Building fixed-degree network (k = %d)\n", (int)k);
     FLUSH;
     if (thread_no <= 0) {
         thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
@@ -189,7 +232,7 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
 
     int sample_no = H.n_cols;
 
-    hnswlib::HierarchicalNSW<float> *appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
+    hnswlib::HierarchicalNSW<float>* appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
     appr_alg->setEf(ef);
 
     stdout_printf("\tBuilding index ... ");
@@ -197,8 +240,8 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
     arma::fmat X = arma::conv_to<arma::fmat>::from(H);
 
     mini_thread::parallelFor(
-            0, max_elements, [&](size_t j) { appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j)); },
-            thread_no);
+        0, max_elements, [&](size_t j) { appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j)); },
+        thread_no);
 
     stdout_printf("done\n");
     FLUSH;
@@ -208,18 +251,18 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
     stdout_printf("\tConstructing k*-NN ... ");
 
     mini_thread::parallelFor(
-            0, sample_no, [&](size_t i) {
-                std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-                        appr_alg->searchKnn(X.colptr(i), k);
+        0, sample_no, [&](size_t i) {
+            std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+                appr_alg->searchKnn(X.colptr(i), k);
 
-                for (size_t j = 0; j < result.size(); j++) {
-                    auto &result_tuple = result.top();
+            for (size_t j = 0; j < result.size(); j++) {
+                auto& result_tuple = result.top();
 
-                    G(i, result_tuple.second) = result_tuple.first;
-                    result.pop();
-                }
-            },
-            thread_no);
+                G(i, result_tuple.second) = result_tuple.first;
+                result.pop();
+            }
+        },
+        thread_no);
 
     stdout_printf("done\n");
     FLUSH;
@@ -244,8 +287,10 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
     arma::sp_mat G_sym;
     if (mutual_edges_only == false) {
         G_sym = (G + Gt);
-        G_sym.for_each([](arma::sp_mat::elem_type &val) { val /= 2.0; });
-    } else { // Default to MNN
+        G_sym.for_each([](arma::sp_mat::elem_type& val) { val /= 2.0; });
+    }
+    else {
+        // Default to MNN
         stdout_printf("\n\t\tKeeping mutual nearest-neighbors only ... ");
         G_sym = arma::sqrt(G % Gt);
     }
@@ -258,11 +303,10 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
 }
 
 namespace actionet {
-
     arma::sp_mat
-    buildNetwork(arma::mat H, std::string algorithm, std::string distance_metric, double density, int thread_no,
-                 double M,
-                 double ef_construction, double ef, bool mutual_edges_only, int k) {
+        buildNetwork(arma::mat H, std::string algorithm, std::string distance_metric, double density, int thread_no,
+                     double M,
+                     double ef_construction, double ef, bool mutual_edges_only, int k) {
         // verify that valid distance metric has been specified
         if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
             // invalid distance metric was provided; exit
@@ -283,10 +327,10 @@ namespace actionet {
         arma::sp_mat G;
         if (algorithm == "k*nn") {
             G = buildNetwork_KstarNN(H, density, thread_no, M, ef_construction, ef, mutual_edges_only, distance_metric);
-        } else {
+        }
+        else {
             G = buildNetwork_KNN(H, k, thread_no, M, ef_construction, ef, mutual_edges_only, distance_metric);
         }
         return (G);
     }
-
 } // namespace actionet

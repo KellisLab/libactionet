@@ -9,6 +9,7 @@
 * Document C++ interface
 * Abstract `autocorrelation.cpp`
 * Abstract and separate specificity module
+* Make kNN a parameter in buildNetwork
 
 ## Secondary
 * Cleanup unused code and comments

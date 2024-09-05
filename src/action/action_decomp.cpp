@@ -1,7 +1,6 @@
 #include "action/action_decomp.hpp"
 #include "action/spa.hpp"
 #include "action/aa.hpp"
-#include <omp.h>
 #include "tools/normalization.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
@@ -40,7 +39,7 @@ namespace actionet {
         FLUSH;
 
         #pragma omp parallel for num_threads(thread_no)
-        for (int k = k_min; k <= k_max; ++k) {
+        for (int k = k_min; k <= k_max; k++) {
             ResSPA SPA_res = run_SPA(X_r, k);
             trace.selected_cols[k] = SPA_res.selected_cols;
 
