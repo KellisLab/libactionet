@@ -4,7 +4,6 @@
 #include "aarand/aarand.hpp"
 
 namespace actionet {
-
     arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval, int seed) {
         arma::vec out(2);
 
@@ -47,15 +46,15 @@ namespace actionet {
             double z = std::sqrt(n) * xi / std::sqrt(v);
 
             out(1) = z;
-        } else {
+        }
+        else {
             out(1) = 0;
         }
 
         return (out);
     }
 
-    arma::field<arma::mat> XICOR(arma::mat &X, arma::mat &Y, bool compute_pval, int seed, int thread_no) {
-
+    arma::field<arma::mat> XICOR(arma::mat& X, arma::mat& Y, bool compute_pval, int seed, int thread_no) {
         arma::field<arma::mat> out(2);
 
         bool swapped = false;
@@ -70,18 +69,18 @@ namespace actionet {
         arma::mat XI = arma::zeros(X.n_cols, Y.n_cols);
         arma::mat XI_Z = arma::zeros(X.n_cols, Y.n_cols);
 
-        // for(int k = 0; k < associations.n_cols; k++) {
-        mini_thread::parallelFor(
-                0, X.n_cols, [&](size_t i) {
-                    arma::vec x = X.col(i);
-                    for (int j = 0; j < Y.n_cols; j++) {
-                        arma::vec y = Y.col(j);
-                        arma::vec xi_out = xicor(x, y, compute_pval, seed);
-                        XI(i, j) = xi_out(0);
-                        XI_Z(i, j) = xi_out(1);
-                    }
-                },
-                thread_no);
+
+        int threads_use = get_num_threads(X.n_cols, thread_no);
+        #pragma omp parallel for num_threads(threads_use)
+        for (int i = 0; i < X.n_cols; i++) {
+            arma::vec x = X.col(i);
+            for (int j = 0; j < Y.n_cols; j++) {
+                arma::vec y = Y.col(j);
+                arma::vec xi_out = xicor(x, y, compute_pval, seed);
+                XI(i, j) = xi_out(0);
+                XI_Z(i, j) = xi_out(1);
+            }
+        }
 
         if (swapped) {
             XI = arma::trans(XI);
@@ -93,5 +92,4 @@ namespace actionet {
 
         return (out);
     }
-
 } // namespace actionet

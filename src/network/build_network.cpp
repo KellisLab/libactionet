@@ -22,10 +22,6 @@ arma::sp_mat
         throw distMetException;
     }
 
-    // if (thread_no <= 0) {
-    //     thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
-    // }
-
     stdout_printf("Building adaptive network (density = %.2f)\n", density);
     FLUSH;
 
@@ -50,17 +46,12 @@ arma::sp_mat
     stdout_printf("\tBuilding index ... ");
     arma::fmat X = arma::conv_to<arma::fmat>::from(H);
 
-    int threads_use = (thread_no == 0)
-                          ? std::min(SYS_THREADS_DEF, max_elements)
-                          : std::min(thread_no, SYS_THREADS_DEF + 2);
+    int threads_use = get_num_threads(max_elements, thread_no);
     #pragma omp parallel for num_threads(threads_use)
-    for (int j = 0; j < max_elements; j++) {
-        appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j));
+    for (size_t j = 0; j < max_elements; j++) {
+        appr_alg->addPoint(X.colptr(j), j);
     }
 
-    // mini_thread::parallelFor(
-    //     0, max_elements, [&](size_t j) { appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j)); },
-    //     thread_no);
     stdout_printf("done\n");
     FLUSH;
 
@@ -69,9 +60,9 @@ arma::sp_mat
     arma::mat idx = arma::zeros(sample_no, kNN + 1);
     arma::mat dist = arma::zeros(sample_no, kNN + 1);
 
-    threads_use = (thread_no == 0) ? std::min(SYS_THREADS_DEF, sample_no) : std::min(thread_no, SYS_THREADS_DEF + 2);
+    threads_use = get_num_threads(sample_no, thread_no);
     #pragma omp parallel for num_threads(threads_use)
-    for (int i = 0; i < sample_no; i++) {
+    for (size_t i = 0; i < sample_no; i++) {
         std::priority_queue<std::pair<float, hnswlib::labeltype>> result = appr_alg->searchKnn(X.colptr(i), kNN + 1);
 
         for (size_t j = 0; j <= kNN; j++) {
@@ -83,18 +74,6 @@ arma::sp_mat
         }
     }
 
-    // mini_thread::parallelFor(0, sample_no, [&](size_t i) {
-    //     std::priority_queue<std::pair<float, hnswlib::labeltype>> result = appr_alg->searchKnn(X.colptr(i), kNN + 1);
-    //
-    //     for (size_t j = 0; j <= kNN; j++) {
-    //         auto& result_tuple = result.top();
-    //         dist(i, kNN - j) = result_tuple.first;
-    //         idx(i, kNN - j) = result_tuple.second;
-    //
-    //         result.pop();
-    //     }
-    // });
-
     stdout_printf("done\n");
     FLUSH;
 
@@ -103,7 +82,6 @@ arma::sp_mat
     if (distance_metric == "jsd") {
         dist = arma::clamp(dist, 0.0, 1.0);
     }
-    // idx = clamp(idx, 0, sample_no - 1);
 
     stdout_printf("\tConstructing adaptive-nearest neighbor graph ... ");
 
@@ -118,8 +96,7 @@ arma::sp_mat
         beta_sum += beta.col(k);
         beta_sq_sum += arma::square(beta.col(k));
 
-        lambda.col(k) = (1.0 / (double)k) *
-            (beta_sum + arma::sqrt(k + arma::square(beta_sum) - k * beta_sq_sum));
+        lambda.col(k) = (1.0 / (double)k) * (beta_sum + arma::sqrt(k + arma::square(beta_sum) - k * beta_sq_sum));
     }
     lambda.replace(arma::datum::nan, 0);
 
@@ -132,9 +109,8 @@ arma::sp_mat
 
     arma::sp_mat G(sample_no, sample_no);
 
-    threads_use = (thread_no == 0) ? std::min(SYS_THREADS_DEF, sample_no) : std::min(thread_no, SYS_THREADS_DEF + 2);
     #pragma omp parallel for num_threads(threads_use)
-    for (int v = 0; v < sample_no; v++) {
+    for (size_t v = 0; v < sample_no; v++) {
         arma::vec delta = Delta.col(v);
 
         // uvec rows = find(delta > 0, 1, "last");
@@ -151,32 +127,8 @@ arma::sp_mat
         }
     }
 
-
-    // mini_thread::parallelFor(0, sample_no, [&](size_t v) {
-    //     arma::vec delta = Delta.col(v);
-    //
-    //     // uvec rows = find(delta > 0, 1, "last");
-    //     arma::uvec rows = arma::find(delta < 0, 1, "first");
-    //     int neighbor_no = rows.n_elem == 0 ? kNN : (rows(0));
-    //
-    //     int dst = v;
-    //     arma::rowvec v_dist = dist.row(v);
-    //     arma::rowvec v_idx = idx.row(v);
-    //
-    //     for (int i = 1; i < neighbor_no; i++) {
-    //         int src = v_idx(i);
-    //         G(src, dst) = v_dist(i);
-    //     }
-    // }, thread_no);
     stdout_printf("done\n");
     FLUSH;
-
-    /*
-    double max_dist = 1.0;
-    if (distance_metric != "jsd") {
-      max_dist = max(v_dist(span(1, neighbor_no)));
-    }
-  */
 
     G.replace(arma::datum::nan, 0); // replace each NaN with 0
     arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
@@ -221,9 +173,6 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
 
     stdout_printf("Building fixed-degree network (k = %d)\n", (int)k);
     FLUSH;
-    if (thread_no <= 0) {
-        thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
-    }
 
     if (distance_metric == "jsd") {
         H = arma::clamp(H, 0, 1);
@@ -239,9 +188,11 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
     int max_elements = H.n_cols;
     arma::fmat X = arma::conv_to<arma::fmat>::from(H);
 
-    mini_thread::parallelFor(
-        0, max_elements, [&](size_t j) { appr_alg->addPoint(X.colptr(j), static_cast<size_t>(j)); },
-        thread_no);
+    int threads_use = get_num_threads(max_elements, thread_no);
+    #pragma omp parallel for num_threads(threads_use)
+    for (size_t j = 0; j < max_elements; j++) {
+        appr_alg->addPoint(X.colptr(j), j);
+    }
 
     stdout_printf("done\n");
     FLUSH;
@@ -250,19 +201,19 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
 
     stdout_printf("\tConstructing k*-NN ... ");
 
-    mini_thread::parallelFor(
-        0, sample_no, [&](size_t i) {
-            std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-                appr_alg->searchKnn(X.colptr(i), k);
+    threads_use = get_num_threads(sample_no, thread_no);
+    #pragma omp parallel for num_threads(threads_use)
+    for (size_t i = 0; i < sample_no; i++) {
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+            appr_alg->searchKnn(X.colptr(i), k);
 
-            for (size_t j = 0; j < result.size(); j++) {
-                auto& result_tuple = result.top();
+        for (size_t j = 0; j < result.size(); j++) {
+            auto& result_tuple = result.top();
 
-                G(i, result_tuple.second) = result_tuple.first;
-                result.pop();
-            }
-        },
-        thread_no);
+            G(i, result_tuple.second) = result_tuple.first;
+            result.pop();
+        }
+    }
 
     stdout_printf("done\n");
     FLUSH;
@@ -305,8 +256,7 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no, double M, doubl
 namespace actionet {
     arma::sp_mat
         buildNetwork(arma::mat H, std::string algorithm, std::string distance_metric, double density, int thread_no,
-                     double M,
-                     double ef_construction, double ef, bool mutual_edges_only, int k) {
+                     double M, double ef_construction, double ef, bool mutual_edges_only, int k) {
         // verify that valid distance metric has been specified
         if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
             // invalid distance metric was provided; exit
@@ -317,10 +267,6 @@ namespace actionet {
         if (nn_approaches.find(algorithm) == nn_approaches.end()) {
             // invalid nn approach was provided; exit
             throw nnApproachException;
-        }
-
-        if (thread_no <= 0) {
-            thread_no = SYS_THREADS_DEF; // std::thread::hardware_concurrency();
         }
 
         /// build ACTIONet with k*nn or fixed k knn, based on passed parameter

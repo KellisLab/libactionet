@@ -5,9 +5,7 @@
 #include <cholmod.h>
 
 namespace actionet {
-    arma::mat compute_network_diffusion(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha, int max_it) {
-        thread_no = std::min(thread_no, (int) X0.n_cols);
-
+    arma::mat compute_network_diffusion(arma::sp_mat& G, arma::sp_mat& X0, int thread_no, double alpha, int max_it) {
         int N = G.n_rows;
         arma::vec z = arma::ones(N);
         arma::vec c = arma::vec(arma::trans(arma::sum(G, 0)));
@@ -22,37 +20,35 @@ namespace actionet {
         X0 *= N;
         arma::rowvec zt = trans(z);
 
+        int threads_use = get_num_threads(X.n_cols, thread_no);
         for (int it = 0; it < max_it; it++) {
-            mini_thread::parallelFor(
-                0, X.n_cols, [&](size_t i) {
-                    X.col(i) = P * X.col(i) + X0.col(i) * (zt * X.col(i));
-                },
-                thread_no);
+            #pragma omp parallel for num_threads(threads_use)
+            for (size_t i = 0; i < X.n_cols; i++) {
+                X.col(i) = P * X.col(i) + X0.col(i) * (zt * X.col(i));
+            }
         }
 
         return (X);
     }
 
-    arma::mat compute_network_diffusion_fast(arma::sp_mat &G, arma::sp_mat &X0, int thread_no, double alpha,
+    arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, int thread_no, double alpha,
                                              int max_it) {
-        thread_no = std::min(thread_no, (int) X0.n_cols);
-
         int n = G.n_rows;
 
         cholmod_common chol_c;
         cholmod_start(&chol_c);
 
         int *Ti, *Tj;
-        double *Tx;
+        double* Tx;
 
         arma::sp_mat P = alpha * arma::normalise(G, 1, 0);
 
-        cholmod_triplet *T = cholmod_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
+        cholmod_triplet* T = cholmod_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
                                                       0, CHOLMOD_REAL, &chol_c);
         T->nnz = P.n_nonzero;
-        Ti = static_cast<int *>(T->i);
-        Tj = static_cast<int *>(T->j);
-        Tx = static_cast<double *>(T->x);
+        Ti = static_cast<int*>(T->i);
+        Tj = static_cast<int*>(T->j);
+        Tx = static_cast<double*>(T->x);
         int idx = 0;
         for (arma::sp_mat::const_iterator it = P.begin(); it != P.end(); ++it) {
             Ti[idx] = it.row();
@@ -60,7 +56,7 @@ namespace actionet {
             Tx[idx] = (*it);
             idx++;
         }
-        cholmod_sparse *AS = cholmod_triplet_to_sparse(T, P.n_nonzero, &chol_c);
+        cholmod_sparse* AS = cholmod_triplet_to_sparse(T, P.n_nonzero, &chol_c);
         cholmod_free_triplet(&T, &chol_c);
 
         arma::vec z = arma::ones(n);
@@ -74,14 +70,15 @@ namespace actionet {
         X0 *= n;
         arma::rowvec zt = arma::trans(z);
 
+        int threads_use = get_num_threads(X.n_cols, thread_no);
         for (int it = 0; it < max_it; it++) {
             arma::mat Y = X;
-            mini_thread::parallelFor(
-                0, X.n_cols, [&](size_t i) {
-                    dsdmult('n', n, n, AS, X.colptr(i), Y.colptr(i), &chol_c);
-                    X.col(i) = Y.col(i) + X0.col(i) * (zt * X.col(i));
-                },
-                thread_no);
+
+            #pragma omp parallel for num_threads(threads_use)
+            for (size_t i = 0; i < X.n_cols; i++) {
+                dsdmult('n', n, n, AS, X.colptr(i), Y.colptr(i), &chol_c);
+                X.col(i) = Y.col(i) + X0.col(i) * (zt * X.col(i));
+            }
         }
 
         // Free up matrices
@@ -93,13 +90,15 @@ namespace actionet {
     }
 
     // P is already a stochastic (normalized) adjacency matrix
-    arma::mat compute_network_diffusion_approx(arma::sp_mat &P, arma::mat &X0, int thread_no, double alpha,
-                                                  int max_it, double res_threshold) {
+    arma::mat compute_network_diffusion_approx(arma::sp_mat& P, arma::mat& X0, int thread_no, double alpha,
+                                               int max_it, double res_threshold) {
         if (alpha == 1) {
             stderr_printf("alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
             FLUSH;
             return (X0);
-        } else if (alpha == 0) {
+        }
+
+        if (alpha == 0) {
             return (X0);
         }
 
@@ -118,7 +117,7 @@ namespace actionet {
             double mu = 2.0 / (1.0 - alpha) * muPrevious - muPPrevious;
 
             mScore = 2 * (muPrevious / mu) * spmat_mat_product_parallel(P, mPreviousScore, thread_no) -
-                     (muPPrevious / mu) * mPPreviousScore + (2 * muPrevious) / ((1 - alpha) * mu) * alpha * X0;
+                (muPPrevious / mu) * mPPreviousScore + (2 * muPrevious) / ((1 - alpha) * mu) * alpha * X0;
 
             double res = norm(mScore - mPreviousScore);
             if (res < res_threshold) {

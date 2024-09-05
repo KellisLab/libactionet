@@ -37,7 +37,6 @@ namespace actionet {
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
-            
             ResSPA SPA_res = run_SPA(X_r, k);
             trace.selected_cols[k] = SPA_res.selected_cols;
 
