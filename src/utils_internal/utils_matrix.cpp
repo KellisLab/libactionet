@@ -162,46 +162,76 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat &A, arma::mat &B, int th
     cholmod_sparse *chol_A;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
 
-    if (thread_no <= 0) {
-        thread_no = SYS_THREADS_DEF;
-    }
+    // if (thread_no <= 0) {
+    //     thread_no = SYS_THREADS_DEF;
+    // }
     int M = A.n_rows;
     int N = B.n_cols;
     arma::mat res = arma::zeros(M, N);
 
-    if (thread_no > N) {
-        thread_no = N;
+    // if (thread_no > N) {
+    //     thread_no = N;
+    // }
+
+    int threads_use = get_num_threads(N, thread_no);
+    int slice_size = std::ceil((double) N / threads_use);
+
+    #pragma omp parallel for num_threads(threads_use)
+for (unsigned int k = 0; k < N; k++) {
+    int i = k * slice_size;
+    if (i <= (N - 1)) {
+        int j = (k + 1) * slice_size - 1;
+        if (j > (N - 1))
+            j = N - 1;
+
+        arma::mat subB = B.cols(i, j);
+
+        // Magic starts here!
+        cholmod_dense *chol_B = cholmod_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
+                                                       &chol_c);
+        chol_B->x = (void *) subB.memptr();
+        chol_B->z = (void *) NULL;
+
+        arma::mat subC = arma::zeros(A.n_rows, subB.n_cols);
+        cholmod_dense *out = cholmod_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
+        out->x = (void *) subC.memptr();
+        out->z = (void *) NULL;
+
+        double one[] = {1, 0}, zero[] = {0, 0};
+        cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
+
+        res.cols(i, j) = subC;
     }
-    int slice_size = std::ceil((double) N / thread_no);
+}
 
-    mini_thread::parallelFor(
-        0, thread_no, [&](unsigned int k) {
-            int i = k * slice_size;
-            if (i <= (N - 1)) {
-                int j = (k + 1) * slice_size - 1;
-                if (j > (N - 1))
-                    j = N - 1;
-
-                arma::mat subB = B.cols(i, j);
-
-                // Magic starts here!
-                cholmod_dense *chol_B = cholmod_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
-                                                               &chol_c);
-                chol_B->x = (void *) subB.memptr();
-                chol_B->z = (void *) NULL;
-
-                arma::mat subC = arma::zeros(A.n_rows, subB.n_cols);
-                cholmod_dense *out = cholmod_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
-                out->x = (void *) subC.memptr();
-                out->z = (void *) NULL;
-
-                double one[] = {1, 0}, zero[] = {0, 0};
-                cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
-
-                res.cols(i, j) = subC;
-            }
-        },
-        thread_no);
+    // mini_thread::parallelFor(
+    //     0, thread_no, [&](unsigned int k) {
+    //         int i = k * slice_size;
+    //         if (i <= (N - 1)) {
+    //             int j = (k + 1) * slice_size - 1;
+    //             if (j > (N - 1))
+    //                 j = N - 1;
+    //
+    //             arma::mat subB = B.cols(i, j);
+    //
+    //             // Magic starts here!
+    //             cholmod_dense *chol_B = cholmod_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
+    //                                                            &chol_c);
+    //             chol_B->x = (void *) subB.memptr();
+    //             chol_B->z = (void *) NULL;
+    //
+    //             arma::mat subC = arma::zeros(A.n_rows, subB.n_cols);
+    //             cholmod_dense *out = cholmod_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
+    //             out->x = (void *) subC.memptr();
+    //             out->z = (void *) NULL;
+    //
+    //             double one[] = {1, 0}, zero[] = {0, 0};
+    //             cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
+    //
+    //             res.cols(i, j) = subC;
+    //         }
+    //     },
+    //     thread_no);
 
     cholmod_free_sparse(&chol_A, &chol_c);
     cholmod_finish(&chol_c);
