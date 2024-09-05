@@ -28,18 +28,16 @@ namespace actionet {
         stdout_printf("Running ACTION (%d threads):\n", threads_use);
         FLUSH;
 
-        int current_k = 0;
+        int k_curr = 0;
         char status_msg[50];
 
         snprintf(status_msg, 50, "Iterating from k = %d ... %d:", k_min, k_max);
-        // stderr_printf("\n\t%s %d/%d finished", status_msg, current_k, k_tot);
-        // FLUSH;
+        stderr_printf("\t%s %d/%d finished", status_msg, k_curr, k_tot);
+        FLUSH;
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
-            stderr_printf("\r\t%s %d/%d finished", status_msg, current_k, k_tot);
-            FLUSH;
-
+            
             ResSPA SPA_res = run_SPA(X_r, k);
             trace.selected_cols[k] = SPA_res.selected_cols;
 
@@ -48,10 +46,13 @@ namespace actionet {
             arma::field<arma::mat> AA_res = run_AA(X_r, W, max_it, tol);
             trace.C[k] = AA_res(0);
             trace.H[k] = AA_res(1);
-            current_k++;
+            k_curr++;
+
+            stderr_printf("\r\t%s %d/%d finished", status_msg, k_curr, k_tot);
+            FLUSH;
         }
 
-        stdout_printf("\r\t%s %d/%d finished\n", status_msg, current_k, k_tot);
+        stdout_printf("\r\t%s %d/%d finished\n", status_msg, k_curr, k_tot);
         FLUSH;
 
         return trace;

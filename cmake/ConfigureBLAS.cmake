@@ -78,7 +78,7 @@ macro(CONFIGURE_BLAS_DEPENDS)
         endif ()
     else ()
         ## Find dependencies based on BLAS link line pattern
-        message(STATUS "Detecting BLAS implementation from detected BLAS_LIBRARIES")
+        message(STATUS "Detecting BLAS implementation from BLAS_LIBRARIES")
         foreach (lib ${BLAS_LIBRARIES})
             if (${lib} MATCHES "mkl")
                 CONFIGURE_BLAS_MKL()
