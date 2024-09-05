@@ -37,6 +37,9 @@ namespace actionet {
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
+            stderr_printf("\r\t%s %d/%d finished", status_msg, current_k, k_tot);
+            FLUSH;
+
             ResSPA SPA_res = run_SPA(X_r, k);
             trace.selected_cols[k] = SPA_res.selected_cols;
 
@@ -46,9 +49,6 @@ namespace actionet {
             trace.C[k] = AA_res(0);
             trace.H[k] = AA_res(1);
             current_k++;
-
-            stderr_printf("\r\t%s %d/%d finished", status_msg, current_k, k_tot);
-            FLUSH;
         }
 
         stdout_printf("\r\t%s %d/%d finished\n", status_msg, current_k, k_tot);
