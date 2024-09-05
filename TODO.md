@@ -1,15 +1,13 @@
 ## Primary
 * Fix various normalizations
 * pybind 11 wrappers
-* Eliminate external cholmod dependency
-  * Might no longer be necessary with new cmake
+* Split 2D/3D UMAP generation
 * Split colorspace from generate_layout.
-* Put OpenMP back
-  * Current mini_thread implementation is shit
 * Document C++ interface
 * Abstract `autocorrelation.cpp`
 * Abstract and separate specificity module
 * Make kNN a parameter in buildNetwork
+* Further modularize cmake 
 
 ## Secondary
 * Cleanup unused code and comments
@@ -36,7 +34,8 @@
 * Update StatsLib
 * Fix duplicate PCG headers
 * Fix threading (RcppThread, mini_thread, inline, OpenMP)
-  * Now using mini_thread exclusively. Not great. Will probably change.
+  * <s>Now using mini_thread exclusively. Not great. Will probably change.</s>
+  * OpenMP is now the threading model.
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
 * Fix namespace usage in headers

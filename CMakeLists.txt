@@ -214,9 +214,9 @@ else ()
 endif ()
 
 ## Build diagnostics and debugging
-get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
-message(NOTICE "Debug info:")
-message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
+#get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
+#message(NOTICE "Debug info:")
+#message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
 #message(STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
 #message(STATUS "LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
 #message(STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
