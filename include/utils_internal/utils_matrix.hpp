@@ -21,6 +21,4 @@ arma::sp_mat spmat_spmat_product(const arma::sp_mat &A, const arma::sp_mat &B);
 
 arma::mat spmat_mat_product_parallel(const arma::sp_mat &A, arma::mat &B, int thread_no);
 
-arma::mat mat_mat_product_parallel(const arma::mat &A, arma::mat &B, int thread_no);
-
 #endif //ACTIONET_UTILS_MATRIX_HPP

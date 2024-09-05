@@ -90,7 +90,6 @@ namespace actionet {
         row_p /= Sb.n_cols;
         arma::vec col_p = arma::vec(arma::trans(arma::mean(Sb, 0)));
 
-        // arma::mat Obs = mat_mat_product_parallel(S, Ht, thread_no);
         arma::mat Obs = S * Ht;
 
         double rho = arma::mean(col_p);
