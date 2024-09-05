@@ -40,7 +40,7 @@ arma::mat robust_zscore(arma::mat& A, int dim, int thread_no) {
         N = A.n_rows;
     }
 
-int threads_use = get_num_threads(N, thread_no);
+    int threads_use = get_num_threads(N, thread_no);
     #pragma omp parallel for num_threads(threads_use)
     for (size_t j = 0; j < N; j++) {
         arma::vec v = A.col(j);

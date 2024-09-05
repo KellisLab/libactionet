@@ -2,21 +2,19 @@
 #include "utils_internal/utils_matrix.hpp"
 
 namespace actionet {
-
-    arma::field<arma::mat> compute_feature_specificity(arma::sp_mat &S, arma::mat &H, int thread_no) {
-
+    arma::field<arma::mat> compute_feature_specificity(arma::sp_mat& S, arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
         arma::field<arma::mat> res(3);
 
         arma::mat Ht = arma::trans(H);
-        Ht.each_col([](arma::vec &h) {
+        Ht.each_col([](arma::vec& h) {
             double mu = arma::mean(h);
             h /= (mu == 0) ? 1 : mu;
         }); // For numerical stability
 
         // make sure all values are positive
         double min_val = S.min();
-        S.for_each([min_val](arma::mat::elem_type &val) { val -= min_val; });
+        S.for_each([min_val](arma::mat::elem_type& val) { val -= min_val; });
 
         // Heuristic optimization! Shall add parallel for later on
         arma::vec row_p = arma::zeros(S.n_rows);
@@ -73,8 +71,7 @@ namespace actionet {
         return (res);
     }
 
-    arma::field<arma::mat> compute_feature_specificity(arma::mat &S, arma::mat &H, int thread_no) {
-
+    arma::field<arma::mat> compute_feature_specificity(arma::mat& S, arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
         arma::field<arma::mat> res(3);
 
@@ -83,7 +80,7 @@ namespace actionet {
         (Sb(nnz_idx)).ones();
 
         arma::mat Ht = arma::trans(H);
-        Ht.each_col([](arma::vec &h) {
+        Ht.each_col([](arma::vec& h) {
             double mu = arma::mean(h);
             h /= (mu == 0) ? 1 : mu;
         }); // For numerical stability
@@ -132,7 +129,7 @@ namespace actionet {
         return (res);
     }
 
-    arma::field<arma::mat> compute_feature_specificity(arma::sp_mat &S, arma::uvec sample_assignments, int thread_no) {
+    arma::field<arma::mat> compute_feature_specificity(arma::sp_mat& S, arma::uvec sample_assignments, int thread_no) {
         arma::mat H(arma::max(sample_assignments), S.n_cols);
 
         for (int i = 1; i <= arma::max(sample_assignments); i++) {
@@ -147,7 +144,7 @@ namespace actionet {
         return (res);
     }
 
-    arma::field<arma::mat> compute_feature_specificity(arma::mat &S, arma::uvec sample_assignments, int thread_no) {
+    arma::field<arma::mat> compute_feature_specificity(arma::mat& S, arma::uvec sample_assignments, int thread_no) {
         arma::mat H(arma::max(sample_assignments), S.n_cols);
 
         for (int i = 1; i <= arma::max(sample_assignments); i++) {
@@ -161,5 +158,4 @@ namespace actionet {
 
         return (res);
     }
-
 } // namespace actionet
