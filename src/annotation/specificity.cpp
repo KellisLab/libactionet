@@ -1,6 +1,53 @@
 #include "annotation/specificity.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
+arma::field<arma::mat> getProbs(arma::mat& S) {
+    arma::mat Sb = S;
+    arma::uvec nnz_idx = arma::find(Sb > 0);
+    (Sb(nnz_idx)).ones();
+
+    arma::vec row_p = arma::vec(arma::sum(Sb, 1));
+    arma::vec row_factor = arma::vec(arma::sum(S, 1)) / row_p; // mean of nonzero elements
+    row_p /= Sb.n_cols;
+    arma::vec col_p = arma::vec(arma::trans(arma::mean(Sb, 0)));
+
+    arma::field<arma::mat> out;
+    out(0) = col_p;
+    out(1) = row_p;
+    out(2) = row_factor;
+
+    return (out);
+}
+
+arma::field<arma::mat> getProbs(arma::sp_mat& S) {
+    // make sure all values are positive
+    double min_val = S.min();
+    S.for_each([min_val](arma::mat::elem_type& val) { val -= min_val; });
+
+    // Heuristic optimization! Shall add parallel for later on
+    arma::vec row_p = arma::zeros(S.n_rows);
+    arma::vec col_p = arma::zeros(S.n_cols);
+    arma::vec row_factor = arma::zeros(S.n_rows);
+
+    arma::sp_mat::const_iterator it = S.begin();
+    arma::sp_mat::const_iterator it_end = S.end();
+    for (; it != it_end; ++it) {
+        col_p[it.col()]++;
+        row_p[it.row()]++;
+        row_factor[it.row()] += (*it);
+    }
+    row_factor /= row_p;
+    row_p /= S.n_cols;
+    col_p /= S.n_rows;
+
+    arma::field<arma::mat> out;
+    out(0) = col_p;
+    out(1) = row_p;
+    out(2) = row_factor;
+
+    return (out);
+}
+
 namespace actionet {
     arma::field<arma::mat> compute_feature_specificity(arma::sp_mat& S, arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
@@ -12,25 +59,11 @@ namespace actionet {
             h /= (mu == 0) ? 1 : mu;
         }); // For numerical stability
 
-        // make sure all values are positive
-        double min_val = S.min();
-        S.for_each([min_val](arma::mat::elem_type& val) { val -= min_val; });
+        arma::field<arma::mat> p = getProbs(S);
 
-        // Heuristic optimization! Shall add parallel for later on
-        arma::vec row_p = arma::zeros(S.n_rows);
-        arma::vec col_p = arma::zeros(S.n_cols);
-        arma::vec row_factor = arma::zeros(S.n_rows);
-
-        arma::sp_mat::const_iterator it = S.begin();
-        arma::sp_mat::const_iterator it_end = S.end();
-        for (; it != it_end; ++it) {
-            col_p[it.col()]++;
-            row_p[it.row()]++;
-            row_factor[it.row()] += (*it);
-        }
-        row_factor /= row_p;
-        row_p /= S.n_cols;
-        col_p /= S.n_rows;
+        arma::vec col_p = p(0);
+        arma::vec row_p = p(1);
+        arma::vec row_factor = p(2);
 
         arma::mat Obs = spmat_mat_product_parallel(S, Ht, thread_no);
 
@@ -75,20 +108,17 @@ namespace actionet {
         stdout_printf("Computing feature specificity ... ");
         arma::field<arma::mat> res(3);
 
-        arma::mat Sb = S;
-        arma::uvec nnz_idx = arma::find(Sb > 0);
-        (Sb(nnz_idx)).ones();
-
         arma::mat Ht = arma::trans(H);
         Ht.each_col([](arma::vec& h) {
             double mu = arma::mean(h);
             h /= (mu == 0) ? 1 : mu;
         }); // For numerical stability
 
-        arma::vec row_p = arma::vec(arma::sum(Sb, 1));
-        arma::vec row_factor = arma::vec(arma::sum(S, 1)) / row_p; // mean of nonzero elements
-        row_p /= Sb.n_cols;
-        arma::vec col_p = arma::vec(arma::trans(arma::mean(Sb, 0)));
+        arma::field<arma::mat> p = getProbs(S);
+
+        arma::vec col_p = p(0);
+        arma::vec row_p = p(1);
+        arma::vec row_factor = p(2);
 
         arma::mat Obs = S * Ht;
 
@@ -118,6 +148,7 @@ namespace actionet {
 
         logPvals_lower /= log(10);
         logPvals_upper /= log(10);
+
         stdout_printf("done\n");
         FLUSH;
 
@@ -144,6 +175,8 @@ namespace actionet {
         return (res);
     }
 
-    template arma::field<arma::mat> compute_feature_specificity<arma::mat>(arma::mat& S, arma::uvec sample_assignments, int thread_no);
-    template arma::field<arma::mat> compute_feature_specificity<arma::sp_mat>(arma::sp_mat& S, arma::uvec sample_assignments, int thread_no);
+    template arma::field<arma::mat> compute_feature_specificity<arma::mat>(
+        arma::mat& S, arma::uvec sample_assignments, int thread_no);
+    template arma::field<arma::mat> compute_feature_specificity<arma::sp_mat>(
+        arma::sp_mat& S, arma::uvec sample_assignments, int thread_no);
 } // namespace actionet
