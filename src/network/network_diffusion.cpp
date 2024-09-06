@@ -3,9 +3,10 @@
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include <cholmod.h>
+#include <tools/normalization.hpp>
 
 namespace actionet {
-    arma::mat compute_network_diffusion(arma::sp_mat& G, arma::sp_mat& X0, int thread_no, double alpha, int max_it) {
+    arma::mat compute_network_diffusion(arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it, int thread_no) {
         int N = G.n_rows;
         arma::vec z = arma::ones(N);
         arma::vec c = arma::vec(arma::trans(arma::sum(G, 0)));
@@ -31,8 +32,8 @@ namespace actionet {
         return (X);
     }
 
-    arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, int thread_no, double alpha,
-                                             int max_it) {
+    arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it,
+                                             int thread_no) {
         int n = G.n_rows;
 
         cholmod_common chol_c;
@@ -90,9 +91,9 @@ namespace actionet {
     }
 
     // P is already a stochastic (normalized) adjacency matrix
-    arma::mat compute_network_diffusion_approx(arma::sp_mat& P, arma::mat& X0, int thread_no, double alpha,
-                                               int max_it, double res_threshold) {
-        if (alpha == 1) {
+    arma::mat compute_network_diffusion_approx(arma::sp_mat& G, arma::mat& X0, int norm_type, double alpha,
+                                               int max_it, double tol, int thread_no) {
+        if (alpha >= 1) {
             stderr_printf("alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);
             FLUSH;
             return (X0);
@@ -104,6 +105,8 @@ namespace actionet {
 
         alpha = 1 - alpha; // Traditional definition is to have alpha as weight of prior.
         // Here, alpha is depth of diffusion
+
+        arma::sp_mat P = alpha * normalize_adj(G, norm_type);
 
         arma::mat mPPreviousScore = X0; // zeros(size(X0));
         arma::mat mPreviousScore = (1 - alpha) * spmat_mat_product_parallel(P, mPPreviousScore, thread_no) + alpha * X0;
@@ -120,7 +123,7 @@ namespace actionet {
                 (muPPrevious / mu) * mPPreviousScore + (2 * muPrevious) / ((1 - alpha) * mu) * alpha * X0;
 
             double res = norm(mScore - mPreviousScore);
-            if (res < res_threshold) {
+            if (res < tol) {
                 break;
             }
 

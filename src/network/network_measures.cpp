@@ -159,7 +159,7 @@ arma::uvec compute_induced_core_number(arma::sp_mat& G, arma::uvec mask) {
             unsigned int u = (N[v])[j];
 
             if (cores[u] > cores[v]) {
-                unsigned int du = (unsigned int)cores[u];
+                unsigned int du = cores[u];
                 unsigned int pu = pos[u];
                 unsigned int pw = bin[du];
                 unsigned int w = vert[pw];

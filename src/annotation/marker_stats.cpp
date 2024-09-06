@@ -12,7 +12,7 @@ namespace actionet {
 
         int n = G.n_rows;
         arma::sp_mat o = arma::sp_mat(arma::ones(n, 1));
-        arma::vec pr = compute_network_diffusion_fast(G, o, thread_no, alpha, max_it).col(0);
+        arma::vec pr = compute_network_diffusion_fast(G, o, alpha, max_it, thread_no).col(0);
 
         for (int i = 0; i < marker_mat.n_cols; i++) {
             int marker_count = (int)sum(sum(spones(marker_mat.col(i))));
@@ -35,7 +35,7 @@ namespace actionet {
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
             arma::mat imputed_expression = compute_network_diffusion_fast(
-                G, raw_expression, thread_no, alpha, max_it);
+                G, raw_expression, alpha, max_it, thread_no);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
                 arma::vec ppr = imputed_expression.col(j);
@@ -51,9 +51,8 @@ namespace actionet {
         return (stats);
     }
 
-
     arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat& G, arma::sp_mat& S, arma::mat& X,
-                                                     int network_normalization_method, double alpha, int thread_no) {
+                                                     int norm_type, double alpha, int max_it, double tol, int thread_no) {
         arma::field<arma::mat> out(3);
 
         // `X` is features; formerly `marker_mat`
@@ -66,12 +65,6 @@ namespace actionet {
             stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
             FLUSH;
             return (out);
-        }
-
-        // 0: pagerank, 2: sym_pagerank
-        arma::sp_mat P;
-        if (alpha != 0) {
-            P = normalize_adj(G, network_normalization_method);
         }
 
         arma::sp_mat St = arma::trans(S);
@@ -108,8 +101,8 @@ namespace actionet {
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
             stdout_printf("Smoothing geneset scores ... ");
-            marker_stats_smoothed = actionet::compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
-                                                                               alpha);
+            marker_stats_smoothed = actionet::compute_network_diffusion_approx(G, marker_stats_smoothed,
+                                                                               norm_type, alpha, max_it, tol, thread_no);
             stdout_printf("done\n");
             FLUSH;
         }

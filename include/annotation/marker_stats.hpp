@@ -9,10 +9,10 @@ namespace actionet {
                                              double alpha = 0.85, int max_it = 5, int thread_no = 0,
                                              bool ignore_baseline_expression = false);
 
+    // norm_type: 0 (pagerank), 2 (sym_pagerank; recommended)
     arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat& G, arma::sp_mat& S, arma::mat& X,
-                                                     int network_normalization_method = 0, double alpha = 0.85,
-                                                     int thread_no = 0);
-
+                                                     int norm_type = 2, double alpha = 0.85,
+                                                     int max_it = 5, double tol = 1E-8, int thread_no = 0);
 }
 
 #endif //ACTIONET_MARKER_STATS_HPP
