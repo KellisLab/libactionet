@@ -51,8 +51,7 @@ arma::field<arma::mat> getProbs(arma::sp_mat& S) {
 namespace actionet {
     arma::field<arma::mat> compute_feature_specificity(arma::sp_mat& S, arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
-        arma::field<arma::mat> res(3);
-
+        stderr_printf("Using sparse ... ");
         arma::mat Ht = arma::trans(H);
         Ht.each_col([](arma::vec& h) {
             double mu = arma::mean(h);
@@ -65,7 +64,8 @@ namespace actionet {
         arma::vec row_p = p(1);
         arma::vec row_factor = p(2);
 
-        arma::mat Obs = spmat_mat_product_parallel(S, Ht, thread_no);
+        // arma::mat Obs = spmat_mat_product_parallel(S, Ht, thread_no);
+        arma::mat Obs = arma::mat(S * arma::sp_mat(Ht));
 
         double rho = arma::mean(col_p);
         arma::vec beta = col_p / rho; // Relative density compared to the overall density
@@ -97,6 +97,7 @@ namespace actionet {
         stdout_printf("done\n");
         FLUSH;
 
+        arma::field<arma::mat> res(3);
         res(0) = Obs / Ht.n_rows;
         res(1) = logPvals_upper;
         res(2) = logPvals_lower;
@@ -106,7 +107,6 @@ namespace actionet {
 
     arma::field<arma::mat> compute_feature_specificity(arma::mat& S, arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
-        arma::field<arma::mat> res(3);
 
         arma::mat Ht = arma::trans(H);
         Ht.each_col([](arma::vec& h) {
@@ -152,6 +152,7 @@ namespace actionet {
         stdout_printf("done\n");
         FLUSH;
 
+        arma::field<arma::mat> res(3);
         res(0) = Obs / Ht.n_rows;
         res(1) = logPvals_upper;
         res(2) = logPvals_lower;
