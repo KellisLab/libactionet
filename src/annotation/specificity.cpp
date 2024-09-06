@@ -2,8 +2,6 @@
 #include "utils_internal/utils_matrix.hpp"
 
 arma::field<arma::mat> getProbsObs(const arma::mat& S, arma::mat& Ht, int thread_no) {
-    stderr_printf("Using dense ... ");
-
     arma::mat Sb = S;
     arma::uvec nnz_idx = arma::find(Sb > 0);
     (Sb(nnz_idx)).ones();
@@ -22,8 +20,6 @@ arma::field<arma::mat> getProbsObs(const arma::mat& S, arma::mat& Ht, int thread
 }
 
 arma::field<arma::mat> getProbsObs(const arma::sp_mat& S, arma::mat& Ht, int thread_no) {
-    stderr_printf("Using sparse ... ");
-
     // Heuristic optimization! Shall add parallel for later on
     arma::vec row_p = arma::zeros(S.n_rows);
     arma::vec col_p = arma::zeros(S.n_cols);
