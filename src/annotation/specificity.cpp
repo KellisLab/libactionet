@@ -64,8 +64,8 @@ namespace actionet {
         arma::field<arma::mat> p = getProbsObs(S, Ht, thread_no);
 
         arma::vec row_factor = p(0);
-        arma::vec col_p = p(1);
-        arma::vec row_p = p(2);
+        arma::vec row_p = p(1);
+        arma::vec col_p = p(2);
         arma::mat Obs = p(3);
 
         double rho = arma::mean(col_p);
