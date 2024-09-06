@@ -5,7 +5,6 @@
 * Split colorspace from generate_layout.
 * Document C++ interface
 * Abstract `autocorrelation.cpp`
-* Abstract and separate specificity module
 * Make kNN a parameter in buildNetwork
 * Further modularize cmake 
 

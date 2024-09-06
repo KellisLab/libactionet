@@ -106,7 +106,7 @@ namespace actionet {
         alpha = 1 - alpha; // Traditional definition is to have alpha as weight of prior.
         // Here, alpha is depth of diffusion
 
-        arma::sp_mat P = alpha * normalize_adj(G, norm_type);
+        arma::sp_mat P = normalize_adj(G, norm_type);
 
         arma::mat mPPreviousScore = X0; // zeros(size(X0));
         arma::mat mPreviousScore = (1 - alpha) * spmat_mat_product_parallel(P, mPPreviousScore, thread_no) + alpha * X0;
