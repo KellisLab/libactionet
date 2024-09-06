@@ -11,7 +11,7 @@ arma::field<arma::mat> getProbs(arma::mat& S) {
     row_p /= Sb.n_cols;
     arma::vec col_p = arma::vec(arma::trans(arma::mean(Sb, 0)));
 
-    arma::field<arma::mat> out;
+    arma::field<arma::mat> out(3);
     out(0) = col_p;
     out(1) = row_p;
     out(2) = row_factor;
@@ -40,7 +40,7 @@ arma::field<arma::mat> getProbs(arma::sp_mat& S) {
     row_p /= S.n_cols;
     col_p /= S.n_rows;
 
-    arma::field<arma::mat> out;
+    arma::field<arma::mat> out(3);
     out(0) = col_p;
     out(1) = row_p;
     out(2) = row_factor;
