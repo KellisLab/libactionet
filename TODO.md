@@ -4,8 +4,8 @@
 * Split 2D/3D UMAP generation
 * Split colorspace from generate_layout.
 * Document C++ interface
-* Abstract `autocorrelation.cpp`
 * Make kNN a parameter in buildNetwork
+  * Actually doable with current implementation?
 * Further modularize cmake 
 
 ## Secondary
@@ -59,3 +59,4 @@
 * Restructured R wrappers 
   * Added config for wrappers in R build mode
   * Conversion from arma::vec to Rcpp::NumricVector now automatic
+* Template abstraction of functions accepting both dense and sparse matrix input.

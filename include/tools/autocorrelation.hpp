@@ -6,6 +6,8 @@
 // Exported
 namespace actionet {
     // G is the symmetric adjacency matrix, scores is a nodes x features matrix
+
+    // TODO: Unused. Remove?
     arma::field<arma::vec>
         autocorrelation_Moran_parametric(arma::sp_mat G, const arma::mat& scores, int normalization_method = 4,
                                          int thread_no = 0);
