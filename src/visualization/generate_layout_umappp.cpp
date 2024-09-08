@@ -11,12 +11,18 @@ namespace actionet {
 
         stdout_printf("Initialize Options...");
         umappp::Options opt;
-        opt.seed = 0;
-        opt.negative_sample_rate = NEGATIVE_SAMPLE_RATE;
+        opt.local_connectivity = 1;
+        opt.bandwidth = 1;
+        opt.mix_ratio = 1;
+        opt.spread = 1;
+        opt.min_dist = 1;
+        opt.repulsion_strength = 2;
         opt.num_epochs = 25;
         opt.learning_rate = 1;
-        opt.min_dist = 1;
-        opt.spread = 1;
+        opt.negative_sample_rate = NEGATIVE_SAMPLE_RATE;
+        opt.seed = 0;
+        opt.num_threads = 1;
+        opt.parallel_optimization = false;
         stdout_printf("done\n");
 
         stdout_printf("Finding a/b...");
@@ -25,7 +31,7 @@ namespace actionet {
         opt.b = found.second;
         stdout_printf("done\n");
 
-        stdout_printf("Using: a = %0.3f, b = %0.3f", opt.a, opt.b);
+        stdout_printf("Using: a = %0.3f, b = %0.3f\n", opt.a, opt.b);
 
         stdout_printf("Initialize NeighborList...");
         std::vector<std::vector<std::pair<int, double>>> x;
