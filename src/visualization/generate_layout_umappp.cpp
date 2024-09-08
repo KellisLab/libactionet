@@ -6,6 +6,16 @@ namespace actionet {
     arma::mat layoutNetwork_umappp(arma::sp_mat& G, arma::mat& initial_embedding, int thread_no) {
         // int threads_use = get_num_threads(SYS_THREADS_DEF, thread_no);
 
+        stdout_printf("Initialize Options...");
+        umappp::Options opt;
+        opt.seed = 0;
+        opt.negative_sample_rate = NEGATIVE_SAMPLE_RATE;
+        opt.num_epochs = 100;
+        opt.learning_rate = 1;
+        opt.min_dist = 1;
+        opt.spread = 1;
+        stdout_printf("done\n");
+
         stdout_printf("Initialize NeighborList...");
         std::vector<std::vector<std::pair<int, double>>> x;
         stdout_printf("sdone\n");
@@ -42,9 +52,6 @@ namespace actionet {
 
         // size_t out_dim = 2;
         // std::vector<double> embedding(G.n_cols * out_dim);
-        stdout_printf("Initialize Options...");
-        umappp::Options opt;
-        stdout_printf("done\n");
 
         stdout_printf("Initialize umappp...");
         auto status = umappp::initialize_custom(x, out_dim, embedding.data(), opt);
