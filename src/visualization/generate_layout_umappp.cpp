@@ -32,11 +32,12 @@ namespace actionet {
         stdout_printf("NeighborList length: %d\n", (int)x.size());
 
         size_t out_dim = initial_embedding.n_cols;
-
         stdout_printf("Embedding dim: %d\n", (int)out_dim);
 
         stdout_printf("Initialize embedding...");
-        std::vector<double> embedding = arma::conv_to<std::vector<double>>::from(initial_embedding);
+        // std::vector<double> embedding = arma::conv_to<std::vector<double>>::from(initial_embedding);
+        std::vector<double> embedding(initial_embedding.begin(), initial_embedding.end());
+
         stdout_printf("done\n");
 
         // size_t out_dim = 2;
