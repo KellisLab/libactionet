@@ -10,7 +10,7 @@ namespace actionet {
         umappp::Options opt;
         opt.seed = 0;
         opt.negative_sample_rate = NEGATIVE_SAMPLE_RATE;
-        opt.num_epochs = 100;
+        opt.num_epochs = 50;
         opt.learning_rate = 1;
         opt.min_dist = 1;
         opt.spread = 1;
