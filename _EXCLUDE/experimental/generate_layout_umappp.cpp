@@ -1,6 +1,5 @@
-#include "visualization/generate_layout_umappp.hpp"
-#include "utils_internal/utils_parallel.hpp"
-#include "visualization/initialize_umappp.hpp"
+#include "generate_layout_umappp.hpp"
+#include "initialize_umappp.hpp"
 
 namespace actionet {
     arma::mat layoutNetwork_umappp(arma::sp_mat& G, arma::mat& initial_embedding, int thread_no) {
@@ -18,7 +17,7 @@ namespace actionet {
         opt.learning_rate = 1;
         opt.negative_sample_rate = NEGATIVE_SAMPLE_RATE;
         opt.seed = 0;
-        opt.num_threads = SYS_THREADS_DEF;
+        opt.num_threads = 4;
         opt.parallel_optimization = true;
         stdout_printf("done\n");
 

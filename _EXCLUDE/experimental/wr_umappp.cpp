@@ -3,7 +3,7 @@
 // [[Rcpp::interfaces(r, cpp)]]
 // #include <visualization/generate_layout_umappp.hpp>
 
-#include <visualization/generate_layout_umappp.hpp>
+#include <generate_layout_umappp.hpp>
 #include "actionet_r_config.h"
 
 // generate_layout ==================================================================================================================
