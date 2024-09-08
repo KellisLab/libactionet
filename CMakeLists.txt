@@ -64,6 +64,7 @@ if (TEST_BUILD_R)
             PRIVATE wrappers_r/wr_network.cpp
             PRIVATE wrappers_r/wr_tools.cpp
             PRIVATE wrappers_r/wr_visualization.cpp
+            PRIVATE wrappers_r/wr_experimental.cpp
     )
 endif ()
 
@@ -187,6 +188,9 @@ target_link_libraries(
 ## Add included headers
 target_include_directories(
         actionet
+        PRIVATE "${actionet_SOURCE_DIR}/include/extern/subpar"
+#        PRIVATE "${actionet_SOURCE_DIR}/include/extern/knncolle"
+        PRIVATE "${actionet_SOURCE_DIR}/include/extern/umappp"
         PRIVATE "${actionet_SOURCE_DIR}/include/extern/gcem"
         PRIVATE "${actionet_SOURCE_DIR}/include/extern"
         PRIVATE "${actionet_SOURCE_DIR}/include"

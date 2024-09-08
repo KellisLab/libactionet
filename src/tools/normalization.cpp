@@ -103,3 +103,13 @@ namespace actionet {
         return (normalized_scores);
     }
 } // namespace actionet
+
+
+template <typename T>
+T normalize_matrix_new(T& X, int p, int dim, double scale_fac, std::string trans_func) {
+    if (p > 0) {
+        X = arma::normalise(X, p, dim);
+    }
+
+    return (X);
+}
