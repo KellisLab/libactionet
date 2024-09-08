@@ -1,13 +1,10 @@
 #include "visualization/generate_layout_umappp.hpp"
-// #include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_parallel.hpp"
 #include "visualization/initialize_umappp.hpp"
 
 namespace actionet {
     arma::mat layoutNetwork_umappp(arma::sp_mat& G, arma::mat& initial_embedding, int thread_no) {
         // int threads_use = get_num_threads(SYS_THREADS_DEF, thread_no);
-
-
-
 
         stdout_printf("Initialize Options...");
         umappp::Options opt;
@@ -16,13 +13,13 @@ namespace actionet {
         opt.mix_ratio = 1;
         opt.spread = 1;
         opt.min_dist = 1;
-        opt.repulsion_strength = 2;
-        opt.num_epochs = 25;
+        opt.repulsion_strength = 1;
+        opt.num_epochs = 50;
         opt.learning_rate = 1;
         opt.negative_sample_rate = NEGATIVE_SAMPLE_RATE;
         opt.seed = 0;
-        opt.num_threads = 1;
-        opt.parallel_optimization = false;
+        opt.num_threads = SYS_THREADS_DEF;
+        opt.parallel_optimization = true;
         stdout_printf("done\n");
 
         stdout_printf("Finding a/b...");
