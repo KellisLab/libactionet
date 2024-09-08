@@ -1,12 +1,18 @@
-#include "visualization/generate_layout.hpp"
+#include "visualization/generate_layout_new.hpp"
+#include "visualization/umap_structs_new.hpp"
 #include "utils_internal/utils_parallel.hpp"
-#include "visualization/create_xmap.hpp"
+// #include "visualization/create_xmap.hpp"
 #include "utils_internal/utils_stats.hpp"
 #include "visualization/find_ab.hpp"
 #include "tools/normalization.hpp"
-#include "old.uwot/coords.h"
+// #include "uwot/coords.h"
 #include "colorspace.h"
 #include <cfloat>
+
+void buildUmapFactory(UmapFactory &umap_factory) {
+
+}
+
 
 namespace actionet {
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat& G, arma::mat& initial_position, const std::string& method,
@@ -27,7 +33,7 @@ namespace actionet {
         bool approx_pow = true;
         bool batch = true;
         std::string opt_name = "adam";
-        double alpha = ADAM_ALPHA, beta1 = ADAM_BETA1, beta2 = ADAM_BETA2,
+        double alpha = OPT_ALPHA, beta1 = ADAM_BETA1, beta2 = ADAM_BETA2,
                eps = ADAM_EPS, negative_sample_rate = NEGATIVE_SAMPLE_RATE;
 
         arma::field<arma::mat> res(3);

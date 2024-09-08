@@ -3,9 +3,9 @@
 #define ACTIONET_UMAP_STRUCTS_HPP
 
 #include "libactionet_config.hpp"
-#include "uwot/rng.h"
-#include "uwot/epoch.h"
-#include "uwot/rparallel.h"
+#include "old.uwot/rng.h"
+#include "old.uwot/epoch.h"
+#include "old.uwot/rparallel.h"
 
 // Template class specialization to handle different rng/batch combinations
 template <bool DoBatch = true>
