@@ -3,13 +3,6 @@
 
 #include "libactionet_config.hpp"
 
-// Constants
-constexpr float NEGATIVE_SAMPLE_RATE = 3.0;
-constexpr float ADAM_ALPHA = 1.0; /*same as learning_rate*/
-constexpr float ADAM_BETA1 = 0.5; /*only adam: between 0 and 1*/
-constexpr float ADAM_BETA2 = 0.9; /*only adam: between 0 and 1*/
-constexpr float ADAM_EPS = 1e-7;  /*only adam: between 1e-8 and 1e-3*/
-
 // Exported functions
 namespace actionet {
     // Generate (U/t-U/PaC)MAP layout

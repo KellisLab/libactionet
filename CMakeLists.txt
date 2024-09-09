@@ -64,6 +64,7 @@ if (TEST_BUILD_R)
             PRIVATE wrappers_r/wr_network.cpp
             PRIVATE wrappers_r/wr_tools.cpp
             PRIVATE wrappers_r/wr_visualization.cpp
+            PRIVATE wrappers_r/wr_experimental.cpp
     )
 endif ()
 

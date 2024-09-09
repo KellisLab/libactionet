@@ -1,6 +1,6 @@
 // Implemented from uwot R package
-#ifndef ACTIONET_UMAP_STRUCTS_HPP
-#define ACTIONET_UMAP_STRUCTS_HPP
+#ifndef ACTIONET_UMAPFACTORY_HPP
+#define ACTIONET_UMAPFACTORY_HPP
 
 #include "libactionet_config.hpp"
 #include "uwot/coords.h"
@@ -11,28 +11,7 @@
 
 #include "uwot/rng.h"
 #include "uwot/rparallel.h"
-// #include "rprogress.h"
-
-// Constants
-// #define ADAM_BETA1 0.5 /*only adam: between 0 and 1*/
-// #define ADAM_BETA2 0.9 /*only adam: between 0 and 1*/
-// #define ADAM_EPS 1e-7  /*only adam: between 1e-8 and 1e-3*/
-
-constexpr int METHOD_ADAM = 1;
-constexpr int METHOD_SGD = 2;
-constexpr float OPT_ALPHA = 1.0; /*same as learning_rate*/
-constexpr float ADAM_BETA1 = 0.5; /* between 0 and 1*/
-constexpr float ADAM_BETA2 = 0.9; /* between 0 and 1*/
-constexpr float ADAM_EPS = 1e-7; /* between 1e-8 and 1e-3*/
-
-struct OptArgs {
-    int method;
-    float alpha;
-    float beta1;
-    float beta2;
-    float eps;
-    OptArgs(): method(METHOD_ADAM), alpha(OPT_ALPHA), beta1(ADAM_BETA1), beta2(ADAM_BETA2), eps(ADAM_EPS) {}
-};
+#include "OptimizerArgs.hpp"
 
 // Template class specialization to handle different rng/batch combinations
 template <bool DoBatch = true>
@@ -60,12 +39,11 @@ struct UmapFactory {
     unsigned int n_tail_vertices;
     const std::vector<float>& epochs_per_sample;
     float initial_alpha;
-    OptArgs opt_args;
+    OptimizerArgs opt_args;
     float negative_sample_rate;
     bool batch;
     std::size_t n_threads;
     std::size_t grain_size;
-    uwot::EpochCallback* epoch_callback;
     bool verbose;
 
     UmapFactory(bool move_other, bool pcg_rand,
@@ -77,9 +55,8 @@ struct UmapFactory {
                 unsigned int n_epochs, unsigned int n_head_vertices,
                 unsigned int n_tail_vertices,
                 const std::vector<float>& epochs_per_sample, float initial_alpha,
-                OptArgs opt_args, float negative_sample_rate, bool batch,
-                std::size_t n_threads, std::size_t grain_size,
-                uwot::EpochCallback* epoch_callback, bool verbose)
+                OptimizerArgs opt_args, float negative_sample_rate, bool batch,
+                std::size_t n_threads, std::size_t grain_size, bool verbose)
         : move_other(move_other), pcg_rand(pcg_rand),
           head_embedding(head_embedding), tail_embedding(tail_embedding),
           positive_head(positive_head), positive_tail(positive_tail),
@@ -87,8 +64,7 @@ struct UmapFactory {
           n_head_vertices(n_head_vertices), n_tail_vertices(n_tail_vertices),
           epochs_per_sample(epochs_per_sample), initial_alpha(initial_alpha),
           opt_args(opt_args), negative_sample_rate(negative_sample_rate),
-          batch(batch), n_threads(n_threads), grain_size(grain_size),
-          epoch_callback(epoch_callback), verbose(verbose) {}
+          batch(batch), n_threads(n_threads), grain_size(grain_size), verbose(verbose) {}
 
     template <typename Gradient>
     void create(const Gradient& gradient) {
@@ -122,11 +98,11 @@ struct UmapFactory {
         }
     }
 
-    std::unique_ptr<uwot::Optimizer> create_optimizer(OptArgs opt_args) {
+    std::unique_ptr<uwot::Optimizer> create_optimizer(OptimizerArgs opt_args) {
         // std::string method = lget(opt_args, "method", "adam");
         // std::string method = opt_args.method;
         float alpha = opt_args.alpha;
-        switch (opt_args.method) {
+        switch (opt_args.opt_method) {
             case METHOD_SGD:
                 if (verbose) {
                     stderr_printf("Optimizing with SGD: alpha = %0.3f", alpha);
@@ -174,16 +150,14 @@ struct UmapFactory {
         if (batch) {
             // std::string opt_name = opt_args["method"];
             auto opt = create_optimizer(opt_args);
-            uwot::BatchUpdate<DoMove> update(head_embedding, tail_embedding,
-                                             std::move(opt), epoch_callback);
+            uwot::BatchUpdate<DoMove> update(head_embedding, tail_embedding, std::move(opt));
             uwot::NodeWorker<Gradient, decltype(update), RandFactory> worker(
                 gradient, update, positive_head, positive_tail, positive_ptr, sampler,
                 ndim, n_tail_vertices);
             create_impl(worker, gradient);
         }
         else {
-            uwot::InPlaceUpdate<DoMove> update(head_embedding, tail_embedding,
-                                               initial_alpha, epoch_callback);
+            uwot::InPlaceUpdate<DoMove> update(head_embedding, tail_embedding, initial_alpha);
             uwot::EdgeWorker<Gradient, decltype(update), RandFactory> worker(
                 gradient, update, positive_head, positive_tail, sampler, ndim,
                 n_tail_vertices, n_threads);
@@ -209,5 +183,4 @@ struct UmapFactory {
     }
 };
 
-
-#endif //ACTIONET_UMAP_STRUCTS_HPP
+#endif //ACTIONET_UMAPFACTORY_HPP

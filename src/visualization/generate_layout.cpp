@@ -8,6 +8,13 @@
 #include "colorspace.h"
 #include <cfloat>
 
+// Constants
+constexpr float NEGATIVE_SAMPLE_RATE = 3.0;
+constexpr float ADAM_ALPHA = 1.0; /*same as learning_rate*/
+constexpr float ADAM_BETA1 = 0.5; /*only adam: between 0 and 1*/
+constexpr float ADAM_BETA2 = 0.9; /*only adam: between 0 and 1*/
+constexpr float ADAM_EPS = 1e-7;  /*only adam: between 1e-8 and 1e-3*/
+
 namespace actionet {
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat& G, arma::mat& initial_position, const std::string& method,
                                               double min_dist, double spread, double gamma, unsigned int n_epochs,
