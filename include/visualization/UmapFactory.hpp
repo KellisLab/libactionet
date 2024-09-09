@@ -3,9 +3,7 @@
 #define ACTIONET_UMAPFACTORY_HPP
 
 #include "libactionet_config.hpp"
-#include "uwot/coords.h"
 #include "uwot/epoch.h"
-#include "uwot/gradient.h"
 #include "uwot/optimize.h"
 #include "uwot/sampler.h"
 

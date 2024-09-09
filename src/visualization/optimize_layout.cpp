@@ -1,12 +1,31 @@
 #include "visualization/optimize_layout.hpp"
 #include "visualization/UmapFactory.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include "uwot/coords.h"
 // #include "visualization/create_xmap.hpp"
 // #include "visualization/find_ab.hpp"
 // #include "tools/normalization.hpp"
 // #include "colorspace.h"
 // #include <cfloat>
 // #include <visualization/generate_layout.hpp>
+
+// struct EdgeVectors {
+//     int nE;
+//     int n_cols;
+//     std::vector<unsigned int> positive_head (4);
+//     std::vector<unsigned int> positive_tail (nE);
+//     std::vector<float> epochs_per_sample (nE);
+//     std::vector<unsigned int> positive_ptr (n_cols + 1);
+//     EdgeVectors(int nE, int n_cols) : nE(nE), n_cols(n_cols) {}
+// };
+
+struct EdgeVectors {
+    std::vector<unsigned int> positive_head;
+    std::vector<unsigned int> positive_tail;
+    std::vector<float> epochs_per_sample;
+    std::vector<unsigned int> positive_ptr;
+    unsigned int n_vertices;
+};
 
 void verboseStatus(const UwotArgs& method_args) {
     stderr_printf("Optimizing layout using method '%s': %d components \n", method_args.method.c_str(),
@@ -55,18 +74,68 @@ uwot::Coords getCoords(arma::mat& initial_position, int n_components) {
     return coords;
 }
 
-UmapFactory buildFactory(arma::sp_mat& G, arma::mat& initial_position, const UwotArgs& uwot_args) {
-    uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);
+// UmapFactory buildFactory(arma::sp_mat& G, arma::mat& initial_position, const UwotArgs& uwot_args) {
+//     uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);
+//
+//     bool move_other = true;
+//     arma::sp_mat H = G;
+//     double w_max = arma::max(arma::max(H));
+//     H.clean(w_max / uwot_args.n_epochs);
+//
+//     arma::sp_mat Ht = arma::trans(H); // TODO: .eval()
+//     Ht.sync();
+//
+//     unsigned int nV = H.n_rows;
+//     unsigned int nE = H.n_nonzero;
+//
+//     std::vector<unsigned int> positive_head(nE);
+//     std::vector<unsigned int> positive_tail(nE);
+//     std::vector<float> epochs_per_sample(nE);
+//     std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
+//
+//     int i = 0;
+//     if (uwot_args.batch == false) {
+//         for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it) {
+//             epochs_per_sample[i] = w_max / (*it);
+//             positive_head[i] = it.row();
+//             positive_tail[i] = it.col();
+//             i++;
+//         }
+//     }
+//     else {
+//         for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
+//             epochs_per_sample[i] = w_max / (*it);
+//             positive_tail[i] = it.row();
+//             positive_head[i] = it.col();
+//             i++;
+//         }
+//         for (int k = 0; k < Ht.n_cols + 1; k++) {
+//             positive_ptr[k] = Ht.col_ptrs[k];
+//         }
+//     }
+//
+//     UmapFactory UF(move_other,
+//                    uwot_args.pcg_rand,
+//                    coords.get_head_embedding(), coords.get_tail_embedding(),
+//                    positive_head, positive_tail, positive_ptr,
+//                    uwot_args.n_epochs,
+//                    nV, nV,
+//                    epochs_per_sample, uwot_args.alpha,
+//                    uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
+//                    uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
+//
+//     return (UF);
+// }
 
-    bool move_other = true;
+EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
+    // bool move_other = true;
     arma::sp_mat H = G;
     double w_max = arma::max(arma::max(H));
     H.clean(w_max / uwot_args.n_epochs);
 
-    arma::sp_mat Ht = arma::trans(H); // TODO: .eval()
-    Ht.sync();
+    arma::sp_mat Ht = arma::trans(H).eval();
 
-    unsigned int nV = H.n_rows;
+    unsigned int nV = G.n_rows;
     unsigned int nE = H.n_nonzero;
 
     std::vector<unsigned int> positive_head(nE);
@@ -95,17 +164,23 @@ UmapFactory buildFactory(arma::sp_mat& G, arma::mat& initial_position, const Uwo
         }
     }
 
-    UmapFactory UF(move_other,
-                   uwot_args.pcg_rand,
-                   coords.get_head_embedding(), coords.get_tail_embedding(),
-                   positive_head, positive_tail, positive_ptr,
-                   uwot_args.n_epochs,
-                   nV, nV,
-                   epochs_per_sample, uwot_args.alpha,
-                   uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
-                   uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
+    EdgeVectors EV;
+    EV.positive_head = positive_head;
+    EV.positive_tail = positive_tail;
+    EV.positive_ptr = positive_ptr;
+    EV.epochs_per_sample = epochs_per_sample;
+    EV.n_vertices = nV;
+    // UmapFactory UF(move_other,
+    //                uwot_args.pcg_rand,
+    //                coords.get_head_embedding(), coords.get_tail_embedding(),
+    //                positive_head, positive_tail, positive_ptr,
+    //                uwot_args.n_epochs,
+    //                nV, nV,
+    //                epochs_per_sample, uwot_args.alpha,
+    //                uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
+    //                uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
 
-    return (UF);
+    return (EV);
 }
 
 namespace actionet {
@@ -118,54 +193,59 @@ namespace actionet {
 
         uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);
 
+        // unsigned int nV = G.n_rows;
         bool move_other = true;
-        arma::sp_mat H = G;
-        double w_max = arma::max(arma::max(H));
-        H.clean(w_max / uwot_args.n_epochs);
+
+
+        // arma::sp_mat H = G;
+        // double w_max = arma::max(arma::max(H));
+        // H.clean(w_max / uwot_args.n_epochs);
 
         // arma::sp_mat Ht = arma::trans(H); // TODO: .eval()
         // Ht.sync();
 
-        arma::sp_mat Ht = arma::trans(H).eval(); // TODO: test?
+        // arma::sp_mat Ht = arma::trans(H).eval(); // TODO: test?
+        //
+        // unsigned int nV = H.n_rows;
+        // unsigned int nE = H.n_nonzero;
+        //
+        // std::vector<unsigned int> positive_head(nE);
+        // std::vector<unsigned int> positive_tail(nE);
+        // std::vector<float> epochs_per_sample(nE);
+        // std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
+        //
+        // int i = 0;
+        // if (uwot_args.batch == false) {
+        //     for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it) {
+        //         epochs_per_sample[i] = w_max / (*it);
+        //         positive_head[i] = it.row();
+        //         positive_tail[i] = it.col();
+        //         i++;
+        //     }
+        // }
+        // else {
+        //     for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
+        //         epochs_per_sample[i] = w_max / (*it);
+        //         positive_tail[i] = it.row();
+        //         positive_head[i] = it.col();
+        //         i++;
+        //     }
+        //     for (int k = 0; k < Ht.n_cols + 1; k++) {
+        //         positive_ptr[k] = Ht.col_ptrs[k];
+        //     }
+        // }
 
-        unsigned int nV = H.n_rows;
-        unsigned int nE = H.n_nonzero;
-
-        std::vector<unsigned int> positive_head(nE);
-        std::vector<unsigned int> positive_tail(nE);
-        std::vector<float> epochs_per_sample(nE);
-        std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
-
-        int i = 0;
-        if (uwot_args.batch == false) {
-            for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it) {
-                epochs_per_sample[i] = w_max / (*it);
-                positive_head[i] = it.row();
-                positive_tail[i] = it.col();
-                i++;
-            }
-        }
-        else {
-            for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
-                epochs_per_sample[i] = w_max / (*it);
-                positive_tail[i] = it.row();
-                positive_head[i] = it.col();
-                i++;
-            }
-            for (int k = 0; k < Ht.n_cols + 1; k++) {
-                positive_ptr[k] = Ht.col_ptrs[k];
-            }
-        }
+        auto [positive_head, positive_tail, epochs_per_sample, positive_ptr, n_vertices] = buildEdgeVectors(G, uwot_args);
 
         UmapFactory umap_factory(move_other,
-                       uwot_args.pcg_rand,
-                       coords.get_head_embedding(), coords.get_tail_embedding(),
-                       positive_head, positive_tail, positive_ptr,
-                       uwot_args.n_epochs,
-                       nV, nV,
-                       epochs_per_sample, uwot_args.alpha,
-                       uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
-                       uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
+                                 uwot_args.pcg_rand,
+                                 coords.get_head_embedding(), coords.get_tail_embedding(),
+                                 positive_head, positive_tail, positive_ptr,
+                                 uwot_args.n_epochs,
+                                 n_vertices, n_vertices,
+                                 epochs_per_sample, uwot_args.alpha,
+                                 uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
+                                 uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
 
 
         if (uwot_args.verbose) { verboseStatus(uwot_args); }
@@ -222,5 +302,4 @@ namespace actionet {
     //
     //     return (coords_out);
     // }
-
 } // namespace actionet
