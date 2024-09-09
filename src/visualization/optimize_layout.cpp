@@ -116,82 +116,54 @@ namespace actionet {
             uwot_args.n_epochs = (initial_position.n_rows <= 10000) ? 500 : 200;
         }
 
-        // if (initial_position.n_rows != G.n_rows) {
-        //     stderr_printf("Number of rows in the initial_position should match with the number of vertices in G\n");
-        //     FLUSH;
-        //     return (arma::field<arma::mat>(3));
-        // }
+        uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);
 
-        //
-        // auto found = find_ab(spread, min_dist);
-        // double a = found.first;
-        // double b = found.second;
+        bool move_other = true;
+        arma::sp_mat H = G;
+        double w_max = arma::max(arma::max(H));
+        H.clean(w_max / uwot_args.n_epochs);
 
-        // bool move_other = true;
-        // std::size_t grain_size = 1;
-        // bool pcg_rand = true;
-        // bool approx_pow = true;
-        // bool batch = true;
-        // std::string opt_name = "adam";
-        // double alpha = OPT_ALPHA, beta1 = ADAM_BETA1, beta2 = ADAM_BETA2,
-        //        eps = ADAM_EPS, negative_sample_rate = NEGATIVE_SAMPLE_RATE;
+        arma::sp_mat Ht = arma::trans(H); // TODO: .eval()
+        Ht.sync();
 
-        // std::mt19937_64 engine(seed);
+        unsigned int nV = H.n_rows;
+        unsigned int nE = H.n_nonzero;
 
-        // stdout_printf(
-        //     "Laying-out input network: method = %s, a = %.3f, b = %.3f (epochs = %d, threads=%d)\n",
-        //     uwot_args.method.c_str(), uwot_args.a, uwot_args.b, uwot_args.n_epochs, threads_use);
+        std::vector<unsigned int> positive_head(nE);
+        std::vector<unsigned int> positive_tail(nE);
+        std::vector<float> epochs_per_sample(nE);
+        std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
 
+        int i = 0;
+        if (uwot_args.batch == false) {
+            for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it) {
+                epochs_per_sample[i] = w_max / (*it);
+                positive_head[i] = it.row();
+                positive_tail[i] = it.col();
+                i++;
+            }
+        }
+        else {
+            for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
+                epochs_per_sample[i] = w_max / (*it);
+                positive_tail[i] = it.row();
+                positive_head[i] = it.col();
+                i++;
+            }
+            for (int k = 0; k < Ht.n_cols + 1; k++) {
+                positive_ptr[k] = Ht.col_ptrs[k];
+            }
+        }
 
-        // Encode positive edges of the graph
-        // arma::sp_mat H = G;
-        // double w_max = arma::max(arma::max(H));
-        // H.clean(w_max / n_epochs);
-        //
-        // arma::sp_mat Ht = arma::trans(H);
-        // Ht.sync();
-        //
-        // unsigned int nV = H.n_rows;
-        // unsigned int nE = H.n_nonzero;
-        //
-        // std::vector<unsigned int> positive_head(nE);
-        // std::vector<unsigned int> positive_tail(nE);
-        // std::vector<float> epochs_per_sample(nE);
-        //
-        // std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
-        //
-        // int i = 0;
-        // if (batch == false) {
-        //     for (arma::sp_mat::iterator it = H.begin(); it != H.end(); ++it) {
-        //         epochs_per_sample[i] = w_max / (*it);
-        //         positive_head[i] = it.row();
-        //         positive_tail[i] = it.col();
-        //         i++;
-        //     }
-        // }
-        // else {
-        //     for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
-        //         epochs_per_sample[i] = w_max / (*it);
-        //         positive_tail[i] = it.row();
-        //         positive_head[i] = it.col();
-        //         i++;
-        //     }
-        //     for (int k = 0; k < Ht.n_cols + 1; k++) {
-        //         positive_ptr[k] = Ht.col_ptrs[k];
-        //     }
-        // }
-
-        // uwot::Coords coords = getCoords(initial_position, 2);
-        //
-        // UmapFactory umap_factory(
-        //     move_other, pcg_rand, coords.get_head_embedding(),
-        //     coords.get_tail_embedding(), positive_head, positive_tail, positive_ptr,
-        //     n_epochs, nV, nV, epochs_per_sample, learning_rate, negative_sample_rate,
-        //     batch, threads_use, grain_size, opt_name, alpha, beta1, beta2, eps, engine);
-
-        UmapFactory umap_factory = buildFactory(G, initial_position, uwot_args);
-
-        // stdout_printf("Computing 2D layout ... ");
+        UmapFactory umap_factory(move_other,
+                       uwot_args.pcg_rand,
+                       coords.get_head_embedding(), coords.get_tail_embedding(),
+                       positive_head, positive_tail, positive_ptr,
+                       uwot_args.n_epochs,
+                       nV, nV,
+                       epochs_per_sample, uwot_args.alpha,
+                       uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
+                       uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
 
 
         if (uwot_args.verbose) { verboseStatus(uwot_args); }
@@ -208,22 +180,6 @@ namespace actionet {
                 create_umap(umap_factory, uwot_args);
         }
 
-        // if (method == "umap") {
-        //     create_umap(umap_factory, a, b, gamma, approx_pow);
-        // }
-        // else if (method == "tumap") {
-        //     create_tumap(umap_factory);
-        // }
-        // else if (method == "largevis") {
-        //     create_largevis(umap_factory, gamma);
-        // }
-        // else {
-        //     stderr_printf("Unknown method: %s\n", method.c_str());
-        //     FLUSH;
-        //     return (res);
-        // }
-
-        // arma::fmat coordinates_float(coords.get_head_embedding().data(), 2, nV);
 
         arma::fmat uwot_embedding(umap_factory.head_embedding.data(), uwot_args.n_components, G.n_rows);
         arma::mat coords_out = arma::trans(arma::conv_to<arma::mat>::from(uwot_embedding));
@@ -232,4 +188,37 @@ namespace actionet {
 
         return (coords_out);
     }
+
+    // arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args) {
+    //     uwot_args.n_threads = get_num_threads(SYS_THREADS_DEF, static_cast<int>(uwot_args.n_threads));
+    //
+    //     if (uwot_args.n_epochs == 0) {
+    //         uwot_args.n_epochs = (initial_position.n_rows <= 10000) ? 500 : 200;
+    //     }
+    //
+    //     UmapFactory umap_factory = buildFactory(G, initial_position, uwot_args);
+    //
+    //     if (uwot_args.verbose) { verboseStatus(uwot_args); }
+    //
+    //     switch (uwot_args.get_cost_func()) {
+    //         case METHOD_TUMAP:
+    //             create_tumap(umap_factory);
+    //         break;
+    //         case METHOD_LARGEVIZ:
+    //             create_largevis(umap_factory, uwot_args);
+    //         break;
+    //         case METHOD_UMAP:
+    //             default:
+    //                 create_umap(umap_factory, uwot_args);
+    //     }
+    //
+    //
+    //     arma::fmat uwot_embedding(umap_factory.head_embedding.data(), uwot_args.n_components, G.n_rows);
+    //     arma::mat coords_out = arma::trans(arma::conv_to<arma::mat>::from(uwot_embedding));
+    //     stderr_printf("Optimization finished\n");
+    //     FLUSH;
+    //
+    //     return (coords_out);
+    // }
+
 } // namespace actionet

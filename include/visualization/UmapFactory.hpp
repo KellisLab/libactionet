@@ -105,7 +105,7 @@ struct UmapFactory {
         switch (opt_args.opt_method) {
             case METHOD_SGD:
                 if (verbose) {
-                    stderr_printf("Optimizing with SGD: alpha = %0.3f", alpha);
+                    stderr_printf("Optimizing with SGD: alpha = %0.3f\n", alpha);
                 }
                 return std::make_unique<uwot::Sgd>(alpha);
             default:
@@ -113,7 +113,7 @@ struct UmapFactory {
                 float beta2 = opt_args.beta2;
                 float eps = opt_args.eps;
                 if (verbose) {
-                    stderr_printf("Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3f",
+                    stderr_printf("Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3f\n",
                                   alpha, beta1, beta2, eps);
                 }
                 return std::make_unique<uwot::Adam>(alpha, beta1, beta2, eps, head_embedding.size());
