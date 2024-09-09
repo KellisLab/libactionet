@@ -23,17 +23,17 @@
 //' @examples
 //'	G = buildNetwork(prune.out$H_stacked)
 //'	vis.out = layoutNetwrok(G, S_r)
-// [[Rcpp::export]]
-Rcpp::List layoutNetwork(arma::sp_mat& G, arma::mat& initial_position, const std::string& method = "umap",
-                         double min_dist = 1, double spread = 1, double gamma = 1.0, unsigned int n_epochs = 500,
-                         double learning_rate = 1.0, int seed = 0, int thread_no = 0) {
-    arma::field<arma::mat> res = actionet::layoutNetwork_xmap(G, initial_position, method, min_dist, spread, gamma,
-                                                              n_epochs, learning_rate, seed, thread_no);
-
-    Rcpp::List out_list;
-    out_list["coordinates"] = res(0);
-    out_list["coordinates_3D"] = res(1);
-    out_list["colors"] = res(2);
-
-    return out_list;
-}
+// // [[Rcpp::export]]
+// Rcpp::List layoutNetwork(arma::sp_mat& G, arma::mat& initial_position, const std::string& method = "umap",
+//                          double min_dist = 1, double spread = 1, double gamma = 1.0, unsigned int n_epochs = 500,
+//                          double learning_rate = 1.0, int seed = 0, int thread_no = 0) {
+//     arma::field<arma::mat> res = actionet::layoutNetwork_xmap(G, initial_position, method, min_dist, spread, gamma,
+//                                                               n_epochs, learning_rate, seed, thread_no);
+//
+//     Rcpp::List out_list;
+//     out_list["coordinates"] = res(0);
+//     out_list["coordinates_3D"] = res(1);
+//     out_list["colors"] = res(2);
+//
+//     return out_list;
+// }
