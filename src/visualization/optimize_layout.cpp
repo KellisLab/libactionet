@@ -24,22 +24,22 @@ void verboseStatus(const UwotArgs& method_args) {
 void create_umap(UmapFactory& umap_factory, const UwotArgs& method_args) {
     if (method_args.approx_pow) {
         const uwot::apumap_gradient gradient(method_args.a, method_args.b, method_args.gamma);
-        umap_factory.create(gradient);
+        umap_factory.create(gradient, method_args.get_engine());
     }
     else {
         const uwot::umap_gradient gradient(method_args.a, method_args.b, method_args.gamma);
-        umap_factory.create(gradient);
+        umap_factory.create(gradient, method_args.get_engine());
     }
 }
 
-void create_tumap(UmapFactory& umap_factory) {
+void create_tumap(UmapFactory& umap_factory, const UwotArgs& method_args) {
     const uwot::tumap_gradient gradient;
-    umap_factory.create(gradient);
+    umap_factory.create(gradient, method_args.get_engine());
 }
 
 void create_largevis(UmapFactory& umap_factory, const UwotArgs& method_args) {
     const uwot::largevis_gradient gradient(method_args.gamma);
-    umap_factory.create(gradient);
+    umap_factory.create(gradient, method_args.get_engine());
 }
 
 
@@ -172,7 +172,7 @@ namespace actionet {
 
         switch (uwot_args.get_cost_func()) {
             case METHOD_TUMAP:
-                create_tumap(umap_factory);
+                create_tumap(umap_factory, uwot_args);
                 break;
             case METHOD_LARGEVIZ:
                 create_largevis(umap_factory, uwot_args);

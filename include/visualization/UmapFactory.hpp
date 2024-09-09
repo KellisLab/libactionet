@@ -67,34 +67,32 @@ struct UmapFactory {
           batch(batch), n_threads(n_threads), grain_size(grain_size), verbose(verbose) {}
 
     template <typename Gradient>
-    void create(const Gradient& gradient) {
+    void create(const Gradient& gradient, std::mt19937_64 engine) {
         if (move_other) {
-            create_impl<true>(gradient, pcg_rand, batch);
+            create_impl<true>(gradient, pcg_rand, batch, engine);
         }
         else {
-            create_impl<false>(gradient, pcg_rand, batch);
+            create_impl<false>(gradient, pcg_rand, batch, engine);
         }
     }
 
     template <bool DoMove, typename Gradient>
-    void create_impl(const Gradient& gradient, bool pcg_rand, bool batch) {
+    void create_impl(const Gradient& gradient, bool pcg_rand, bool batch, std::mt19937_64 engine) {
         if (batch) {
-            create_impl<BatchRngFactory<true>, DoMove>(gradient, pcg_rand, batch);
+            create_impl<BatchRngFactory<true>, DoMove>(gradient, pcg_rand, batch, engine);
         }
         else {
-            create_impl<BatchRngFactory<false>, DoMove>(gradient, pcg_rand, batch);
+            create_impl<BatchRngFactory<false>, DoMove>(gradient, pcg_rand, batch, engine);
         }
     }
 
     template <typename BatchRngFactory, bool DoMove, typename Gradient>
-    void create_impl(const Gradient& gradient, bool pcg_rand, bool batch) {
+    void create_impl(const Gradient& gradient, bool pcg_rand, bool batch, std::mt19937_64 engine) {
         if (pcg_rand) {
-            create_impl<typename BatchRngFactory::PcgFactoryType, DoMove>(gradient,
-                                                                          batch);
+            create_impl<typename BatchRngFactory::PcgFactoryType, DoMove>(gradient, batch, engine);
         }
         else {
-            create_impl<typename BatchRngFactory::TauFactoryType, DoMove>(gradient,
-                                                                          batch);
+            create_impl<typename BatchRngFactory::TauFactoryType, DoMove>(gradient, batch, engine);
         }
     }
 
@@ -143,7 +141,7 @@ struct UmapFactory {
     }
 
     template <typename RandFactory, bool DoMove, typename Gradient>
-    void create_impl(const Gradient& gradient, bool batch) {
+    void create_impl(const Gradient& gradient, bool batch, std::mt19937_64 engine) {
         uwot::Sampler sampler(epochs_per_sample, negative_sample_rate);
         const std::size_t ndim = head_embedding.size() / n_head_vertices;
 
@@ -154,32 +152,32 @@ struct UmapFactory {
             uwot::NodeWorker<Gradient, decltype(update), RandFactory> worker(
                 gradient, update, positive_head, positive_tail, positive_ptr, sampler,
                 ndim, n_tail_vertices);
-            create_impl(worker, gradient);
+            create_impl(worker, gradient, engine);
         }
         else {
             uwot::InPlaceUpdate<DoMove> update(head_embedding, tail_embedding, initial_alpha);
             uwot::EdgeWorker<Gradient, decltype(update), RandFactory> worker(
                 gradient, update, positive_head, positive_tail, sampler, ndim,
                 n_tail_vertices, n_threads);
-            create_impl(worker, gradient);
+            create_impl(worker, gradient, engine);
         }
     }
 
     template <typename Worker, typename Gradient>
-    void create_impl(Worker& worker, const Gradient& gradient) {
+    void create_impl(Worker& worker, const Gradient& gradient, std::mt19937_64 engine) {
         if (n_threads > 0) {
             RParallel parallel(n_threads, grain_size);
-            create_impl(worker, gradient, parallel);
+            create_impl(worker, gradient, parallel, engine);
         }
         else {
             RSerial serial;
-            create_impl(worker, gradient, serial);
+            create_impl(worker, gradient, serial, engine);
         }
     }
 
     template <typename Worker, typename Gradient, typename Parallel>
-    void create_impl(Worker& worker, const Gradient& gradient, Parallel& parallel) {
-        uwot::optimize_layout(worker, n_epochs, parallel);
+    void create_impl(Worker& worker, const Gradient& gradient, Parallel& parallel, std::mt19937_64 engine) {
+        uwot::optimize_layout(worker, n_epochs, parallel, engine);
     }
 };
 

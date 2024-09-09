@@ -25,7 +25,7 @@ public:
     bool approx_pow = false;
     bool pcg_rand = true;
     bool batch = true;
-    // int seed = 0;
+    int seed = 0;
     std::size_t n_threads = 1;
     std::size_t grain_size = 1;
     bool verbose = true;
@@ -36,20 +36,21 @@ public:
     float& alpha = learning_rate; // alias
     // CAUTON: NOT necessarily the same `alpha` as `opt_args`. `opt_args` may be initialized separately.
     float& gamma = repulsion_strength; // alias
-    // std::mt19937_64 engine;
 private:
     int cost_func = 0; // Dummy value. Overwritten by initializer.
+    std::mt19937_64 engine;
 
 public:
     // Default constructor
     UwotArgs() {
         set_method(method);
-        // set_seed(seed);
+        set_seed(seed);
     }
 
     // Minimal constructor
     explicit UwotArgs(std::string method) {
         set_method(method);
+        set_seed(seed);
     }
 
     // Full constructor
@@ -74,6 +75,7 @@ public:
         bool approx_pow,
         bool pcg_rand,
         bool batch,
+        int seed,
         std::size_t n_threads,
         std::size_t grain_size,
         bool verbose,
@@ -90,18 +92,23 @@ public:
           approx_pow(approx_pow),
           pcg_rand(pcg_rand),
           batch(batch),
+          seed(seed),
           n_threads(n_threads),
           grain_size(grain_size),
           verbose(verbose),
           opt_args(opt_args) {
         // set_ab();
         set_method(method);
-        // set_seed(seed);
+        set_seed(seed);
     }
 
-    // void set_seed(const int seed) {
-    //     engine = std::mt19937_64(seed);
-    // }
+    void set_seed(const int seed) {
+        engine = std::mt19937_64(seed);
+    }
+
+    std::mt19937_64 get_engine() const {
+        return engine;
+    }
 
     void set_method(const std::string& method) {
         if (method == "tumap") {

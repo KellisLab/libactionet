@@ -32,16 +32,16 @@
 
 namespace uwot {
     template <typename Worker, typename Parallel>
-    void optimize_layout(Worker& worker, unsigned int n_epochs, Parallel& parallel) {
+    void optimize_layout(Worker& worker, unsigned int n_epochs, Parallel& parallel, std::mt19937_64 engine) {
         for (auto n = 0U; n < n_epochs; n++) {
-            run_epoch(worker, n, n_epochs, parallel);
+            run_epoch(worker, n, n_epochs, parallel, engine);
         }
     }
 
     template <typename Worker, typename Parallel>
     void run_epoch(Worker& worker, std::size_t epoch, std::size_t n_epochs,
-                   Parallel& parallel) {
-        worker.epoch_begin(epoch, n_epochs);
+                   Parallel& parallel, std::mt19937_64 engine) {
+        worker.epoch_begin(epoch, n_epochs, engine);
         parallel.pfor(worker.n_items, worker);
         worker.epoch_end(epoch, n_epochs, parallel);
     }
@@ -72,8 +72,8 @@ namespace uwot {
               n_threads(std::max(n_threads, std::size_t{1})),
               rng_factory(this->n_threads) {}
 
-        void epoch_begin(std::size_t epoch, std::size_t n_epochs) {
-            rng_factory.reseed();
+        void epoch_begin(std::size_t epoch, std::size_t n_epochs, std::mt19937_64 engine) {
+            rng_factory.reseed(engine);
             sampler.epoch = epoch;
             update.epoch_begin(epoch, n_epochs);
         }
@@ -121,8 +121,8 @@ namespace uwot {
               sampler(sampler), ndim(ndim), n_tail_vertices(n_tail_vertices),
               n_items(positive_ptr.size() - 1), rng_factory(n_items) {}
 
-        void epoch_begin(std::size_t epoch, std::size_t n_epochs) {
-            rng_factory.reseed();
+        void epoch_begin(std::size_t epoch, std::size_t n_epochs, std::mt19937_64 engine) {
+            rng_factory.reseed(engine);
             sampler.epoch = epoch;
             update.epoch_begin(epoch, n_epochs);
         }

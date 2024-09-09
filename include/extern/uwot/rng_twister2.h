@@ -49,7 +49,8 @@ struct batch_tau_factory {
     batch_tau_factory(std::size_t n_rngs)
         : n_rngs(n_rngs), seeds(seeds_per_rng * n_rngs) {}
 
-    void reseed(std::mt19937_64 engine) {
+    void reseed() {
+        std::mt19937_64 engine;
         for (std::size_t i = 0; i < seeds.size(); i++) {
             seeds[i] = random64(engine);
         }
@@ -83,7 +84,8 @@ struct batch_pcg_factory {
     batch_pcg_factory(std::size_t n_rngs)
         : n_rngs(n_rngs), seeds(seeds_per_rng * n_rngs) {}
 
-    void reseed(std::mt19937_64 engine) {
+    void reseed() {
+        std::mt19937_64 engine;
         for (std::size_t i = 0; i < seeds.size(); i++) {
             seeds[i] = random32(engine);
         }
@@ -104,7 +106,8 @@ struct tau_factory {
     uint64_t seed2;
     tau_factory(std::size_t) : seed1(0), seed2(0) {}
 
-    void reseed(std::mt19937_64 engine) {
+    void reseed() {
+        std::mt19937_64 engine;
         seed1 = random64(engine);
         seed2 = random64(engine);
     }
@@ -118,7 +121,10 @@ struct pcg_factory {
     uint32_t seed1;
     pcg_factory(std::size_t) : seed1(0) {}
 
-    void reseed(std::mt19937_64 engine) { seed1 = random32(engine); }
+    void reseed() {
+        std::mt19937_64 engine;
+        seed1 = random32(engine);
+    }
 
     pcg_prng create(std::size_t seed) {
         uint32_t seeds[2] = {seed1, static_cast<uint32_t>(seed)};
