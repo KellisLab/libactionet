@@ -1,6 +1,7 @@
 #include "visualization/generate_layout.hpp"
 #include "utils_internal/utils_parallel.hpp"
-#include "visualization/create_xmap.hpp"
+// #include "visualization/create_xmap.hpp"
+#include "visualization/umap_structs.hpp"
 #include "utils_internal/utils_stats.hpp"
 #include "visualization/find_ab.hpp"
 #include "tools/normalization.hpp"
@@ -14,6 +15,31 @@ constexpr float ADAM_ALPHA = 1.0; /*same as learning_rate*/
 constexpr float ADAM_BETA1 = 0.5; /*only adam: between 0 and 1*/
 constexpr float ADAM_BETA2 = 0.9; /*only adam: between 0 and 1*/
 constexpr float ADAM_EPS = 1e-7;  /*only adam: between 1e-8 and 1e-3*/
+
+void create_umap(UmapFactory &umap_factory, double a, double b, double gamma, bool approx_pow) {
+    if (approx_pow) {
+        const uwot::apumap_gradient gradient(a, b, gamma);
+        umap_factory.create(gradient);
+    } else {
+        const uwot::umap_gradient gradient(a, b, gamma);
+        umap_factory.create(gradient);
+    }
+}
+
+void create_tumap(UmapFactory &umap_factory) {
+    const uwot::tumap_gradient gradient;
+    umap_factory.create(gradient);
+}
+
+void create_pacmap(UmapFactory &umap_factory, double a, double b) {
+    const uwot::pacmap_gradient gradient(a, b);
+    umap_factory.create(gradient);
+}
+
+void create_largevis(UmapFactory &umap_factory, double gamma) {
+    const uwot::largevis_gradient gradient(gamma);
+    umap_factory.create(gradient);
+}
 
 namespace actionet {
     arma::field<arma::mat> layoutNetwork_xmap(arma::sp_mat& G, arma::mat& initial_position, const std::string& method,
