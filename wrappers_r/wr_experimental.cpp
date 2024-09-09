@@ -7,8 +7,9 @@
 // aa ==================================================================================================================
 
 // [[Rcpp::export]]
-arma::mat run_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args) {
-    arma::mat embedding = optimize_layout_uwot(G, initial_position, std::move(uwot_args));
+arma::mat run_uwot(arma::sp_mat& G, arma::mat& initial_position) {
+    UwotArgs uwot_args;
+    arma::mat embedding = actionet::optimize_layout_uwot(G, initial_position, uwot_args);
     return embedding;
 }
 
