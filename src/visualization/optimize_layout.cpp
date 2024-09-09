@@ -18,7 +18,7 @@ void verboseStatus(const UwotArgs& method_args) {
     switch (method_args.get_cost_func()) {
         case METHOD_UMAP:
         case METHOD_TUMAP:
-            stderr_printf("UMAP embedding parameters a = %.3f, b = %.3f' \n", method_args.a, method_args.b);
+            stderr_printf("UMAP embedding parameters a = %.3f, b = %.3f \n", method_args.a, method_args.b);
             break;
     }
     stderr_printf("Optimizing for %d epochs with %d threads \n", method_args.n_epochs, (int)method_args.n_threads);
@@ -110,6 +110,7 @@ namespace actionet {
         if (uwot_args.n_epochs <= 0) {
             uwot_args.n_epochs = (initial_position.n_rows <= 10000) ? 500 : 200;
         }
+        uwot_args.set_ab(); // Ensure a/b is synced with 'method' once method can no longer change.
 
         // `UF` references `coords`. Must be in the same scope.
         uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);

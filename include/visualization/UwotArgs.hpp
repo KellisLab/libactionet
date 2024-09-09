@@ -44,6 +44,7 @@ public:
     // Default constructor
     UwotArgs() {
         set_method(method);
+        set_ab();
         set_seed(seed);
     }
 
@@ -89,34 +90,20 @@ public:
           verbose(verbose),
           opt_args(opt_args) {
         set_method(method);
+        set_ab();
         set_seed(seed);
     }
 
     void set_seed(const int seed) {
-        engine = std::mt19937_64(seed);
+        this->engine = std::mt19937_64(seed);
+    }
+
+    int get_seed() const {
+        return seed;
     }
 
     std::mt19937_64 get_engine() const {
         return engine;
-    }
-
-    void set_method(const std::string& method) {
-        if (method == "tumap") {
-            cost_func = METHOD_TUMAP;
-            set_ab(1, 1);
-        }
-        else if (method == "largevis") {
-            cost_func = METHOD_LARGEVIZ;
-        }
-        else {
-            cost_func = METHOD_UMAP;
-            set_ab();
-        }
-        this->method = method;
-    }
-
-    std::string get_method() const {
-        return method;
     }
 
     int get_cost_func() const {
@@ -125,8 +112,8 @@ public:
 
     void set_ab() {
         auto [fst, snd] = find_ab(spread, min_dist);
-        a = fst;
-        b = snd;
+        this->a = fst;
+        this->b = snd;
     }
 
     void set_ab(const float a, const float b) {
@@ -134,8 +121,35 @@ public:
         this->b = b;
     }
 
-    void set_OptimizerArgs(const OptimizerArgs& opt_args) {
-        this->opt_args = opt_args;
+    // void set_OptimizerArgs(const OptimizerArgs& opt_args) {
+    //     this->opt_args = opt_args;
+    // }
+    //
+    // OptimizerArgs get_OptimizerArgs() const {
+    //     return opt_args;
+    // }
+
+    void set_method(const std::string& method) {
+        this->method = method;
+        if (method == "umap") {
+            this->cost_func = METHOD_UMAP;
+        }
+        else if (method == "tumap") {
+            this->cost_func = METHOD_TUMAP;
+            set_ab(1,1); // Unused and set automatically by uwot, but just in case.
+        }
+        else if (method == "largevis") {
+            this->cost_func = METHOD_LARGEVIZ;
+        }
+        else {
+            stderr_printf("Invalid 'method'. Defaulting to 'umap'\n");
+            this->method = "umap";
+            this->cost_func = METHOD_UMAP;
+        }
+    }
+
+    std::string get_method() const {
+        return method;
     }
 };
 
