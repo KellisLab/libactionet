@@ -14,18 +14,16 @@ constexpr int METHOD_LARGEVIZ = 3;
 class UwotArgs {
 public:
     // Defaults
-    int n_components = 2;
+    unsigned int n_components = 2;
     float spread = 1;
     float min_dist = 1;
-    int n_epochs = 0;
+    unsigned int n_epochs = 0;
     float learning_rate = OPT_ALPHA; // Passed to optimizer as `alpha`
     float repulsion_strength = 1; // alias for `gamma`
     float negative_sample_rate = 5; // alias for `alpha`
-    std::string method = "umap";
     bool approx_pow = false;
     bool pcg_rand = true;
     bool batch = true;
-    int seed = 0;
     std::size_t n_threads = 1;
     std::size_t grain_size = 1;
     bool verbose = true;
@@ -38,6 +36,8 @@ public:
     float& gamma = repulsion_strength; // alias
 private:
     int cost_func = 0; // Dummy value. Overwritten by initializer.
+    std::string method = "umap";
+    int seed = 0;
     std::mt19937_64 engine;
 
 public:
@@ -48,30 +48,21 @@ public:
     }
 
     // Minimal constructor
-    explicit UwotArgs(std::string method) {
+    explicit UwotArgs(const std::string& method) {
         set_method(method);
         set_seed(seed);
     }
 
     // Full constructor
-    // UwotArgs(int n_components, float spread, float min_dist, int n_epochs, float learning_rate, float repulsion_strength,
-    //          float negative_sample_rate, std::size_t grain_size, bool approx_pow, bool pcg_rand, bool batch, int seed,
-    //          OptimizerArgs opt_args)
-    //     : n_components(n_components), spread(spread), min_dist(min_dist), n_epochs(n_epochs), learning_rate(learning_rate),
-    //       repulsion_strength(repulsion_strength), negative_sample_rate(negative_sample_rate), grain_size(grain_size),
-    //       approx_pow(approx_pow), pcg_rand(pcg_rand), batch(batch), seed(seed), opt_args(opt_args) {
-    //     set_ab();
-    //     set_seed(seed);
-    // }
     UwotArgs(
-        int n_components,
+        std::string& method,
+        unsigned int n_components,
         float spread,
         float min_dist,
-        int n_epochs,
+        unsigned int n_epochs,
         float learning_rate,
         float repulsion_strength,
         float negative_sample_rate,
-        std::string& method,
         bool approx_pow,
         bool pcg_rand,
         bool batch,
@@ -97,7 +88,6 @@ public:
           grain_size(grain_size),
           verbose(verbose),
           opt_args(opt_args) {
-        // set_ab();
         set_method(method);
         set_seed(seed);
     }
@@ -122,6 +112,11 @@ public:
             cost_func = METHOD_UMAP;
             set_ab();
         }
+        this->method = method;
+    }
+
+    std::string get_method() const {
+        return method;
     }
 
     int get_cost_func() const {
