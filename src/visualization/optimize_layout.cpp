@@ -123,8 +123,10 @@ namespace actionet {
         double w_max = arma::max(arma::max(H));
         H.clean(w_max / uwot_args.n_epochs);
 
-        arma::sp_mat Ht = arma::trans(H); // TODO: .eval()
-        Ht.sync();
+        // arma::sp_mat Ht = arma::trans(H); // TODO: .eval()
+        // Ht.sync();
+
+        arma::sp_mat Ht = arma::trans(H).eval(); // TODO: test?
 
         unsigned int nV = H.n_rows;
         unsigned int nE = H.n_nonzero;

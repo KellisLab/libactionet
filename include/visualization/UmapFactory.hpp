@@ -29,15 +29,15 @@ struct BatchRngFactory<false> {
 struct UmapFactory {
     bool move_other;
     bool pcg_rand;
-    std::vector<float>& head_embedding;
-    std::vector<float>& tail_embedding;
-    const std::vector<unsigned int>& positive_head;
-    const std::vector<unsigned int>& positive_tail;
-    const std::vector<unsigned int>& positive_ptr;
+    std::vector<float>& head_embedding; // Must remain reference (input and output)
+    std::vector<float>& tail_embedding; // Must remain reference (input and output)
+    const std::vector<unsigned int> positive_head;
+    const std::vector<unsigned int> positive_tail;
+    const std::vector<unsigned int> positive_ptr;
     unsigned int n_epochs;
     unsigned int n_head_vertices;
     unsigned int n_tail_vertices;
-    const std::vector<float>& epochs_per_sample;
+    const std::vector<float> epochs_per_sample;
     float initial_alpha;
     OptimizerArgs opt_args;
     float negative_sample_rate;
