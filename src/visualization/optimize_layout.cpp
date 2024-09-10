@@ -2,7 +2,6 @@
 #include "visualization/UmapFactory.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "uwot/coords.h"
-// #include "colorspace.h"
 
 struct EdgeVectors {
     std::vector<unsigned int> positive_head;
@@ -110,9 +109,9 @@ namespace actionet {
     arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args) {
         uwot_args.n_threads = get_num_threads(SYS_THREADS_DEF, static_cast<int>(uwot_args.n_threads));
         if (uwot_args.n_epochs <= 0) {
-            uwot_args.n_epochs = (initial_position.n_rows <= 10000) ? 500 : 200;
+            uwot_args.n_epochs = (initial_position.n_rows <= 10000) ? 500 : 200; // uwot defaults
         }
-        // uwot_args.set_ab(); // Ensure a/b is synced with 'method' once method can no longer change.
+
 
         // `UF` references `coords`. Must be in the same scope.
         uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);
