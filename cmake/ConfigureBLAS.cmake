@@ -29,7 +29,8 @@ macro(CONFIGURE_BLAS_MKL)
 
     ## Check if MKL is active
     if (NOT DEFINED ENV{MKLROOT})
-        message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
+        # message(FATAL_ERROR "Using Intel MKL but `MKLROOT` not defined")
+        message(NOTICE "Using Intel MKL but `MKLROOT` not defined")
     endif ()
 
     ## Find optional MKL headers

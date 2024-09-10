@@ -10,6 +10,7 @@
     #define LIBACTIONET_BUILD_R
 #endif //LIBACTIONET_BUILD_R
 
+#include <RcppArmadillo.h> // For some dumbass reason R won't use Rcpp from the header below.
 #include "libactionet_config.hpp"
 #include "libactionet.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
