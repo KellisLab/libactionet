@@ -9,7 +9,7 @@
 
 #include "uwot/rng.h"
 #include "uwot/rparallel.h"
-#include "OptimizerArgs.hpp"
+#include "UwotArgs.hpp"
 
 // Template class specialization to handle different rng/batch combinations
 template <bool DoBatch = true>
@@ -95,8 +95,6 @@ struct UmapFactory {
     }
 
     std::unique_ptr<uwot::Optimizer> create_optimizer(OptimizerArgs opt_args) {
-        // std::string method = lget(opt_args, "method", "adam");
-        // std::string method = opt_args.method;
         float alpha = opt_args.alpha;
         switch (opt_args.opt_method) {
             case METHOD_SGD:
@@ -109,33 +107,12 @@ struct UmapFactory {
                 float beta2 = opt_args.beta2;
                 float eps = opt_args.eps;
                 if (verbose) {
-                    stderr_printf("Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3f\n",
-                                  alpha, beta1, beta2, eps);
+                    stderr_printf(
+                        "Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3f\n",
+                        alpha, beta1, beta2, eps);
                 }
                 return std::make_unique<uwot::Adam>(alpha, beta1, beta2, eps, head_embedding.size());
         }
-
-        // if (method == "adam") {
-        //     float alpha = opt_args.alpha;
-        //     float beta1 = opt_args.beta1;
-        //     float beta2 = opt_args.beta2;
-        //     float eps = opt_args.eps;
-        //     if (verbose) {
-        //         stderr_printf("Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3f",
-        //                       alpha, beta1, beta2, eps);
-        //     }
-        //     return std::make_unique<uwot::Adam>(alpha, beta1, beta2, eps, head_embedding.size());
-        // }
-        // if (method == "sgd") {
-        //     float alpha = opt_args.alpha;
-        //     if (verbose) {
-        //         stderr_printf("Optimizing with SGD: alpha = %0.3f", alpha);
-        //     }
-        //     return std::make_unique<uwot::Sgd>(alpha);
-        // }
-        // else {
-        //     stop("Unknown optimization method: " + method);
-        // }
     }
 
     template <typename RandFactory, bool DoMove, typename Gradient>
@@ -178,5 +155,9 @@ struct UmapFactory {
         uwot::optimize_layout(worker, n_epochs, parallel, engine);
     }
 };
+
+namespace actionet {
+    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args);
+} // namespace actionet
 
 #endif //ACTIONET_UMAPFACTORY_HPP

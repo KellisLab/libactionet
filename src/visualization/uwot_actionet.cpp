@@ -1,5 +1,5 @@
-#include "visualization/optimize_layout.hpp"
-#include "visualization/UmapFactory.hpp"
+// #include "visualization/optimize_layout.hpp"
+#include "visualization/uwot_actionet.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "uwot/coords.h"
 
