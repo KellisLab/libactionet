@@ -6,9 +6,11 @@
 #undef ARMA_BLAS_CAPITALS
 #define ARMA_BLAS_UNDERSCORE
 
-#ifndef ARMA_64BIT_WORD
-    #define ARMA_64BIT_WORD // Automatic on 64-bit archs, but overrides RcppArmadillo 32-bit
-#endif //ARMA_64BIT_WORD
+#undef ARMA_64BIT_WORD
+#define ARMA_64BIT_WORD
+// #ifndef ARMA_64BIT_WORD
+//     #define ARMA_64BIT_WORD // Automatic on 64-bit archs, but overrides RcppArmadillo 32-bit
+// #endif //ARMA_64BIT_WORD
 
 //#define ARMA_BLAS_LONG_LONG
 
