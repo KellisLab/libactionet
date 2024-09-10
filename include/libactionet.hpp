@@ -30,7 +30,7 @@
 #include "annotation/specificity.hpp"
 
 // visualization: Generate embeddings for visualization
-#include "visualization/generate_layout.hpp"
+#include "visualization/uwot_actionet.hpp"
 
 // tools: Exported tools and convenience functions
 #include "tools/normalization.hpp"
