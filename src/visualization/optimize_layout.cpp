@@ -20,7 +20,7 @@ void verboseStatus(const UwotArgs& method_args) {
             stderr_printf("UMAP embedding parameters a = %.3f, b = %.3f, gamma = %.3f\n", method_args.a, method_args.b, method_args.gamma);
             break;
         case METHOD_LARGEVIZ:
-            stderr_printf("LargeViz embedding parameters gamma = %.3f\n", method_args.gamma);
+            stderr_printf("LargeVis embedding parameters gamma = %.3f\n", method_args.gamma);
             break;
     }
     stderr_printf("Optimizing for %d epochs with %d threads \n", method_args.n_epochs, (int)method_args.n_threads);
