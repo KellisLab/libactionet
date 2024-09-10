@@ -11,8 +11,8 @@ arma::mat layoutNetwork(arma::sp_mat& G, arma::mat& initial_coordinates, std::st
                         float learning_rate = OPT_ALPHA, float repulsion_strength = 1, float negative_sample_rate = 5,
                         bool approx_pow = false, bool pcg_rand = true, bool batch = true, unsigned int grain_size = 1,
                         int seed = 0, int thread_no = 0, bool verbose = true, float a = 0, float b = 0,
-                        std::string opt_method = "adam", float alpha = OPT_ALPHA, float beta1 = ADAM_BETA1,
-                        float beta2 = ADAM_BETA2, float eps = ADAM_EPS) {
+                        std::string opt_method = "adam", float alpha = 1, float beta1 = 0.5, float beta2 = 0.9,
+                        float eps = 1e-7) {
     arma::mat coordinates = actionet::layoutNetwork(G, initial_coordinates, method, n_components, spread, min_dist,
                                                     n_epochs,
                                                     learning_rate, repulsion_strength, negative_sample_rate, approx_pow,
