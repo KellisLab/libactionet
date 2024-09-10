@@ -5,15 +5,9 @@
 
 namespace actionet {
     arma::mat computeNodeColors(const arma::mat& coordinates, int thread_no) {
-        // try {
-            if (coordinates.n_cols < 3) {
-                throw std::invalid_argument("Invalid matrix size. `coordinates.n_cols` must be >= 3");
-            }
-
-        // }
-        // catch (const std::invalid_argument& e) {
-        //     stdout_printf(e.what());
-        // }
+        if (coordinates.n_cols < 3) {
+            throw std::invalid_argument("Invalid matrix size");
+        }
 
         stdout_printf("Computing node colors ... ");
         FLUSH;
