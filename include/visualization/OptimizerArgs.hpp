@@ -6,7 +6,7 @@
 // Constants
 constexpr int OPT_METHOD_ADAM = 1;
 constexpr int OPT_METHOD_SGD = 2;
-constexpr float OPT_ALPHA = 1.0; /*same as learning_rate*/
+constexpr float LR_OPT_ALPHA = 1.0; /*same as learning_rate*/
 constexpr float ADAM_BETA1 = 0.5; /* between 0 and 1*/
 constexpr float ADAM_BETA2 = 0.9; /* between 0 and 1*/
 constexpr float ADAM_EPS = 1e-7; /* between 1e-8 and 1e-3*/
@@ -14,7 +14,7 @@ constexpr float ADAM_EPS = 1e-7; /* between 1e-8 and 1e-3*/
 class OptimizerArgs {
 public:
     int opt_method = OPT_METHOD_ADAM;
-    float alpha = OPT_ALPHA;
+    float alpha = LR_OPT_ALPHA;
     float beta1 = ADAM_BETA1;
     float beta2 = ADAM_BETA2;
     float eps = ADAM_EPS;

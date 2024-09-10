@@ -19,7 +19,7 @@ public:
     float spread = 1;
     float min_dist = 1;
     unsigned int n_epochs = 0;
-    float learning_rate = OPT_ALPHA; // Passed to optimizer as `alpha`
+    float learning_rate = LR_OPT_ALPHA; // Passed to optimizer as `alpha` if `opt_args.alpha` unspecified.
     float repulsion_strength = 1; // alias for `gamma`
     float negative_sample_rate = 5; // alias for `alpha`
     bool approx_pow = false;
@@ -32,7 +32,8 @@ public:
     // Initialized by members
     float a = 0; // Dummy value. Overwritten by initializer.
     float b = 0; // Dummy value. Overwritten by initializer.
-    // CAUTON: NOT necessarily the same `alpha` as `opt_args`. `opt_args` may be initialized separately.
+    // CAUTION: NOT necessarily the same `alpha` as `opt_args`. `opt_args` may be initialized separately.
+    // Changing `opt_args.alpha` should not change this value.
     float& alpha = learning_rate; // alias. Passed to UmapFactory()
     float& gamma = repulsion_strength; // alias. Passed to UmapFactory.create()
 private:

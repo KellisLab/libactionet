@@ -10,7 +10,7 @@ namespace actionet {
                             float b, std::string opt_method, float alpha, float beta1, float beta2, float eps) {
         unsigned int n_threads = get_num_threads(SYS_THREADS_DEF, thread_no);
 
-        // alpha = (alpha == -1) ? OPT_ALPHA : alpha;
+        alpha = (alpha == -1) ? learning_rate : alpha;
         // beta1 = (beta1 == -1) ? ADAM_BETA1 : beta1;
         // beta2 = (beta2 == -1) ? ADAM_BETA2 : beta2;
         // eps = (eps == -1) ? ADAM_EPS : eps;
