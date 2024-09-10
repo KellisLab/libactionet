@@ -136,7 +136,7 @@ public:
         }
         else if (method == "tumap") {
             this->cost_func = METHOD_TUMAP;
-            set_ab(1,1); // Unused and set automatically by uwot, but just in case.
+            set_ab(1,1); // Automatically by uwot, but just in case.
         }
         else if (method == "largevis") {
             this->cost_func = METHOD_LARGEVIZ;
