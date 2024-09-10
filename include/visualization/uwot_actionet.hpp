@@ -5,7 +5,7 @@
 #include "UwotArgs.hpp"
 
 namespace actionet {
-    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args)
+    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args);
 }
 
 #endif //ACTIONET_UWOT_ACTIONET_HPP
