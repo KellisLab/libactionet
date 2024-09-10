@@ -1,4 +1,10 @@
-// Implemented from uwot R package
+// Modified variant of required UmapFactory struct implemented in uwot Rcpp interface.
+// Calls and controls uwot
+// Key modifications:
+//      Eliminated R-dependency.
+//      Remove support for R callback.
+//      Added shared RNG engine for reproducibility in multithreaded operation.
+
 #ifndef ACTIONET_UMAPFACTORY_HPP
 #define ACTIONET_UMAPFACTORY_HPP
 
@@ -97,7 +103,7 @@ struct UmapFactory {
     std::unique_ptr<uwot::Optimizer> create_optimizer(OptimizerArgs opt_args) {
         float alpha = opt_args.alpha;
         switch (opt_args.opt_method) {
-            case METHOD_SGD:
+            case OPT_METHOD_SGD:
                 if (verbose) {
                     stderr_printf("Optimizing with SGD: alpha = %0.3f\n", alpha);
                 }
@@ -108,7 +114,7 @@ struct UmapFactory {
                 float eps = opt_args.eps;
                 if (verbose) {
                     stderr_printf(
-                        "Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3f\n",
+                        "Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %e\n",
                         alpha, beta1, beta2, eps);
                 }
                 return std::make_unique<uwot::Adam>(alpha, beta1, beta2, eps, head_embedding.size());
@@ -121,7 +127,6 @@ struct UmapFactory {
         const std::size_t ndim = head_embedding.size() / n_head_vertices;
 
         if (batch) {
-            // std::string opt_name = opt_args["method"];
             auto opt = create_optimizer(opt_args);
             uwot::BatchUpdate<DoMove> update(head_embedding, tail_embedding, std::move(opt));
             uwot::NodeWorker<Gradient, decltype(update), RandFactory> worker(

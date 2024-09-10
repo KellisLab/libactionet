@@ -1,3 +1,4 @@
+// Class defining parameters controlling uwot interface
 #ifndef ACTIONET_UWOTARGS_HPP
 #define ACTIONET_UWOTARGS_HPP
 
@@ -31,9 +32,9 @@ public:
     // Initialized by members
     float a = 0; // Dummy value. Overwritten by initializer.
     float b = 0; // Dummy value. Overwritten by initializer.
-    float& alpha = learning_rate; // alias
     // CAUTON: NOT necessarily the same `alpha` as `opt_args`. `opt_args` may be initialized separately.
-    float& gamma = repulsion_strength; // alias
+    float& alpha = learning_rate; // alias. Passed to UmapFactory()
+    float& gamma = repulsion_strength; // alias. Passed to UmapFactory.create()
 private:
     int cost_func = 0; // Dummy value. Overwritten by initializer.
     std::string method = "umap";
@@ -56,7 +57,7 @@ public:
 
     // Full constructor
     UwotArgs(
-        std::string& method,
+        const std::string& method,
         unsigned int n_components,
         float spread,
         float min_dist,

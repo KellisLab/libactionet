@@ -31,6 +31,7 @@
 
 // visualization: Generate embeddings for visualization
 #include "visualization/uwot_actionet.hpp"
+#include "visualization/layout_network.hpp" // Warps 'uwot_actionet.hpp'
 
 // tools: Exported tools and convenience functions
 #include "tools/normalization.hpp"
