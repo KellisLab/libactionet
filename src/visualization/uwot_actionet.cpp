@@ -107,22 +107,22 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
 }
 
 namespace actionet {
-    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_position, UwotArgs uwot_args) {
+    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args) {
         if (G.n_cols != G.n_rows) {
             throw std::invalid_argument("Input graph must be a square matrix");
         }
 
-        if (G.n_cols != initial_position.n_rows) {
+        if (G.n_cols != initial_coordinates.n_rows) {
             throw std::invalid_argument("Rows of initial coordinates do not match input graph");
         }
 
         uwot_args.n_threads = get_num_threads(SYS_THREADS_DEF, static_cast<int>(uwot_args.n_threads));
         if (uwot_args.n_epochs <= 0) {
-            uwot_args.n_epochs = (initial_position.n_rows <= 10000) ? 500 : 200; // uwot defaults
+            uwot_args.n_epochs = (initial_coordinates.n_rows <= 10000) ? 500 : 200; // uwot defaults
         }
 
         // `UF` references `coords`. Must be in the same scope.
-        uwot::Coords coords = getCoords(initial_position, uwot_args.n_components);
+        uwot::Coords coords = getCoords(initial_coordinates, uwot_args.n_components);
         auto [positive_head, positive_tail, epochs_per_sample, positive_ptr, n_vertices] =
             buildEdgeVectors(G, uwot_args);
 

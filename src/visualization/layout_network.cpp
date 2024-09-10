@@ -3,7 +3,7 @@
 #include "utils_internal/utils_parallel.hpp"
 
 namespace actionet {
-    arma::mat layoutNetwork(arma::sp_mat& G, arma::mat& initial_position, std::string method, unsigned int n_components,
+    arma::mat layoutNetwork(arma::sp_mat& G, arma::mat& initial_coordinates, std::string method, unsigned int n_components,
                             float spread, float min_dist, unsigned int n_epochs, float learning_rate,
                             float repulsion_strength, float negative_sample_rate, bool approx_pow, bool pcg_rand,
                             bool batch, unsigned int grain_size, int seed, int thread_no, bool verbose, float a,
@@ -20,7 +20,7 @@ namespace actionet {
             uwot_args.set_ab(a, b);
         }
 
-        arma::mat coords_out = optimize_layout_uwot(G, initial_position, uwot_args);
+        arma::mat coords_out = optimize_layout_uwot(G, initial_coordinates, uwot_args);
         return (coords_out);
     }
 } // namespace actionet
