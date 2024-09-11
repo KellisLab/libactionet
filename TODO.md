@@ -4,6 +4,7 @@
 * Document C++ interface
 * Further modularize cmake 
 * Consolidate network_diffusion
+* Fast matrix normalization/manipulation interface for R/Python preprocessing
 
 ## Secondary
 * Fix compile warnings for svd.cpp
