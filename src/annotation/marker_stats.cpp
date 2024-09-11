@@ -12,7 +12,7 @@ namespace actionet {
 
         int n = G.n_rows;
         arma::sp_mat o = arma::sp_mat(arma::ones(n, 1));
-        arma::vec pr = computeNetworkDiffusionFast(G, o, alpha, max_it, thread_no).col(0);
+        arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no).col(0);
 
         for (int i = 0; i < marker_mat.n_cols; i++) {
             int marker_count = (int)sum(sum(spones(marker_mat.col(i))));
@@ -34,8 +34,7 @@ namespace actionet {
             }
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
-            arma::mat imputed_expression = computeNetworkDiffusionFast(
-                G, raw_expression, alpha, max_it, thread_no);
+            arma::mat imputed_expression = computeNetworkDiffusion(G, raw_expression, alpha, max_it, thread_no);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
                 arma::vec ppr = imputed_expression.col(j);
@@ -52,7 +51,8 @@ namespace actionet {
     }
 
     arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat& G, arma::sp_mat& S, arma::mat& X,
-                                                     int norm_type, double alpha, int max_it, double tol, int thread_no) {
+                                                     int norm_type, double alpha, int max_it, double tol,
+                                                     int thread_no) {
         arma::field<arma::mat> out(3);
 
         // `X` is features; formerly `marker_mat`
@@ -101,8 +101,8 @@ namespace actionet {
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
             stdout_printf("Smoothing geneset scores ... ");
-            marker_stats_smoothed = actionet::computeNetworkDiffusionApprox(G, marker_stats_smoothed,
-                                                                               norm_type, alpha, max_it, tol, thread_no);
+            marker_stats_smoothed = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it,
+                                                                      thread_no, true, norm_type, tol);
             stdout_printf("done\n");
             FLUSH;
         }

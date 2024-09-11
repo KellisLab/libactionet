@@ -2,9 +2,9 @@
 * Fix various normalizations
 * pybind 11 wrappers
 * Document C++ interface
-* Further modularize cmake 
-* Consolidate network_diffusion
+* Further modularize cmake
 * Fast matrix normalization/manipulation interface for R/Python preprocessing
+* Test network diffusion
 
 ## Secondary
 * Fix compile warnings for svd.cpp
@@ -61,4 +61,5 @@
 * Completely remade UMAP/uwot integration.
   * Updated uwot
   * Modular graph optimization
-* Stand-alone color mapping i.e. de novo colors
+* Stand-alone color mapping i.e. de novo colors.
+* Consolidate and abstract network_diffusion

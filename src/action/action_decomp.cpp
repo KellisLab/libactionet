@@ -31,7 +31,7 @@ namespace actionet {
         int k_curr = 0;
         char status_msg[50];
 
-        snprintf(status_msg, 50, "Iterating from k = %d ... %d:", k_min, k_max);
+        snprintf(status_msg, sizeof(status_msg), "Iterating from k = %d ... %d:", k_min, k_max);
         stderr_printf("\t%s %d/%d finished", status_msg, k_curr, k_tot);
         FLUSH;
 

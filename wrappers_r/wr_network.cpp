@@ -33,8 +33,8 @@ arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::stri
 
 // [[Rcpp::export]]
 arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters = 3,
-                  double sig_threshold = 3, Rcpp::Nullable<Rcpp::IntegerVector> fixed_labels_ = R_NilValue,
-                  int thread_no = 0) {
+                 double sig_threshold = 3, Rcpp::Nullable<Rcpp::IntegerVector> fixed_labels_ = R_NilValue,
+                 int thread_no = 0) {
     arma::uvec fixed_labels_vec;
     if (fixed_labels_.isNotNull()) {
         Rcpp::NumericVector fixed_labels(fixed_labels_);
@@ -58,29 +58,6 @@ arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters
 //' @param G Input graph
 //' @param X0 Matrix of initial values per diffusion (ncol(G) == nrow(G) == ncol(X0))
 //' @param thread_no Number of parallel threads (default=0)
-//' @param alpha Random-walk depth ( between [0, 1] )
-//' @param max_it PageRank iterations
-//'
-//' @return Matrix of diffusion scores
-//'
-//' @examples
-//' G = colNets(ace)$ACTIONet
-//' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
-//' smoothed.expression = computeNetworkDiffusion(G, gene.expression)
-// [[Rcpp::export]]
-arma::mat computeNetworkDiffusionFast(arma::sp_mat& G, arma::sp_mat& X0, double alpha = 0.85, int max_it = 3,
-                                         int thread_no = 0) {
-    arma::mat Diff = actionet::computeNetworkDiffusionFast(G, X0, alpha, max_it, thread_no);
-
-    return (Diff);
-}
-
-//' Computes network diffusion over a given network, starting with an arbitrarty
-//' set of initial scores
-//'
-//' @param G Input graph
-//' @param X0 Matrix of initial values per diffusion (ncol(G) == nrow(G) == ncol(X0))
-//' @param thread_no Number of parallel threads (default=0)
 //' @param alpha Random-walk depth ( between [0, 1] ) ' @param max_it PageRank iterations
 //'
 //' @return Matrix of diffusion scores
@@ -90,14 +67,17 @@ arma::mat computeNetworkDiffusionFast(arma::sp_mat& G, arma::sp_mat& X0, double 
 //' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
 //' smoothed.expression = computeNetworkDiffusionApprox(G, gene.expression)
 // [[Rcpp::export]]
-arma::mat computeNetworkDiffusionApprox(arma::sp_mat& G, arma::mat& X0, int norm_type = 0, double alpha = 0.85,
-                                           int max_it = 5, double tol = 1e-8, int thread_no = 0) {
+arma::mat computeNetworkDiffusion(arma::sp_mat& G, arma::mat& X0, double alpha = 0.85, int max_it = 5,
+                                  int thread_no = 0, bool approx = false, int norm_type = 0, double tol = 1e-8) {
     if (G.n_rows != X0.n_rows) {
-        stderr_printf("Dimension mismatch: G (%dx%d) and X0 (%dx%d)\n", G.n_rows, G.n_cols, X0.n_rows, X0.n_cols);
-        return (arma::mat());
+        char error_msg[100];
+        snprintf(error_msg, sizeof(error_msg), "Dimension mismatch: G (%dx%d) and X0 (%dx%d)\n",
+                 G.n_rows, G.n_cols, X0.n_rows, X0.n_cols);
+        std::string e = error_msg;
+        throw std::invalid_argument(e);
     }
 
-    arma::mat X = actionet::computeNetworkDiffusionApprox(G, X0, norm_type, alpha, max_it, tol, thread_no);
+    arma::mat X = actionet::computeNetworkDiffusion(G, X0, alpha, max_it, thread_no, approx, norm_type, tol);
 
     return (X);
 }
