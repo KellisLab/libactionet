@@ -5,7 +5,7 @@
 #include <cholmod.h>
 #include <tools/normalization.hpp>
 
-arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, double alpha, int max_it, int thread_no) {
+arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, double alpha, int max_it, int thread_no) {
     int n = G.n_rows;
 
     cholmod_common chol_c;
@@ -14,7 +14,8 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, double alpha, int m
     int *Ti, *Tj;
     double* Tx;
 
-    arma::sp_mat P = alpha * arma::normalise(G, 1, 0);
+    // arma::sp_mat P = alpha * arma::normalise(G, 1, 0);
+    arma::sp_mat P = alpha * normalize_adj(G, norm_type);
 
     cholmod_triplet* T = cholmod_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
                                                   0, CHOLMOD_REAL, &chol_c);
@@ -121,7 +122,7 @@ namespace actionet {
             X_out = computeDiffusionChebyshev(G, arma::mat(X0), norm_type, alpha, max_it, tol, thread_no);
         }
         else { // PageRank (using cholmod)
-            X_out = computeDiffusion(G, arma::sp_mat(X0), alpha, max_it, thread_no);
+            X_out = computeDiffusion(G, arma::sp_mat(X0), norm_type, alpha, max_it, thread_no);
         }
 
         return (X_out);
