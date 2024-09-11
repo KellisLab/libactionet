@@ -5,7 +5,7 @@
 #include "tools.hpp"
 
 Rcpp::List
-run_ACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, double lambda = 1, int AA_iters = 50,
+runACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, double lambda = 1, int AA_iters = 50,
                int Opt_iters = 0, int thread_no = 0) {
 
     int n_list = S.size();
@@ -66,9 +66,9 @@ run_ACTION_muV(const Rcpp::List &S, int k_min, int k_max, arma::vec alpha, doubl
 //'
 //' @return A named list with entries 'selected_cols' and 'norms'
 //' @examples
-//' H = run_SPA(S_r, 10)
-Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
-    actionet::ResSPA res = run_SPA_rows_sparse(A, k);
+//' H = runSPA(S_r, 10)
+Rcpp::List runSPA_rows_sparse(arma::sp_mat &A, int k) {
+    actionet::ResSPA res = runSPA_rows_sparse(A, k);
     arma::uvec selected_cols = res.selected_cols;
 
     arma::vec cols(k);
@@ -93,12 +93,12 @@ Rcpp::List run_SPA_rows_sparse(arma::sp_mat &A, int k) {
 //' @param max_trial Maximum number of trials before termination
 //'
 //' @return A named list with entries 'C' and 'H', each a list for different
-//' values of k ' @examples ' ACTION.out = run_ACTION_plus(S_r, k_max = 10) ' H8
+//' values of k ' @examples ' ACTION.out = runACTION_plus(S_r, k_max = 10) ' H8
 //' = ACTION.out$H[[8]] ' cell.assignments = apply(H8, 2, which.max)
-Rcpp::List run_ACTION_plus(arma::mat &S_r, int k_min = 2, int k_max = 30, int max_it = 100, double min_delta = 1e-6,
+Rcpp::List runACTION_plus(arma::mat &S_r, int k_min = 2, int k_max = 30, int max_it = 100, double min_delta = 1e-6,
                            int max_trial = 3) {
 
-    ResACTION trace = run_ACTION_plus(S_r, k_min, k_max, max_it, min_delta, max_trial);
+    ResACTION trace = runACTION_plus(S_r, k_min, k_max, max_it, min_delta, max_trial);
 
     Rcpp::List res;
 
@@ -206,9 +206,9 @@ Rcpp::List run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min = 2, int k
 //' @return A list with the first entry being the renormalized input matrix
 //'
 //' @examples
-//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collectArchetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = mergeArchetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
 arma::sp_mat renormalize_input_matrix(arma::sp_mat &S, arma::Col<unsigned long long> sample_assignments) {
@@ -228,7 +228,7 @@ arma::mat renormalize_input_matrix_full(arma::mat &S, arma::Col<unsigned long lo
 //' Compute feature specificity (from archetype footprints and binary input)
 //'
 //' @param S Input matrix (sparseMatrix - binary)
-//' @param H A soft membership matrix - Typically H_merged from the merge_archetypes() function.
+//' @param H A soft membership matrix - Typically H_merged from the mergeArchetypes() function.
 //'
 //' @return A list with the over/under-logPvals
 //'
@@ -530,7 +530,7 @@ Rcpp::List run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_paren
     return res;
 }
 
-Rcpp::List deflate_reduction(arma::mat &old_S_r, arma::mat &old_V, arma::mat &old_A, arma::mat &old_B,
+Rcpp::List deflateReduction(arma::mat &old_S_r, arma::mat &old_V, arma::mat &old_A, arma::mat &old_B,
                              arma::vec &old_sigma, arma::mat &A, arma::mat &B) {
     arma::field<arma::mat> SVD_results(5);
 
@@ -543,7 +543,7 @@ Rcpp::List deflate_reduction(arma::mat &old_S_r, arma::mat &old_V, arma::mat &ol
     SVD_results(3) = old_A;
     SVD_results(4) = old_B;
 
-    arma::field<arma::mat> deflated_reduction = deflate_reduction(SVD_results, A, B);
+    arma::field<arma::mat> deflated_reduction = deflateReduction(SVD_results, A, B);
 
     Rcpp::List res;
     res["V"] = deflated_reduction(0);

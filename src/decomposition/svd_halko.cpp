@@ -2,7 +2,7 @@
 #include "utils_internal/utils_decomp.hpp"
 
 template <typename T>
-arma::field<arma::mat> HalkoSVD(T& A, int dim, int iters, int seed, int verbose) {
+arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, int verbose) {
     arma::field<arma::mat> out(3); // out: U, sigma, V
 
     int m = A.n_rows;
@@ -91,6 +91,6 @@ arma::field<arma::mat> HalkoSVD(T& A, int dim, int iters, int seed, int verbose)
     return (orient_SVD(out));
 }
 
-template arma::field<arma::mat> HalkoSVD<arma::mat>(arma::mat& A, int dim, int iters, int seed, int verbose);
+template arma::field<arma::mat> svdHalko<arma::mat>(arma::mat& A, int dim, int iters, int seed, int verbose);
 
-template arma::field<arma::mat> HalkoSVD<arma::sp_mat>(arma::sp_mat& A, int dim, int iters, int seed, int verbose);
+template arma::field<arma::mat> svdHalko<arma::sp_mat>(arma::sp_mat& A, int dim, int iters, int seed, int verbose);

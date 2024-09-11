@@ -4,6 +4,7 @@
 #define ACTIONET_LAYOUT_NETWORK_HPP
 
 #include "libactionet.hpp"
+#include "UwotArgs.hpp"
 
 namespace actionet {
     arma::mat layoutNetwork(arma::sp_mat& G, arma::mat& initial_coordinates, std::string method = "umap",
@@ -14,6 +15,8 @@ namespace actionet {
                             bool verbose = true, float a = 0, float b = 0, std::string opt_method = "adam",
                             float alpha = LR_OPT_ALPHA, float beta1 = ADAM_BETA1, float beta2 = ADAM_BETA2,
                             float eps = ADAM_EPS);
+
+    arma::mat layoutNetwork(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args);
 } // actionet
 
 #endif //ACTIONET_LAYOUT_NETWORK_HPP

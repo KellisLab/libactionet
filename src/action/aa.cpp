@@ -4,7 +4,7 @@
 
 namespace actionet {
 
-    arma::field<arma::mat> run_AA(arma::mat &A, arma::mat &W0, int max_it, double tol) {
+    arma::field<arma::mat> runAA(arma::mat &A, arma::mat &W0, int max_it, double tol) {
         int sample_no = A.n_cols;
         int k = W0.n_cols; // AA components
 
@@ -20,7 +20,7 @@ namespace actionet {
             arma::mat C_old = C;
             arma::mat H_old = H;
             double A_norm = arma::norm(A, "fro");
-            H = actionet::run_simplex_regression(W, A, true);
+            H = actionet::runSimplexRegression(W, A, true);
 
             arma::mat R = A - W * H;
             arma::mat Ht = arma::trans(H);
@@ -42,7 +42,7 @@ namespace actionet {
                                 (1.0 / norm_sq), R.memptr(), R.n_rows, h.memptr(), 1, 1,
                                 b.memptr(), 1);
 
-                    C.col(i) = actionet::run_simplex_regression(A, b, false);
+                    C.col(i) = actionet::runSimplexRegression(A, b, false);
 
                     arma::vec w_new = A * C.col(i);
                     arma::vec delta = (w - w_new);

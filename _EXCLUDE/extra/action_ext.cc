@@ -88,7 +88,7 @@ void findConsensus(std::vector<arma::mat> S, full_trace &run_trace, int arch_no,
                     arma::join_vert(arma::trans(Z) * S[ds], weight * run_trace.H_consensus[arch_no]);
 
             run_trace.indiv_trace[arch_no].H_secondary[ds] =
-                    actionet::run_simplex_regression(A, B, false);
+                    actionet::runSimplexRegression(A, B, false);
         }
 
         // Recompute C_i
@@ -101,7 +101,7 @@ void findConsensus(std::vector<arma::mat> S, full_trace &run_trace, int arch_no,
                 arma::vec h = arma::trans(H.row(j)) / norm_sq;
                 arma::vec b = R * h + W.col(j);
 
-                c = actionet::run_simplex_regression(S[ds], b, false);
+                c = actionet::runSimplexRegression(S[ds], b, false);
 
                 R += (W.col(j) - S[ds] * c) * H.row(j);
                 W.col(j) = S[ds] * c;
@@ -154,16 +154,16 @@ actionet::ResACTION run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min, 
     FLUSH;
 
     mini_thread::parallelFor(k_min, k_max + 1, [&](size_t kk) {
-        actionet::ResSPA SPA_res = actionet::run_SPA(X_r_scaled, kk);
+        actionet::ResSPA SPA_res = actionet::runSPA(X_r_scaled, kk);
         trace.selected_cols[kk] = SPA_res.selected_cols;
 
         arma::mat W = X_r_scaled.cols(trace.selected_cols[kk]);
 
-        arma::field<arma::mat> AA_res = actionet::run_AA(X_r_scaled, W, max_it, min_delta);
+        arma::field<arma::mat> AA_res = actionet::runAA(X_r_scaled, W, max_it, min_delta);
 
         arma::mat C = AA_res(0);
         arma::mat weighted_archs = X_r_scaled * C;
-        arma::mat H = actionet::run_simplex_regression(weighted_archs, X_r, false);
+        arma::mat H = actionet::runSimplexRegression(weighted_archs, X_r, false);
         AA_res(1) = H;
 
         trace.C[kk] = AA_res(0);
@@ -215,7 +215,7 @@ Online_ACTION_results run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> 
     FLUSH;
 
     mini_thread::parallelFor(k_min, k_max + 1, [&](size_t kk) {
-        actionet::ResSPA SPA_res = actionet::run_SPA(X_r_L1, kk);
+        actionet::ResSPA SPA_res = actionet::runSPA(X_r_L1, kk);
         trace.selected_cols[kk] = SPA_res.selected_cols;
 
         arma::mat W = X_r_L2.cols(trace.selected_cols[kk]);
@@ -243,7 +243,7 @@ Online_ACTION_results run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> 
 }
 
 actionet::ResACTION
-run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_delta, int max_trial) {
+runACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_delta, int max_trial) {
 
     stdout_printf("Running ACTION++ (%d threads):");
     FLUSH;
@@ -262,7 +262,7 @@ run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_del
     trace.selected_cols = arma::field<arma::uvec>(k_max + 1, 1);
 
     arma::mat X_r = arma::normalise(S_r, 1); // ATTENTION!
-    actionet::ResSPA SPA_res = actionet::run_SPA(X_r, D);
+    actionet::ResSPA SPA_res = actionet::runSPA(X_r, D);
     arma::uvec selected_cols = SPA_res.selected_cols;
 
     arma::mat W = arma::mat(X_r.col(selected_cols(0)));
@@ -283,7 +283,7 @@ run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it, double min_del
             FLUSH;
             arma::mat W_tmp = arma::join_rows(W, X_r.col(selected_cols(cur_idx)));
 
-            AA_res = actionet::run_AA(X_r, W_tmp, max_it, min_delta);
+            AA_res = actionet::runAA(X_r, W_tmp, max_it, min_delta);
 
             arma::vec influential_cells = arma::vec(arma::trans(arma::sum(arma::spones(arma::sp_mat(AA_res(0))), 0)));
             int trivial_counts = (int) sum(influential_cells <= 1);
@@ -367,12 +367,12 @@ actionet::ResACTION run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat
     mini_thread::parallelFor(
             k_min, k_max + 1,
             [&](size_t kkk) {
-                actionet::ResSPA SPA_res = actionet::run_SPA(X_r_scaled, kkk);
+                actionet::ResSPA SPA_res = actionet::runSPA(X_r_scaled, kkk);
                 trace.selected_cols[kkk] = SPA_res.selected_cols;
 
                 arma::mat W = X_r.cols(trace.selected_cols[kkk]);
                 arma::field<arma::mat> AA_res;
-                AA_res = run_AA_with_prior(X_r_scaled, W, W_prior, max_it, min_delta);
+                AA_res = runAA_with_prior(X_r_scaled, W, W_prior, max_it, min_delta);
 
                 trace.C[kkk] = AA_res(0);
                 trace.H[kkk] = AA_res(1);
@@ -438,12 +438,12 @@ full_trace runACTION_muV(std::vector<arma::mat> S_r, int k_min, int k_max, arma:
                 // Solve ACTION for a fixed-k to "jump-start" the joint optimization
                 // problem.
                 for (int i = 0; i < S_r.size(); i++) {
-                    actionet::ResSPA SPA_res = actionet::run_SPA(S_r[i], kk);
+                    actionet::ResSPA SPA_res = actionet::runSPA(S_r[i], kk);
                     run_trace.indiv_trace[kk].selected_cols[i] = SPA_res.selected_cols;
 
                     arma::mat W = S_r[i].cols(run_trace.indiv_trace[kk].selected_cols[i]);
 
-                    AA_res = actionet::run_AA(S_r[i], W, AA_iters, 1e-16);
+                    AA_res = actionet::runAA(S_r[i], W, AA_iters, 1e-16);
 
                     arma::mat C0 = AA_res(0);
                     C0.transform([](double val) { return (std::min(1.0, std::max(0.0, val))); });
@@ -488,7 +488,7 @@ full_trace runACTION_muV(std::vector<arma::mat> S_r, int k_min, int k_max, arma:
                                         (1.0 / norm_sq), R.memptr(), R.n_rows, h.memptr(), 1,
                                         1, b.memptr(), 1);
 
-                            C.col(j) = actionet::run_simplex_regression(S, b, false);
+                            C.col(j) = actionet::runSimplexRegression(S, b, false);
 
                             arma::vec w_new = S * C.col(j);
                             arma::vec delta = (w - w_new);

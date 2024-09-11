@@ -4,7 +4,7 @@
 #include "utils_internal/utils_misc.hpp"
 
 namespace actionet {
-    arma::vec LPA(arma::sp_mat& G, arma::vec labels, double lambda, int iters, double sig_threshold,
+    arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda, int iters, double sig_threshold,
                   arma::uvec fixed_labels, int thread_no) {
         int n = G.n_rows;
 

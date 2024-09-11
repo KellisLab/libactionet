@@ -6,7 +6,7 @@
 // orthogonalization ========================================================================================================
 
 // [[Rcpp::export]]
-Rcpp::List orthogonalize_batch_effect(arma::sp_mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
+Rcpp::List orthogonalizeBatchEffect(arma::sp_mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
                                       arma::mat& old_B, arma::vec& old_sigma, arma::mat& design) {
     arma::field<arma::mat> SVD_results(5);
 
@@ -20,7 +20,7 @@ Rcpp::List orthogonalize_batch_effect(arma::sp_mat& S, arma::mat& old_S_r, arma:
     SVD_results(4) = old_B;
 
     arma::field<arma::mat> orthogonalized_reduction =
-        actionet::orthogonalize_batch_effect(S, SVD_results, design);
+        actionet::orthogonalizeBatchEffect(S, SVD_results, design);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -41,7 +41,7 @@ Rcpp::List orthogonalize_batch_effect(arma::sp_mat& S, arma::mat& old_S_r, arma:
 }
 
 //[[Rcpp::export]]
-Rcpp::List orthogonalize_batch_effect_full(arma::mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
+Rcpp::List orthogonalizeBatchEffect_full(arma::mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
                                            arma::mat& old_B, arma::vec& old_sigma, arma::mat& design) {
     arma::field<arma::mat> SVD_results(5);
 
@@ -55,7 +55,7 @@ Rcpp::List orthogonalize_batch_effect_full(arma::mat& S, arma::mat& old_S_r, arm
     SVD_results(4) = old_B;
 
     arma::field<arma::mat> orthogonalized_reduction =
-        actionet::orthogonalize_batch_effect(S, SVD_results, design);
+        actionet::orthogonalizeBatchEffect(S, SVD_results, design);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -75,7 +75,7 @@ Rcpp::List orthogonalize_batch_effect_full(arma::mat& S, arma::mat& old_S_r, arm
 }
 
 // [[Rcpp::export]]
-Rcpp::List orthogonalize_basal(arma::sp_mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
+Rcpp::List orthogonalizeBasal(arma::sp_mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
                                arma::mat& old_B, arma::vec& old_sigma, arma::mat& basal) {
     arma::field<arma::mat> SVD_results(5);
 
@@ -88,7 +88,7 @@ Rcpp::List orthogonalize_basal(arma::sp_mat& S, arma::mat& old_S_r, arma::mat& o
     SVD_results(3) = old_A;
     SVD_results(4) = old_B;
 
-    arma::field<arma::mat> orthogonalized_reduction = actionet::orthogonalize_basal(S, SVD_results, basal);
+    arma::field<arma::mat> orthogonalized_reduction = actionet::orthogonalizeBasal(S, SVD_results, basal);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);
@@ -109,7 +109,7 @@ Rcpp::List orthogonalize_basal(arma::sp_mat& S, arma::mat& old_S_r, arma::mat& o
 }
 
 //[[Rcpp::export]]
-Rcpp::List orthogonalize_basal_full(arma::mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
+Rcpp::List orthogonalizeBasal_full(arma::mat& S, arma::mat& old_S_r, arma::mat& old_V, arma::mat& old_A,
                                     arma::mat& old_B, arma::vec& old_sigma, arma::mat& basal) {
     arma::field<arma::mat> SVD_results(5);
 
@@ -122,7 +122,7 @@ Rcpp::List orthogonalize_basal_full(arma::mat& S, arma::mat& old_S_r, arma::mat&
     SVD_results(3) = old_A;
     SVD_results(4) = old_B;
 
-    arma::field<arma::mat> orthogonalized_reduction = actionet::orthogonalize_basal(S, SVD_results, basal);
+    arma::field<arma::mat> orthogonalized_reduction = actionet::orthogonalizeBasal(S, SVD_results, basal);
 
     Rcpp::List res;
     res["V"] = orthogonalized_reduction(0);

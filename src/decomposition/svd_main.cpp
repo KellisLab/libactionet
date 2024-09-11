@@ -31,17 +31,17 @@ namespace actionet {
         }
 
         switch (algorithm) {
-            case IRLB_ALG:
-                out = IRLB_SVD(A, k, max_it, seed, verbose);
+            case ALG_IRLB:
+                out = svdIRLB(A, k, max_it, seed, verbose);
                 break;
-            case HALKO_ALG:
-                out = HalkoSVD(A, k, max_it, seed, verbose);
+            case ALG_HALKO:
+                out = svdHalko(A, k, max_it, seed, verbose);
                 break;
-            case FENG_ALG:
-                out = FengSVD(A, k, max_it, seed, verbose);
+            case ALG_FENG:
+                out = svdFeng(A, k, max_it, seed, verbose);
                 break;
             default:
-                out = IRLB_SVD(A, k, max_it, seed, verbose);
+                out = svdIRLB(A, k, max_it, seed, verbose);
                 break;
         }
 

@@ -26,7 +26,7 @@ namespace actionet {
     ///
     /// @remark See <code>runSVD()</code>.
     template <typename T>
-    arma::field<arma::mat> reduce_kernel(T& S, int dim, int svd_alg = 0, int max_it = 0,
+    arma::field<arma::mat> reduceKernel(T& S, int dim, int svd_alg = 0, int max_it = 0,
                                          int seed = 0, int verbose = 1);
 }
 

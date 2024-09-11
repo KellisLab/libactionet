@@ -7,7 +7,7 @@
 
 //' Builds an interaction network from the multi-level archetypal decompositions
 //'
-//' @param H_stacked Output of the collect_archetypes() function.
+//' @param H_stacked Output of the collectArchetypes() function.
 //' @param density Overall density of constructed graph. The higher the density,
 //' the more edges are retained (default = 1.0).
 //' @param thread_no Number of parallel threads (default = 0).
@@ -17,7 +17,7 @@
 //' @return G Adjacency matrix of the ACTIONet graph.
 //'
 //' @examples
-//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collectArchetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
 // [[Rcpp::export]]
 arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
@@ -32,7 +32,7 @@ arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::stri
 // label_propagation ===================================================================================================
 
 // [[Rcpp::export]]
-arma::vec run_LPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters = 3,
+arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters = 3,
                   double sig_threshold = 3, Rcpp::Nullable<Rcpp::IntegerVector> fixed_labels_ = R_NilValue,
                   int thread_no = 0) {
     arma::uvec fixed_labels_vec;
@@ -45,7 +45,7 @@ arma::vec run_LPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iter
     }
 
     arma::vec new_labels =
-        actionet::LPA(G, std::move(labels), lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
+        actionet::runLPA(G, std::move(labels), lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
 
     return (new_labels);
 }
@@ -66,11 +66,11 @@ arma::vec run_LPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iter
 //' @examples
 //' G = colNets(ace)$ACTIONet
 //' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
-//' smoothed.expression = compute_network_diffusion(G, gene.expression)
+//' smoothed.expression = computeNetworkDiffusion(G, gene.expression)
 // [[Rcpp::export]]
-arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, double alpha = 0.85, int max_it = 3,
+arma::mat computeNetworkDiffusionFast(arma::sp_mat& G, arma::sp_mat& X0, double alpha = 0.85, int max_it = 3,
                                          int thread_no = 0) {
-    arma::mat Diff = actionet::compute_network_diffusion_fast(G, X0, alpha, max_it, thread_no);
+    arma::mat Diff = actionet::computeNetworkDiffusionFast(G, X0, alpha, max_it, thread_no);
 
     return (Diff);
 }
@@ -88,16 +88,16 @@ arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, doub
 //' @examples
 //' G = colNets(ace)$ACTIONet
 //' gene.expression = Matrix::t(logcounts(ace))[c("CD19", "CD14", "CD16"), ]
-//' smoothed.expression = compute_network_diffusion_approx(G, gene.expression)
+//' smoothed.expression = computeNetworkDiffusionApprox(G, gene.expression)
 // [[Rcpp::export]]
-arma::mat compute_network_diffusion_approx(arma::sp_mat& G, arma::mat& X0, int norm_type = 0, double alpha = 0.85,
+arma::mat computeNetworkDiffusionApprox(arma::sp_mat& G, arma::mat& X0, int norm_type = 0, double alpha = 0.85,
                                            int max_it = 5, double tol = 1e-8, int thread_no = 0) {
     if (G.n_rows != X0.n_rows) {
         stderr_printf("Dimension mismatch: G (%dx%d) and X0 (%dx%d)\n", G.n_rows, G.n_cols, X0.n_rows, X0.n_cols);
         return (arma::mat());
     }
 
-    arma::mat X = actionet::compute_network_diffusion_approx(G, X0, norm_type, alpha, max_it, tol, thread_no);
+    arma::mat X = actionet::computeNetworkDiffusionApprox(G, X0, norm_type, alpha, max_it, tol, thread_no);
 
     return (X);
 }
@@ -112,10 +112,10 @@ arma::mat compute_network_diffusion_approx(arma::sp_mat& G, arma::mat& X0, int n
 //'
 //' @examples
 //' G = colNets(ace)$ACTIONet
-//' cn = compute_core_number(G)
+//' cn = computeCoreness(G)
 // [[Rcpp::export]]
-arma::uvec compute_core_number(arma::sp_mat& G) {
-    arma::uvec core_num = actionet::compute_core_number(G);
+arma::uvec computeCoreness(arma::sp_mat& G) {
+    arma::uvec core_num = actionet::computeCoreness(G);
 
     return (core_num);
 }
@@ -123,17 +123,17 @@ arma::uvec compute_core_number(arma::sp_mat& G) {
 //' Compute coreness of subgraph vertices induced by each archetype
 //'
 //' @param G Input graph
-//' @param sample_assignments Archetype discretization (output of merge_archetypes())
+//' @param sample_assignments Archetype discretization (output of mergeArchetypes())
 //'
 //' @return cn core-number of each graph node
 //'
 //' @examples
 //' G = colNets(ace)$ACTIONet
 //' assignments = ace$archetype.assignment
-//' connectivity = compute_core_number(G, assignments)
+//' connectivity = computeCoreness(G, assignments)
 // [[Rcpp::export]]
-arma::vec compute_archetype_core_centrality(arma::sp_mat& G, arma::uvec sample_assignments) {
-    arma::vec conn = actionet::compute_archetype_core_centrality(G, sample_assignments);
+arma::vec computeArchetypeCentrality(arma::sp_mat& G, arma::uvec sample_assignments) {
+    arma::vec conn = actionet::computeArchetypeCentrality(G, sample_assignments);
 
     return (conn);
 }

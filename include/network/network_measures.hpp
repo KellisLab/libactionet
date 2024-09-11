@@ -4,13 +4,11 @@
 
 #include "libactionet_config.hpp"
 
-arma::uvec compute_induced_core_number(arma::sp_mat& G, arma::uvec mask);
-
 // Exported
 namespace actionet {
-    arma::uvec compute_core_number(arma::sp_mat& G);
+    arma::uvec computeCoreness(arma::sp_mat& G);
 
-    arma::vec compute_archetype_core_centrality(arma::sp_mat& G, arma::uvec sample_assignments);
+    arma::vec computeArchetypeCentrality(arma::sp_mat& G, arma::uvec sample_assignments);
 } // namespace actionet
 
 #endif //ACTIONET_NETWORK_MEASURES_HPP

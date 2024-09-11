@@ -15,7 +15,7 @@ namespace actionet {
     /// @param computeXtX Return <em>Xt(X)</em>
     ///
     /// @return Matrix X that solves the simplex constraint.
-    arma::mat run_simplex_regression(arma::mat& A, arma::mat& B, bool computeXtX = false);
+    arma::mat runSimplexRegression(arma::mat& A, arma::mat& B, bool computeXtX = false);
 } // namespace actionet
 
 #endif //ACTIONET_SIMPLEX_REGRESSION_HPP

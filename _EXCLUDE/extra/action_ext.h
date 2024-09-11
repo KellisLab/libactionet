@@ -40,7 +40,7 @@ actionet::ResACTION run_weighted_ACTION(arma::mat &S_r, arma::vec w, int k_min, 
 Online_ACTION_results run_online_ACTION(arma::mat &S_r, arma::field<arma::uvec> samples,
                                         int k_min, int k_max, int thread_no);
 
-actionet::ResACTION run_ACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it = 100,
+actionet::ResACTION runACTION_plus(arma::mat &S_r, int k_min, int k_max, int max_it = 100,
                                          double min_delta = 1e-16, int max_trial = 3);
 
 actionet::ResACTION run_subACTION(arma::mat &S_r, arma::mat &W_parent, arma::mat &H_parent, int kk,

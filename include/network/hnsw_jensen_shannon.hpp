@@ -7,7 +7,7 @@
 #define LOGLEN 1000000
 
 namespace hnswlib {
-    static float JSD_metric(const void* pVect1_p, const void* pVect2_p,
+    static float computeJSDMetric(const void* pVect1_p, const void* pVect2_p,
                             const void* params) {
         float* log_vec = (float*)params;
         size_t N = (size_t)log_vec[LOGLEN + 1];
@@ -56,7 +56,7 @@ namespace hnswlib {
 
     public:
         JSDSpace(size_t dim) {
-            fstdistfunc_ = JSD_metric;
+            fstdistfunc_ = computeJSDMetric;
             data_size_ = dim * sizeof(float);
 
             params[0] = 0;

@@ -141,7 +141,7 @@ arma::mat compute_marker_aggregate_stats_basic_sum_perm_smoothed(arma::sp_mat &G
 
     S = scale_expression(S);
     arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
-    arma::mat stats = actionet::compute_network_diffusion_fast(G, raw_stats, thread_no, alpha,
+    arma::mat stats = actionet::computeNetworkDiffusionFast(G, raw_stats, thread_no, alpha,
                                                                max_it); // * diagmat(vec(trans(sum(raw_stats))));
 
     int N = X.n_cols;
@@ -153,7 +153,7 @@ arma::mat compute_marker_aggregate_stats_basic_sum_perm_smoothed(arma::sp_mat &G
             0, perm_no, [&](size_t i) {
                 arma::uvec perm = arma::randperm(N);
                 arma::sp_mat raw_rand_stats = trans(arma::sp_mat(X.cols(perm) * S));
-                arma::mat rand_stats = actionet::compute_network_diffusion_fast(G, raw_rand_stats, 1, alpha,
+                arma::mat rand_stats = actionet::computeNetworkDiffusionFast(G, raw_rand_stats, 1, alpha,
                                                                                 max_it); // * diagmat(vec(trans(sum(raw_rand_stats))));
 
                 arma::mat shifted_vals = (rand_stats - stats);
@@ -175,7 +175,7 @@ arma::mat compute_marker_aggregate_stats_basic_sum_smoothed(arma::sp_mat &G, arm
     arma::mat X = arma::trans(arma::mat(marker_mat));
 
     arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
-    arma::mat stats = actionet::compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+    arma::mat stats = actionet::computeNetworkDiffusionFast(G, raw_stats, thread_no, alpha, max_it) *
                       arma::diagmat(arma::vec(arma::trans(arma::sum(raw_stats))));
 
     return (stats);
@@ -188,11 +188,11 @@ arma::mat compute_marker_aggregate_stats_basic_sum_smoothed_normalized(arma::sp_
     arma::mat X = arma::trans(arma::mat(marker_mat));
 
     arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
-    arma::mat stats = actionet::compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+    arma::mat stats = actionet::computeNetworkDiffusionFast(G, raw_stats, thread_no, alpha, max_it) *
                       arma::diagmat(arma::vec(arma::trans(arma::sum(raw_stats))));
 
     arma::sp_mat p = arma::trans(arma::sum(S));
-    arma::vec pr = actionet::compute_network_diffusion_fast(G, p, thread_no, alpha, max_it).col(0);
+    arma::vec pr = actionet::computeNetworkDiffusionFast(G, p, thread_no, alpha, max_it).col(0);
 
     for (int j = 0; j < stats.n_cols; j++) {
         arma::vec ppr = stats.col(j);
@@ -215,7 +215,7 @@ arma::mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(arma::sp_mat
     arma::mat X = arma::trans(arma::mat(marker_mat));
 
     arma::sp_mat raw_stats = arma::trans(arma::sp_mat(X * S));
-    arma::mat stats = actionet::compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+    arma::mat stats = actionet::computeNetworkDiffusionFast(G, raw_stats, thread_no, alpha, max_it) *
                       arma::diagmat(arma::vec(arma::trans(arma::sum(raw_stats))));
 
     arma::mat raw_stats_mat = arma::mat(raw_stats);
@@ -229,7 +229,7 @@ arma::mat compute_marker_aggregate_stats_basic_sum_perm_smoothed_v2(arma::sp_mat
                 arma::uvec perm = arma::randperm(N);
 
                 arma::sp_mat raw_rand_stats = arma::sp_mat(raw_stats_mat.rows(perm));
-                arma::mat rand_stats = actionet::compute_network_diffusion_fast(G, raw_rand_stats, 1, alpha, max_it) *
+                arma::mat rand_stats = actionet::computeNetworkDiffusionFast(G, raw_rand_stats, 1, alpha, max_it) *
                                        arma::diagmat(arma::vec(arma::trans(arma::sum(raw_rand_stats))));
 
                 E += rand_stats;
@@ -297,7 +297,7 @@ arma::mat compute_marker_aggregate_stats_TFIDF_sum_smoothed(arma::sp_mat &G, arm
     if (alpha == 0) {
         stats = raw_stats;
     } else {
-        stats = actionet::compute_network_diffusion_fast(G, raw_stats, thread_no, alpha, max_it) *
+        stats = actionet::computeNetworkDiffusionFast(G, raw_stats, thread_no, alpha, max_it) *
                 arma::diagmat(arma::vec(arma::trans(arma::sum(raw_stats))));
     }
 
@@ -481,7 +481,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
                 double denom = std::sqrt(arma::sum(arma::sum(arma::cov(subZ))));
                 arma::vec z = arma::sum(subZ, 1) / denom;
 
-                arma::field<arma::mat> SVD_results = actionet::HalkoSVD(subZ, 1, 5, 0, 0);
+                arma::field<arma::mat> SVD_results = actionet::svdHalko(subZ, 1, 5, 0, 0);
                 arma::vec u = SVD_results(0);
                 if (dot(u, z) < 0) // orient
                 {
@@ -522,7 +522,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
 
         if (pre_alpha != 0) {
             arma::mat T_t = trans(T);
-            T = compute_network_diffusion_approx(P, T_t, thread_no, pre_alpha);
+            T = computeNetworkDiffusionApprox(P, T_t, thread_no, pre_alpha);
             T = arma::trans(T);
         }
 
@@ -546,7 +546,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
 
                     arma::mat W0 = T_scaled.cols(idx);
 
-                    arma::field<arma::mat> AA_res = run_AA(T_scaled, W0, 100);
+                    arma::field<arma::mat> AA_res = runAA(T_scaled, W0, 100);
                     arma::mat C = AA_res(0);
                     arma::mat H = AA_res(1);
                     arma::mat W = T_scaled * C;
@@ -578,7 +578,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
         arma::mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
         if (post_alpha != 0) {
             stdout_printf("Post-smoothing expression values ... ");
-            marker_stats_smoothed = compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
+            marker_stats_smoothed = computeNetworkDiffusionApprox(P, marker_stats_smoothed, thread_no,
                                                                         post_alpha);
             stdout_printf("done\n");
             FLUSH;
@@ -612,7 +612,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
 
         if (pre_alpha != 0) {
             arma::mat T_t = arma::trans(T);
-            T = compute_network_diffusion_approx(P, T_t, thread_no, pre_alpha);
+            T = computeNetworkDiffusionApprox(P, T_t, thread_no, pre_alpha);
             T = arma::trans(T);
         }
 
@@ -660,7 +660,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
         arma::mat marker_stats_smoothed = marker_stats; // zscore(marker_stats, thread_no);
         if (post_alpha != 0) {
             stdout_printf("Post-smoothing expression values ... ");
-            marker_stats_smoothed = compute_network_diffusion_approx(P, marker_stats_smoothed, thread_no,
+            marker_stats_smoothed = computeNetworkDiffusionApprox(P, marker_stats_smoothed, thread_no,
                                                                         post_alpha);
             stdout_printf("done\n");
             FLUSH;

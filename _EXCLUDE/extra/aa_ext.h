@@ -17,7 +17,7 @@ arma::field<arma::mat> Online_update_AA(arma::mat &Xt, arma::mat &D, arma::mat &
 
 arma::field<arma::mat> run_online_AA(arma::mat &X, arma::mat &D0, arma::field<arma::uvec> samples);
 
-arma::field<arma::mat> run_AA_with_prior(arma::mat &A, arma::mat &W0, arma::mat &W_prior, int max_it = 50,
+arma::field<arma::mat> runAA_with_prior(arma::mat &A, arma::mat &W0, arma::mat &W_prior, int max_it = 50,
                                          double min_delta = 1e-16);
 
 Coreset compute_AA_coreset(arma::sp_mat &S, int m = 5000);

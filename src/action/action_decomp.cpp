@@ -6,7 +6,7 @@
 
 namespace actionet {
     ResACTION
-        run_ACTION(arma::mat& S_r, int k_min, int k_max, int normalization, int max_it, double tol, int thread_no) {
+        runACTION(arma::mat& S_r, int k_min, int k_max, int normalization, int max_it, double tol, int thread_no) {
         if (k_max == -1)
             k_max = (int)S_r.n_cols;
 
@@ -37,12 +37,12 @@ namespace actionet {
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
-            ResSPA SPA_res = run_SPA(X_r, k);
+            ResSPA SPA_res = runSPA(X_r, k);
             trace.selected_cols[k] = SPA_res.selected_cols;
 
             arma::mat W = X_r.cols(trace.selected_cols[k]);
 
-            arma::field<arma::mat> AA_res = run_AA(X_r, W, max_it, tol);
+            arma::field<arma::mat> AA_res = runAA(X_r, W, max_it, tol);
             trace.C[k] = AA_res(0);
             trace.H[k] = AA_res(1);
             k_curr++;

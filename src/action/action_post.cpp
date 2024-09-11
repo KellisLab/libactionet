@@ -7,7 +7,7 @@
 #include "utils_internal/utils_stats.hpp"
 
 namespace actionet {
-    ResCollectArch collect_archetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
+    ResCollectArch collectArchetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
                                       double spec_th, int min_obs) {
         arma::mat C_stacked;
         arma::mat H_stacked;
@@ -113,7 +113,7 @@ namespace actionet {
     }
 
     ResMergeArch
-        merge_archetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int normalization, int thread_no) {
+        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int normalization, int thread_no) {
 
         stdout_printf("Merging %d archetypes:\n", (int)C_stacked.n_cols);
         FLUSH;
@@ -125,7 +125,7 @@ namespace actionet {
         arma::mat H_arch = spmat_mat_product_parallel(H_stacked_sp, C_stacked, thread_no);
         H_arch.replace(arma::datum::nan, 0); // replace each NaN with 0
 
-        ResSPA SPA_out = run_SPA(H_arch, (int)H_arch.n_cols);
+        ResSPA SPA_out = runSPA(H_arch, (int)H_arch.n_cols);
         arma::uvec candidates = SPA_out.selected_cols;
         arma::vec scores = SPA_out.column_norms;
         double x1 = arma::sum(scores);
@@ -144,7 +144,7 @@ namespace actionet {
 
         arma::mat W_r_merged = X_r * C_merged;
 
-        arma::mat H_merged = run_simplex_regression(W_r_merged, X_r, false);
+        arma::mat H_merged = runSimplexRegression(W_r_merged, X_r, false);
 
         arma::uvec assigned_archetypes = arma::trans(arma::index_max(H_merged, 0));
 

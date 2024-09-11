@@ -106,53 +106,51 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
     return (EV);
 }
 
-namespace actionet {
-    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args) {
-        if (G.n_cols != G.n_rows) {
-            throw std::invalid_argument("Input graph must be a square matrix");
-        }
-
-        if (G.n_cols != initial_coordinates.n_rows) {
-            throw std::invalid_argument("Rows of initial coordinates do not match input graph");
-        }
-
-        uwot_args.n_threads = get_num_threads(SYS_THREADS_DEF, static_cast<int>(uwot_args.n_threads));
-        if (uwot_args.n_epochs <= 0) {
-            uwot_args.n_epochs = (initial_coordinates.n_rows <= 10000) ? 500 : 200; // uwot defaults
-        }
-
-        // `UF` references `coords`. Must be in the same scope.
-        uwot::Coords coords = getCoords(initial_coordinates, uwot_args.n_components);
-        auto [positive_head, positive_tail, epochs_per_sample, positive_ptr, n_vertices] =
-            buildEdgeVectors(G, uwot_args);
-
-        bool move_other = true;
-        UmapFactory UF(move_other, uwot_args.pcg_rand,
-                       coords.get_head_embedding(), coords.get_tail_embedding(),
-                       positive_head, positive_tail, positive_ptr, uwot_args.n_epochs,
-                       n_vertices, n_vertices, epochs_per_sample, uwot_args.alpha,
-                       uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
-                       uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
-
-        if (uwot_args.verbose) { verboseStatus(uwot_args); }
-
-        switch (uwot_args.get_cost_func()) {
-            case METHOD_TUMAP:
-                create_tumap(UF, uwot_args);
-                break;
-            case METHOD_LARGEVIZ:
-                create_largevis(UF, uwot_args);
-                break;
-            case METHOD_UMAP:
-            default:
-                create_umap(UF, uwot_args);
-        }
-
-        arma::fmat uwot_embedding(UF.head_embedding.data(), uwot_args.n_components, G.n_rows);
-        arma::mat coords_out = arma::trans(arma::conv_to<arma::mat>::from(uwot_embedding));
-        stderr_printf("Optimization finished\n");
-        FLUSH;
-
-        return (coords_out);
+arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args) {
+    if (G.n_cols != G.n_rows) {
+        throw std::invalid_argument("Input graph must be a square matrix");
     }
-} // namespace actionet
+
+    if (G.n_cols != initial_coordinates.n_rows) {
+        throw std::invalid_argument("Rows of initial coordinates do not match input graph");
+    }
+
+    uwot_args.n_threads = get_num_threads(SYS_THREADS_DEF, static_cast<int>(uwot_args.n_threads));
+    if (uwot_args.n_epochs <= 0) {
+        uwot_args.n_epochs = (initial_coordinates.n_rows <= 10000) ? 500 : 200; // uwot defaults
+    }
+
+    // `UF` references `coords`. Must be in the same scope.
+    uwot::Coords coords = getCoords(initial_coordinates, uwot_args.n_components);
+    auto [positive_head, positive_tail, epochs_per_sample, positive_ptr, n_vertices] =
+        buildEdgeVectors(G, uwot_args);
+
+    bool move_other = true;
+    UmapFactory UF(move_other, uwot_args.pcg_rand,
+                   coords.get_head_embedding(), coords.get_tail_embedding(),
+                   positive_head, positive_tail, positive_ptr, uwot_args.n_epochs,
+                   n_vertices, n_vertices, epochs_per_sample, uwot_args.alpha,
+                   uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
+                   uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
+
+    if (uwot_args.verbose) { verboseStatus(uwot_args); }
+
+    switch (uwot_args.get_cost_func()) {
+        case METHOD_TUMAP:
+            create_tumap(UF, uwot_args);
+            break;
+        case METHOD_LARGEVIZ:
+            create_largevis(UF, uwot_args);
+            break;
+        case METHOD_UMAP:
+        default:
+            create_umap(UF, uwot_args);
+    }
+
+    arma::fmat uwot_embedding(UF.head_embedding.data(), uwot_args.n_components, G.n_rows);
+    arma::mat coords_out = arma::trans(arma::conv_to<arma::mat>::from(uwot_embedding));
+    stderr_printf("Optimization finished\n");
+    FLUSH;
+
+    return (coords_out);
+}

@@ -39,7 +39,8 @@ inline class invalidNNApproach : public std::exception {
 // Functions: Must be header only. hnsw is allergic to implementation. Will break linking.
 // Obtain approximation algorithm
 inline hnswlib::HierarchicalNSW<float>*
-getApproximationAlgo(std::string distance_metric, arma::mat H, double M, double ef_construction) {
+getApproximationAlgo(const std::string& distance_metric, const arma::mat& H, const double M,
+                     const double ef_construction) {
     int max_elements = H.n_cols;
     int dim = H.n_rows;
     // space to use determined by distance metric

@@ -35,14 +35,14 @@ Rcpp::List aggregate_genesets_vision(arma::sp_mat& G, arma::sp_mat& S, arma::mat
 //' Compute feature specificity (from archetype footprints)
 //'
 //' @param S Input matrix (sparseMatrix)
-//' @param H A soft membership matrix - Typically H_merged from the merge_archetypes() function.
+//' @param H A soft membership matrix - Typically H_merged from the mergeArchetypes() function.
 //'
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collectArchetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = mergeArchetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
 //' logPvals.list = compute_archetype_feature_specificity(S.norm, unification.out$H_merged)
@@ -79,9 +79,9 @@ Rcpp::List compute_archetype_feature_specificity_full(arma::mat& S, arma::mat& H
 //' @return A list with the over/under-logPvals
 //'
 //' @examples
-//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collectArchetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = mergeArchetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 //' S.norm = renormalize_input_matrix(S, cell.clusters)
 //' logPvals.list = compute_cluster_feature_specificity(S.norm, cell.clusters)

@@ -81,7 +81,7 @@ arma::mat NetEnh(arma::mat A) {
 
 arma::field<arma::mat> nndsvd(arma::mat &A, int dim, int max_iter) {
     dim = std::min(dim, (int) A.n_cols);
-    arma::field<arma::mat> SVD_res = actionet::HalkoSVD(A, dim, max_iter, 0, 0);
+    arma::field<arma::mat> SVD_res = actionet::svdHalko(A, dim, max_iter, 0, 0);
 
     arma::mat U = SVD_res(0);
     arma::vec s = SVD_res(1);
@@ -201,7 +201,7 @@ arma::field<arma::mat> convexSVD(arma::mat &A, int dim, int max_iter) {
     arma::field<arma::mat> out(4);
 
     dim = std::min(dim, (int) A.n_cols);
-    arma::field<arma::mat> SVD_res = actionet::HalkoSVD(A, dim, max_iter, 0, 0);
+    arma::field<arma::mat> SVD_res = actionet::svdHalko(A, dim, max_iter, 0, 0);
     SVD_res = orient_SVD(SVD_res);
 
     arma::mat U = SVD_res(0);
@@ -228,7 +228,7 @@ arma::field<arma::mat> recursiveNMU(arma::mat M, int dim, int max_SVD_iter, int 
 
     double denom = arma::sum(arma::sum(arma::square(M)));
     for (int k = 0; k < dim; k++) {
-        arma::field<arma::mat> SVD_res = actionet::HalkoSVD(M, 1, max_SVD_iter, 0, 0);
+        arma::field<arma::mat> SVD_res = actionet::svdHalko(M, 1, max_SVD_iter, 0, 0);
         arma::mat U = SVD_res(0);
         arma::vec s = SVD_res(1);
         arma::mat V = SVD_res(2);

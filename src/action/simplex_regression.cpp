@@ -4,7 +4,7 @@
 
 namespace actionet {
 
-    arma::mat run_simplex_regression(arma::mat &A, arma::mat &B, bool computeXtX) {
+    arma::mat runSimplexRegression(arma::mat &A, arma::mat &B, bool computeXtX) {
 
         double lambda2 = 1e-5, epsilon = 1e-5;
 

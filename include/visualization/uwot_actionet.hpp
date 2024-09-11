@@ -7,10 +7,8 @@
 #include "libactionet_config.hpp"
 #include "UwotArgs.hpp"
 
-namespace actionet {
-    // Implements `uwot::optimize_graph_layout()` for precomputed graph and initial coordinates
-    // Configured controlled via custom arguments structure `UwotArgs`
-    arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args);
-} // actionet
+// Implements `uwot::optimize_graph_layout()` for precomputed graph and initial coordinates
+// Configured controlled via custom arguments structure `UwotArgs`
+arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args);
 
 #endif //ACTIONET_UWOT_ACTIONET_HPP

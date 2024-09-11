@@ -7,7 +7,7 @@
 // Learning
 
 // min(|| AX - B ||) s.t. simplex constraint
-arma::mat run_simplex_regression_FW_base(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
+arma::mat runSimplexRegression_FW_base(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
 
     if (max_iter == -1)
         max_iter = A.n_cols;
@@ -103,7 +103,7 @@ arma::mat run_simplex_regression_FW_base(arma::mat &A, arma::mat &B, int max_ite
     return (X);
 }
 
-arma::mat run_simplex_regression_FW_test1(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
+arma::mat runSimplexRegression_FW_test1(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
     if (max_iter == -1)
         max_iter = A.n_cols;
 
@@ -176,7 +176,7 @@ arma::mat run_simplex_regression_FW_test1(arma::mat &A, arma::mat &B, int max_it
     return (X);
 }
 
-arma::mat run_simplex_regression_FW_working(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
+arma::mat runSimplexRegression_FW_working(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
 
     double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0, t6 = 0;
     std::chrono::duration<double> elapsed;
@@ -305,7 +305,7 @@ arma::mat run_simplex_regression_FW_working(arma::mat &A, arma::mat &B, int max_
     return (X);
 }
 
-arma::mat run_simplex_regression_FW(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
+arma::mat runSimplexRegression_FW(arma::mat &A, arma::mat &B, int max_iter, double min_diff) {
 
     double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0, t6 = 0;
     std::chrono::duration<double> elapsed;

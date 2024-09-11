@@ -6,7 +6,7 @@
 #include <tools/normalization.hpp>
 
 namespace actionet {
-    arma::mat compute_network_diffusion(arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it, int thread_no) {
+    arma::mat computeNetworkDiffusion(arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it, int thread_no) {
         int N = G.n_rows;
         arma::vec z = arma::ones(N);
         arma::vec c = arma::vec(arma::trans(arma::sum(G, 0)));
@@ -32,7 +32,7 @@ namespace actionet {
         return (X);
     }
 
-    arma::mat compute_network_diffusion_fast(arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it,
+    arma::mat computeNetworkDiffusionFast(arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it,
                                              int thread_no) {
         int n = G.n_rows;
 
@@ -91,7 +91,7 @@ namespace actionet {
     }
 
     // P is already a stochastic (normalized) adjacency matrix
-    arma::mat compute_network_diffusion_approx(arma::sp_mat& G, arma::mat& X0, int norm_type, double alpha,
+    arma::mat computeNetworkDiffusionApprox(arma::sp_mat& G, arma::mat& X0, int norm_type, double alpha,
                                                int max_it, double tol, int thread_no) {
         if (alpha >= 1) {
             stderr_printf("alpha should be in (0, 1). Value of %.2f was provided.\n", alpha);

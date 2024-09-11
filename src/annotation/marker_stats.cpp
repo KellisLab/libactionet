@@ -12,7 +12,7 @@ namespace actionet {
 
         int n = G.n_rows;
         arma::sp_mat o = arma::sp_mat(arma::ones(n, 1));
-        arma::vec pr = compute_network_diffusion_fast(G, o, alpha, max_it, thread_no).col(0);
+        arma::vec pr = computeNetworkDiffusionFast(G, o, alpha, max_it, thread_no).col(0);
 
         for (int i = 0; i < marker_mat.n_cols; i++) {
             int marker_count = (int)sum(sum(spones(marker_mat.col(i))));
@@ -34,7 +34,7 @@ namespace actionet {
             }
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
-            arma::mat imputed_expression = compute_network_diffusion_fast(
+            arma::mat imputed_expression = computeNetworkDiffusionFast(
                 G, raw_expression, alpha, max_it, thread_no);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
@@ -101,7 +101,7 @@ namespace actionet {
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
             stdout_printf("Smoothing geneset scores ... ");
-            marker_stats_smoothed = actionet::compute_network_diffusion_approx(G, marker_stats_smoothed,
+            marker_stats_smoothed = actionet::computeNetworkDiffusionApprox(G, marker_stats_smoothed,
                                                                                norm_type, alpha, max_it, tol, thread_no);
             stdout_printf("done\n");
             FLUSH;

@@ -16,14 +16,14 @@
 //'
 //' @examples
 //' S_r = t(reducedDims(ace)$ACTION)
-//' SPA.out = run_SPA(S_r, 10)
+//' SPA.out = runSPA(S_r, 10)
 //' W0 = S_r[, SPA.selected_cols]
-//' AA.out = run_AA(S_r, W0)
+//' AA.out = runAA(S_r, W0)
 //' H = AA.out$H
 //' cell.assignments = apply(H, 2, which.max)
 // [[Rcpp::export]]
-Rcpp::List run_AA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e-6) {
-    arma::field<arma::mat> res = actionet::run_AA(A, W0, max_it, tol);
+Rcpp::List runAA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e-6) {
+    arma::field<arma::mat> res = actionet::runAA(A, W0, max_it, tol);
 
     Rcpp::List out;
     out["C"] = res(0);
@@ -41,21 +41,21 @@ Rcpp::List run_AA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e
 //' @param k_min Minimum number of archetypes (>= 2) to search for, and the beginning of the search range.
 //' @param k_max Maximum number of archetypes (<= <b>S_r.n_cols</b>) to search for, and the end of the search range.
 //' @param normalization Normalization method to apply on <b>S_r</b> before running ACTION.
-//' @param max_it Maximum number of iterations for <code>run_AA()</code>.
-//' @param tol Convergence tolerance for <code>run_AA()</code>.
+//' @param max_it Maximum number of iterations for <code>runAA()</code>.
+//' @param tol Convergence tolerance for <code>runAA()</code>.
 //' @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
 //'
 //' @return A named list with entries 'C' and 'H', each a list for different values of k
 //'
 //' @examples
-//' ACTION.out = run_ACTION(S_r, k_max = 10)
+//' ACTION.out = runACTION(S_r, k_max = 10)
 //' H8 = ACTION.out$H[[8]]
 //' cell.assignments = apply(H8, 2, which.max)
 // [[Rcpp::export]]
-Rcpp::List run_ACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normalization = 1, int max_it = 100,
+Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normalization = 1, int max_it = 100,
                       double tol = 1e-6, int thread_no = 0) {
     actionet::ResACTION trace =
-        actionet::run_ACTION(S_r, k_min, k_max, normalization, max_it, tol, thread_no);
+        actionet::runACTION(S_r, k_min, k_max, normalization, max_it, tol, thread_no);
 
     Rcpp::List res;
 
@@ -80,8 +80,8 @@ Rcpp::List run_ACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normali
 
 //' Filter and aggregate multi-level archetypes
 //'
-//' @param C_trace Field containing C matrices. Output of <code>run_ACTION()</code> in <code>ResACTION["C"]</code>.
-//' @param H_trace Field containing H matrices. Output of <code>run_ACTION()</code> in <code>ResACTION["H"]</code>.
+//' @param C_trace Field containing C matrices. Output of <code>runACTION()</code> in <code>ResACTION["C"]</code>.
+//' @param H_trace Field containing H matrices. Output of <code>runACTION()</code> in <code>ResACTION["H"]</code>.
 //' @param spec_th Minimum threshold (as z-score) to filter archetypes by specificity.
 //' @param min_obs Minimum number of observations assigned to an archetypes needed to retain that archetype.
 //'
@@ -96,10 +96,10 @@ Rcpp::List run_ACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normali
 //' S = logcounts(sce)
 //' reduction.out = reduce(S, reduced_dim = 50)
 //' S_r = reduction.out$S_r
-//' ACTION.out = run_ACTION(S_r, k_max = 10)
+//' ACTION.out = runACTION(S_r, k_max = 10)
 //' reconstruction.out = reconstruct_archetypes(S, ACTION.out$C, ACTION.out$H)
 // [[Rcpp::export]]
-Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trace,
+Rcpp::List collectArchetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trace,
                               double spec_th = -3, int min_obs = 3) {
     int n_list = H_trace.size();
     arma::field<arma::mat> C_trace_vec(n_list + 1);
@@ -113,7 +113,7 @@ Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_tra
     }
 
     actionet::ResCollectArch results =
-        actionet::collect_archetypes(C_trace_vec, H_trace_vec, spec_th, min_obs);
+        actionet::collectArchetypes(C_trace_vec, H_trace_vec, spec_th, min_obs);
 
     Rcpp::List out_list;
 
@@ -131,9 +131,9 @@ Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_tra
 //'
 //' @param S_r Reduced data matrix from which archetypes were found.
 //' @param C_stacked Concatenated (and filtered) <code>C</code> (<b>S_r.n</b> x <em>n</em>) matrix.
-//' Output of <code>collect_archetypes()</code> in <code>ResCollectArch["C_stacked"]</code>.
+//' Output of <code>collectArchetypes()</code> in <code>ResCollectArch["C_stacked"]</code>.
 //' @param H_stacked Concatenated (and filtered) <code>H</code> (<b>S_r.n</b> x <em>n</em>) matrix.
-//' Output of <code>collect_archetypes()</code> in <code>ResCollectArch["H_stacked"]</code>.
+//' Output of <code>collectArchetypes()</code> in <code>ResCollectArch["H_stacked"]</code>.
 //' @param normalization Normalization method to apply to <b>S_r</b>.
 //' @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
 //'
@@ -143,16 +143,16 @@ Rcpp::List collect_archetypes(const Rcpp::List& C_trace, const Rcpp::List& H_tra
 //' \item sample_assignments: Assignment of samples/cells to merged archetypes
 //' }
 //' @examples
-//' prune.out = collect_archetypes(ACTION.out$C, ACTION.out$H)
+//' prune.out = collectArchetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
-//' unification.out = merge_archetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
+//' unification.out = mergeArchetypes(G, S_r, prune.out$C_stacked, prune.out$H_stacked)
 //' cell.clusters = unification.out$sample_assignments
 // [[Rcpp::export]]
 Rcpp::List
-    merge_archetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0,
+    mergeArchetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0,
                      int thread_no = 0) {
     actionet::ResMergeArch results =
-        actionet::merge_archetypes(S_r, C_stacked, H_stacked, normalization, thread_no);
+        actionet::mergeArchetypes(S_r, C_stacked, H_stacked, normalization, thread_no);
 
     Rcpp::List out_list;
 
@@ -195,10 +195,10 @@ Rcpp::List
 //' reduction.out = reduce(S, reduced_dim = 50)
 //' S_r = reduction.out$S_r
 // [[Rcpp::export]]
-Rcpp::List reduce_kernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
+Rcpp::List reduceKernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
                          int SVD_algorithm = 0, int verbose = 1) {
     arma::field<arma::mat> reduction =
-        actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+        actionet::reduceKernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
 
     Rcpp::List res;
     res["S_r"] = reduction(0);
@@ -211,10 +211,10 @@ Rcpp::List reduce_kernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, in
 }
 
 // [[Rcpp::export]]
-Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
+Rcpp::List reduceKernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
                               int SVD_algorithm = 0, int verbose = 1) {
     arma::field<arma::mat> reduction =
-        actionet::reduce_kernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+        actionet::reduceKernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
 
     Rcpp::List res;
     res["S_r"] = reduction(0);
@@ -240,10 +240,10 @@ Rcpp::List reduce_kernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, 
 //' C = ACTION.out$C[[10]]
 //' A = S_r %*% C
 //' B = S_r
-//' H = run_simplex_regression(A, B)
+//' H = runSimplexRegression(A, B)
 // [[Rcpp::export]]
-arma::mat run_simplex_regression(arma::mat& A, arma::mat& B, bool computeXtX = false) {
-    arma::mat X = actionet::run_simplex_regression(A, B, computeXtX);
+arma::mat runSimplexRegression(arma::mat& A, arma::mat& B, bool computeXtX = false) {
+    arma::mat X = actionet::runSimplexRegression(A, B, computeXtX);
 
     return X;
 }
@@ -257,10 +257,10 @@ arma::mat run_simplex_regression(arma::mat& A, arma::mat& B, bool computeXtX = f
 //'
 //' @return A named list with entries 'selected_cols' and 'norms'
 //' @examples
-//' H = run_SPA(S_r, 10)
+//' H = runSPA(S_r, 10)
 // [[Rcpp::export]]
-Rcpp::List run_SPA(arma::mat& A, int k) {
-    actionet::ResSPA res = actionet::run_SPA(A, k);
+Rcpp::List runSPA(arma::mat& A, int k) {
+    actionet::ResSPA res = actionet::runSPA(A, k);
 
     // Shift index
     arma::uvec selected_cols = res.selected_cols;

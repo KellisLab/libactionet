@@ -8,6 +8,6 @@
 #include "libactionet_config.hpp"
 
 template <typename T>
-arma::field<arma::mat> FengSVD(T& A, int dim, int max_it = 5, int seed = 0, int verbose = 1);
+arma::field<arma::mat> svdFeng(T& A, int dim, int max_it = 5, int seed = 0, int verbose = 1);
 
 #endif //ACTIONET_SVD_FENG_HPP

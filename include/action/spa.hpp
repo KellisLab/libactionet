@@ -7,7 +7,7 @@
 // Exported
 namespace actionet {
     // Structs
-    /// @brief Stores the output of <code>run_SPA()</code>
+    /// @brief Stores the output of <code>runSPA()</code>
     ///
     /// Contains the following members:
     /// - <b>selected_cols</b>: Indices of columns of <b>A</b> representing candidate vertices.
@@ -27,7 +27,7 @@ namespace actionet {
     /// @return <code>struct</code> of type <code>ResSPA</code>.
     ///
     /// @remark See <code>ResSPA</code>.
-    ResSPA run_SPA(arma::mat& A, int k);
+    ResSPA runSPA(arma::mat& A, int k);
 } // namespace actionet
 
 #endif //ACTIONET_SPA_HPP
