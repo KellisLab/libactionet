@@ -21,9 +21,8 @@
 //'	G = buildNetwork(prune.out$H_stacked)
 // [[Rcpp::export]]
 arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
-                          double density = 1.0, int thread_no = 0, bool mutual_edges_only = true, int k = 10) {
-    // TODO: Add as options in interface
-    double M = 16, ef_construction = 200, ef = 50;
+                          double density = 1.0, int thread_no = 0, double M = 16, double ef_construction = 200,
+                          double ef = 50, bool mutual_edges_only = true, int k = 10) {
     arma::sp_mat G = actionet::buildNetwork(H, algorithm, distance_metric, density, thread_no, M,
                                             ef_construction, ef, mutual_edges_only, k);
 
