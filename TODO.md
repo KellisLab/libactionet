@@ -1,18 +1,14 @@
 ## Primary
 * Fix various normalizations
 * pybind 11 wrappers
-* Split 2D/3D UMAP generation
-* Split colorspace from generate_layout.
 * Document C++ interface
-* Make kNN a parameter in buildNetwork
-  * Actually doable with current implementation?
 * Further modularize cmake 
+* Consolidate network_diffusion
 
 ## Secondary
 * Fix compile warnings for svd.cpp
 * Compile to Windows x86
 * zscore is multithreaded???
-* Figure our uwot situation
 
 ## Done
 * Automate link SuiteSparse on unix/macos
@@ -60,3 +56,8 @@
   * Added config for wrappers in R build mode
   * Conversion from arma::vec to Rcpp::NumricVector now automatic
 * Template abstraction of functions accepting both dense and sparse matrix input.
+* Add hnsw parameters to interfaces
+* Completely remade UMAP/uwot integration.
+  * Updated uwot
+  * Modular graph optimization
+* Stand-alone color mapping i.e. de novo colors
