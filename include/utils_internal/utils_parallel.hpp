@@ -5,15 +5,15 @@
 #include <thread>
 // #include <cstddef>
 
-inline int get_max_threads() {
-    int coresDet = std::thread::hardware_concurrency();
+inline unsigned int get_max_threads() {
+    const unsigned int coresDet = std::thread::hardware_concurrency();
     return (coresDet);
 }
 
-const int SYS_THREADS_DEF = get_max_threads();
+const unsigned int SYS_THREADS_DEF = get_max_threads();
 
-inline int get_num_threads(int max_threads, int thread_no = 0) {
-    int threads_use;
+inline unsigned get_num_threads(const unsigned int max_threads, const unsigned int thread_no = 0) {
+    unsigned int threads_use;
 
     if (thread_no <= 0) {
         threads_use = std::min(SYS_THREADS_DEF, max_threads);
