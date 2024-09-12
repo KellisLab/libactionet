@@ -68,17 +68,8 @@ arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters
 //' smoothed.expression = computeNetworkDiffusionApprox(G, gene.expression)
 // [[Rcpp::export]]
 arma::mat computeNetworkDiffusion(arma::sp_mat& G, arma::mat& X0, double alpha = 0.85, int max_it = 5,
-                                  int thread_no = 0, bool approx = false, int norm_type = 0, double tol = 1e-8) {
-    if (G.n_rows != X0.n_rows) {
-        char error_msg[100];
-        snprintf(error_msg, sizeof(error_msg), "Dimension mismatch: G (%dx%d) and X0 (%dx%d)\n",
-                 G.n_rows, G.n_cols, X0.n_rows, X0.n_cols);
-        std::string e = error_msg;
-        throw std::invalid_argument(e);
-    }
-
-    arma::mat X = actionet::computeNetworkDiffusion(G, X0, alpha, max_it, thread_no, approx, norm_type, tol);
-
+                                  int thread_no = 0, bool approx = false, int norm_method = 0, double tol = 1e-8) {
+    arma::mat X = actionet::computeNetworkDiffusion(G, X0, alpha, max_it, thread_no, approx, norm_method, tol);
     return (X);
 }
 
@@ -96,7 +87,6 @@ arma::mat computeNetworkDiffusion(arma::sp_mat& G, arma::mat& X0, double alpha =
 // [[Rcpp::export]]
 arma::uvec computeCoreness(arma::sp_mat& G) {
     arma::uvec core_num = actionet::computeCoreness(G);
-
     return (core_num);
 }
 

@@ -108,7 +108,7 @@ arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int no
 namespace actionet {
     template <typename T>
     arma::mat computeNetworkDiffusion(arma::sp_mat& G, T& X0, double alpha, int max_it, int thread_no,
-                                      bool approx, int norm_type, double tol) {
+                                      bool approx, int norm_method, double tol) {
         if (alpha == 0) {
             return arma::mat(X0);
         }
@@ -118,18 +118,18 @@ namespace actionet {
 
         arma::mat X_out(X0.n_rows, X0.n_cols);
         if (approx) { // Fast approximate PageRank
-            X_out = computeDiffusionChebyshev(G, arma::mat(X0), norm_type, alpha, max_it, tol, thread_no);
+            X_out = computeDiffusionChebyshev(G, arma::mat(X0), norm_method, alpha, max_it, tol, thread_no);
         }
         else { // PageRank (using cholmod)
-            X_out = computeDiffusion(G, arma::sp_mat(X0), norm_type, alpha, max_it, thread_no);
+            X_out = computeDiffusion(G, arma::sp_mat(X0), norm_method, alpha, max_it, thread_no);
         }
 
         return (X_out);
     };
 
     template arma::mat computeNetworkDiffusion<arma::mat>(arma::sp_mat& G, arma::mat& X0, double alpha, int max_it,
-                                                          int thread_no, bool approx, int norm_type, double tol);
+                                                          int thread_no, bool approx, int norm_method, double tol);
     template arma::mat computeNetworkDiffusion<arma::sp_mat>(arma::sp_mat& G, arma::sp_mat& X0, double alpha,
-                                                             int max_it, int thread_no, bool approx, int norm_type,
+                                                             int max_it, int thread_no, bool approx, int norm_method,
                                                              double tol);
 } // namespace actionet
