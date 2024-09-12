@@ -63,7 +63,7 @@ arma::sp_mat scale_expression(arma::sp_mat &S) {
         arma::sp_mat T = normalize_expression_profile(S, expression_normalization_method);
 
         // 0: pagerank, 2: sym_pagerank
-        arma::sp_mat P = normalize_adj(G, network_normalization_method);
+        arma::sp_mat P = normalizeGraph(G, network_normalization_method);
 
         arma::mat marker_stats(T.n_cols, marker_mat.n_cols);
         for (int j = 0; j < marker_mat.n_cols; j++) {
@@ -332,7 +332,7 @@ arma::mat aggregate_genesets_weighted_enrichment_permutation(arma::sp_mat &G, ar
     // 0: pagerank, 2: sym_pagerank
     arma::sp_mat P;
     if (pre_alpha != 0 || post_alpha != 0) {
-        P = normalize_adj(G, network_normalization_method);
+        P = normalizeGraph(G, network_normalization_method);
     }
 
     // 0: no normalization, 1: TF/IDF
@@ -408,7 +408,7 @@ arma::mat aggregate_genesets_weighted_enrichment(arma::sp_mat &G, arma::sp_mat &
     // 0: pagerank, 2: sym_pagerank
     arma::sp_mat P;
     if (pre_alpha != 0 || post_alpha != 0) {
-        P = normalize_adj(G, network_normalization_method);
+        P = normalizeGraph(G, network_normalization_method);
     }
 
     // 0: no normalization, 1: TF/IDF
@@ -515,7 +515,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
         // 0: pagerank, 2: sym_pagerank
         arma::sp_mat P;
         if (pre_alpha != 0 || post_alpha != 0) {
-            P = normalize_adj(G, network_normalization_method);
+            P = normalizeGraph(G, network_normalization_method);
         }
 
         arma::mat T = arma::mat(S);
@@ -605,7 +605,7 @@ arma::mat compute_markers_eigengene(arma::mat &S, arma::sp_mat &marker_mat, int 
         // 0: pagerank, 2: sym_pagerank
         arma::sp_mat P;
         if (pre_alpha != 0 || post_alpha != 0) {
-            P = normalize_adj(G, network_normalization_method);
+            P = normalizeGraph(G, network_normalization_method);
         }
 
         arma::mat T = arma::mat(S);

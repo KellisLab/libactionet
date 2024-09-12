@@ -5,7 +5,7 @@
 
 // TODO: are 0/1 needed? Redudant with arma::normalise().
 // norm_type: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
-arma::sp_mat normalize_adj(arma::sp_mat& G, int norm_type = 1);
+arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 1);
 
 namespace actionet {
     // `p` is p-norm. 1 ; 2: Euclidean norm. 0 (or negative) returns original X.

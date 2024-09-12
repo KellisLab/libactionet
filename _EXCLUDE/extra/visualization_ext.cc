@@ -87,7 +87,7 @@ arma::mat transform_layout(arma::sp_mat &G, arma::mat &reference_layout, bool pr
     stdout_printf("\tmethod = %s, a = %.3f, b = %.3f (epochs = %d, threads=%d)\n",
                   method.c_str(), a, b, n_epochs, thread_no);
 
-    arma::sp_mat W = normalize_adj(G, 1);
+    arma::sp_mat W = normalizeGraph(G, 1);
     arma::mat query_layout = spmat_mat_product_parallel(W, reference_layout, thread_no);
 
     bool move_other = false;

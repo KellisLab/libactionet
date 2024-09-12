@@ -1,7 +1,10 @@
 #include "tools/normalization.hpp"
 #include "utils_internal/utils_stats.hpp"
 
-arma::sp_mat normalize_adj(arma::sp_mat& G, int norm_type) {
+// Graph pre-normalization for PageRank
+// norm_type 0/1 is standard unit normalization columns/rows with edge-cases.
+// norm_type 2 symmetrizes graph, i.e. colsums == rowsums.
+arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type) {
     arma::vec row_sums = arma::zeros(G.n_rows);
     arma::vec col_sums = arma::zeros(G.n_cols);
 
@@ -41,7 +44,7 @@ arma::sp_mat normalize_adj(arma::sp_mat& G, int norm_type) {
             P(i, i) = 1.0;
         }
     }
-    else if (norm_type == 2) {
+    else if (norm_type == 2) { // Symmetrize
         for (it = P.begin(); it != P.end(); ++it) {
             double w = std::sqrt(row_sums[it.row()] * col_sums[it.col()]);
             (*it) /= w;
