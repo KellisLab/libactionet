@@ -82,13 +82,7 @@ namespace actionet {
             case 0: // Column-normalize
             case 1: // Row-normalize
             {
-                // TODO: Fix this.
                 P = normalize_matrix_internal(P, 1, norm_type, true, 1.0);
-                // arma::uvec zidx = arma::find(P.diag() == 0);
-                // for (size_t i = 0; i < zidx.n_elem; i++) {
-                //     size_t k = zidx(i);
-                //     P(k, k) = 1.0;
-                // }
             }
             break;
             case 2: // Symmetrize
