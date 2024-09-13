@@ -14,7 +14,7 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, doub
     int *Ti, *Tj;
     double* Tx;
 
-    arma::sp_mat P = alpha * normalizeGraph(G, norm_type);
+    arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_type);
 
     cholmod_triplet* T = cholmod_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
                                                   0, CHOLMOD_REAL, &chol_c);
@@ -68,7 +68,7 @@ arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int no
     // Traditional definition is to have alpha as weight of prior. Here, alpha is depth of diffusion
     alpha = 1 - alpha;
 
-    arma::sp_mat P = normalizeGraph(G, norm_type);
+    arma::sp_mat P = actionet::normalizeGraph(G, norm_type);
 
     arma::mat mPPreviousScore = X0; // zeros(size(X0));
     arma::mat mPreviousScore = (1 - alpha) * spmat_mat_product_parallel(P, mPPreviousScore, thread_no) + alpha * X0;

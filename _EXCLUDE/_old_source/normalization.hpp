@@ -3,14 +3,12 @@
 
 #include "libactionet_config.hpp"
 
+// TODO: are 0/1 needed? Redudant with arma::normalise().
+// norm_type: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
+arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 1);
+
 namespace actionet {
     // `p` is p-norm. 1 ; 2: Euclidean norm. 0 (or negative) returns original X.
-    template <typename T>
-    T normalizeMatrix(T& X, unsigned int p = 1, unsigned int dim = 0);
-
-    // norm_type: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
-    arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 1);
-
     template <typename T>
     T normalize_matrix(T& X, int p = 0, int dim = 0);
 
