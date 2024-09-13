@@ -175,27 +175,30 @@ arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold = 0, double v_
 
 // normalization =======================================================================================================
 
-// TODO: Update and remove. Single reference.
 // [[Rcpp::export]]
-arma::mat normalize_mat(arma::mat& X, int p = 0, int dim = 0) {
-    arma::mat X_norm = actionet::normalize_matrix(X, p, dim);
+arma::sp_mat normalize_spmat(arma::sp_mat& X, unsigned int p = 1, unsigned int dim = 0) {
+    arma::sp_mat X_norm = actionet::normalizeMatrix(X, p, dim);
+    return (X_norm);
+}
+
+// [[Rcpp::export]]
+arma::mat normalize_mat(arma::mat& X, unsigned int p = 1, unsigned int dim = 0) {
+    arma::mat X_norm = actionet::normalizeMatrix(X, p, dim);
 
     return (X_norm);
 }
 
-// TODO: Update and remove. Single reference.
 // [[Rcpp::export]]
-arma::sp_mat normalize_spmat(arma::sp_mat& X, int p = 0, int dim = 0) {
-    arma::sp_mat X_norm = actionet::normalize_matrix(X, p, dim);
-
-    return (X_norm);
+arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 0) {
+    arma::sp_mat G_norm = actionet::normalizeGraph(G, norm_type);
+    return (G_norm);
 }
 
 // xicor ===============================================================================================================
 
 // [[Rcpp::export]]
 arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval = true, int seed = 0) {
-    arma::vec res = actionet::xicor(xvec, yvec, compute_pval, seed);
+    arma::vec res = actionet::xicor(std::move(xvec), std::move(yvec), compute_pval, seed);
 
     return (res);
 }

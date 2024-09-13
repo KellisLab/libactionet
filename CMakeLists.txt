@@ -12,7 +12,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Suppress warning
-add_compile_options(-w)
+add_compile_options(-Wno-psabi -Wno-deprecated-declarations)
+#add_compile_options(-w)
 
 ## Detect usable logical CPUs
 cmake_host_system_information(RESULT NPROC QUERY NUMBER_OF_LOGICAL_CORES)

@@ -11,9 +11,6 @@ namespace actionet {
     // norm_type: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
     arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 1);
 
-    template <typename T>
-    T normalize_matrix(T& X, int p = 0, int dim = 0);
-
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);
 } // namespace actionet
 

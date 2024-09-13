@@ -22,7 +22,7 @@ namespace actionet {
             arma::vec baseline = arma::zeros(marker_count);
             arma::sp_mat raw_expression(S.n_cols, marker_count);
             for (arma::sp_mat::col_iterator it = marker_mat.begin_col(i);
-                 it != marker_mat.end_col(i); it++) {
+                 it != marker_mat.end_col(i); ++it) {
                 raw_expression.col(idx) = trans(S.row(it.row()));
                 w(idx) = (*it);
                 baseline(idx) = arma::accu(raw_expression.col(idx));

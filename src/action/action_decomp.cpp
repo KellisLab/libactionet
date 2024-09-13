@@ -20,7 +20,7 @@ namespace actionet {
         trace.selected_cols = arma::field<arma::uvec>(k_max + 1);
 
         // TODO: ???
-        arma::mat X_r = normalize_matrix(S_r, normalization, 0);
+        arma::mat X_r = normalizeMatrix(S_r, normalization, 0);
 
         int k_tot = k_max - k_min + 1;
         int threads_use = get_num_threads(k_tot, thread_no);

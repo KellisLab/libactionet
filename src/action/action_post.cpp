@@ -140,7 +140,7 @@ namespace actionet {
 
         arma::mat C_merged = C_stacked.cols(candidates);
 
-        arma::mat X_r = normalize_matrix(S_r, normalization, 0);
+        arma::mat X_r = normalizeMatrix(S_r, normalization, 0);
 
         arma::mat W_r_merged = X_r * C_merged;
 

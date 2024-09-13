@@ -114,18 +114,6 @@ namespace actionet {
         return (P);
     }
 
-    template <typename T>
-    T normalize_matrix(T& X, int p, int dim) {
-        if (p > 0) {
-            X = arma::normalise(X, p, dim);
-        }
-
-        return (X);
-    }
-
-    template arma::mat normalize_matrix<arma::mat>(arma::mat& X, int p, int dim);
-    template arma::sp_mat normalize_matrix<arma::sp_mat>(arma::sp_mat& X, int p, int dim);
-
     // TODO: Rename and consolidate with above functions
     arma::mat normalize_scores(arma::mat scores, int method, int thread_no) {
         arma::mat normalized_scores(size(scores));
