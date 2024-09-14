@@ -14,7 +14,7 @@ namespace actionet {
 
     arma::mat computeGroupedRowVars(arma::sp_mat& S, arma::vec& sample_assignments);
 
-    arma::mat computeGroupedRowVars(arma::mat& S, const arma::vec& sample_assignments);
+    arma::mat computeGroupedRowVars(arma::mat& S, arma::vec& sample_assignments);
 } // namespace actionet
 
 #endif //ACTIONET_MATRIX_MISC_HPP
