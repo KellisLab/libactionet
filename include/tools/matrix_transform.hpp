@@ -8,6 +8,9 @@ namespace actionet {
     template <typename T>
     T normalizeMatrix(T& X, unsigned int p = 1, unsigned int dim = 0);
 
+    template <typename T>
+    T scaleMatrix(T& X, arma::vec& v, unsigned int dim = 0);
+
     // norm_type: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
     arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 1);
 

@@ -33,11 +33,11 @@
 #include "visualization/layout_network.hpp"
 
 // tools: Exported tools and convenience functions
-#include "tools/normalization.hpp"
 #include "tools/autocorrelation.hpp"
+#include "tools/enrichment.hpp"
+#include "tools/matrix_aggregate.hpp"
+#include "tools/matrix_transform.hpp"
 #include "tools/mwm.hpp"
 #include "tools/xicor.hpp"
-#include "tools/enrichment.hpp"
-#include "tools/matrix_misc.hpp"
 
 #endif //ACTIONET_LIBACTIONET_HPP

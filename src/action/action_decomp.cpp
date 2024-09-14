@@ -1,7 +1,7 @@
 #include "action/action_decomp.hpp"
 #include "action/spa.hpp"
 #include "action/aa.hpp"
-#include "tools/normalization.hpp"
+#include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
 namespace actionet {

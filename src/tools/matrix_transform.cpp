@@ -1,4 +1,4 @@
-#include "tools/normalization.hpp"
+#include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_stats.hpp"
 
 // Additional arma::sp_mat-only parameters for normalizeGraph(): fill_diag_if_empty, fill_val
@@ -57,6 +57,36 @@ arma::mat normalize_matrix_internal(arma::mat X, unsigned int p, unsigned int di
     return (X);
 }
 
+arma::mat scale_matrix_internal(arma::mat S, const arma::vec& v, unsigned int dim) {
+    if (dim == 1) {
+        S.each_col() %= v;
+    }
+    else {
+        S.each_row() %= v.t();
+    }
+
+    return (S);
+}
+
+
+arma::sp_mat scale_matrix_internal(arma::sp_mat S, const arma::vec& v, unsigned int dim) {
+    arma::sp_mat::iterator it = S.begin();
+    const arma::sp_mat::iterator it_end = S.end();
+
+    if (dim == 1) {
+        for (; it != it_end; ++it) {
+            (*it) *= v[it.row()];
+        }
+    }
+    else {
+        for (; it != it_end; ++it) {
+            (*it) *= v[it.col()];
+        }
+    }
+
+    return (S);
+}
+
 namespace actionet {
     template <typename T>
     T normalizeMatrix(T& X, unsigned int p, unsigned int dim) {
@@ -72,6 +102,22 @@ namespace actionet {
 
     template arma::mat normalizeMatrix<arma::mat>(arma::mat& X, unsigned int p, unsigned int dim);
     template arma::sp_mat normalizeMatrix<arma::sp_mat>(arma::sp_mat& X, unsigned int p, unsigned int dim);
+
+    template <typename T>
+    T scaleMatrix(T& X, arma::vec& v, unsigned int dim) {
+        size_t mat_dim = (dim == 0) ? X.n_cols : X.n_rows;
+
+        if (mat_dim != v.n_elem) {
+            throw std::invalid_argument("Sizes of `S` and `v` do not match for given dimension.");
+        }
+
+        X = scale_matrix_internal(X, v, dim);
+
+        return (X);
+    }
+
+    template arma::mat scaleMatrix<arma::mat>(arma::mat& X, arma::vec& v, unsigned int dim);
+    template arma::sp_mat scaleMatrix<arma::sp_mat>(arma::sp_mat& X, arma::vec& v, unsigned int dim);
 
     // Graph pre-normalization for PageRank
     // norm_type 0/1 is standard unit normalization columns/rows with edge-cases.

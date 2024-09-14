@@ -22,7 +22,8 @@ Rcpp::List
 }
 
 // [[Rcpp::export]]
-Rcpp::List autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1, int perm_no = 30,
+Rcpp::List autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1,
+                                 int perm_no = 30,
                                  int thread_no = 0) {
     arma::field<arma::vec> out = actionet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
 
@@ -36,7 +37,8 @@ Rcpp::List autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores,
 }
 
 // [[Rcpp::export]]
-Rcpp::List autocorrelation_Geary(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1, int perm_no = 30,
+Rcpp::List autocorrelation_Geary(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1,
+                                 int perm_no = 30,
                                  int thread_no = 0) {
     arma::field<arma::vec> out = actionet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
 
@@ -88,7 +90,7 @@ Rcpp::List assess_enrichment(arma::mat& scores, arma::sp_mat& associations, int 
     return (out_list);
 }
 
-// matrix_misc =========================================================================================================
+// matrix_aggregate =========================================================================================================
 
 //' Aggregate matrix within groups
 //'
@@ -146,6 +148,40 @@ arma::mat computeGroupedRowVarsDense(arma::mat& S, arma::vec& sample_assignments
     return pb;
 }
 
+// matrix_transform =======================================================================================================
+
+// [[Rcpp::export]]
+arma::sp_mat normalizeMatrixSparse(arma::sp_mat& X, unsigned int p = 1, unsigned int dim = 0) {
+    arma::sp_mat Xn = actionet::normalizeMatrix(X, p, dim);
+    return (Xn);
+}
+
+// [[Rcpp::export]]
+arma::mat normalizeMatrixDense(arma::mat& X, unsigned int p = 1, unsigned int dim = 0) {
+    arma::mat Xn = actionet::normalizeMatrix(X, p, dim);
+
+    return (Xn);
+}
+
+// [[Rcpp::export]]
+arma::mat scaleMatrixDense(arma::mat& X, arma::vec& v, unsigned int dim = 0) {
+    arma::mat Xs = actionet::scaleMatrix(X, v, dim);
+
+    return (Xs);
+}
+
+// [[Rcpp::export]]
+arma::sp_mat scaleMatrixSparse(arma::sp_mat& X, arma::vec& v, unsigned int dim = 0) {
+    arma::sp_mat Xs = actionet::scaleMatrix(X, v, dim);
+    return (Xs);
+}
+
+// [[Rcpp::export]]
+arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 0) {
+    arma::sp_mat Gn = actionet::normalizeGraph(G, norm_type);
+    return (Gn);
+}
+
 // mwm =================================================================================================================
 
 //' Computes the maximum-weight bipartite graph matching
@@ -171,27 +207,6 @@ arma::umat MWM_rank1(const arma::vec& u, const arma::vec& v, double u_threshold 
     pairs = pairs + 1;
 
     return (pairs);
-}
-
-// normalization =======================================================================================================
-
-// [[Rcpp::export]]
-arma::sp_mat normalizeMatrixSparse(arma::sp_mat& X, unsigned int p = 1, unsigned int dim = 0) {
-    arma::sp_mat X_norm = actionet::normalizeMatrix(X, p, dim);
-    return (X_norm);
-}
-
-// [[Rcpp::export]]
-arma::mat normalizeMatrixDense(arma::mat& X, unsigned int p = 1, unsigned int dim = 0) {
-    arma::mat X_norm = actionet::normalizeMatrix(X, p, dim);
-
-    return (X_norm);
-}
-
-// [[Rcpp::export]]
-arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 0) {
-    arma::sp_mat G_norm = actionet::normalizeGraph(G, norm_type);
-    return (G_norm);
 }
 
 // xicor ===============================================================================================================

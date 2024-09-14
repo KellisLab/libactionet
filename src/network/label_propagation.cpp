@@ -1,6 +1,6 @@
 #include "network/label_propagation.hpp"
 #include "tools/enrichment.hpp"
-#include "tools/normalization.hpp"
+#include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_misc.hpp"
 
 namespace actionet {

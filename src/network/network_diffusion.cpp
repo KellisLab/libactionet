@@ -2,8 +2,8 @@
 #include "network/network_diffusion.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
+#include <tools/matrix_transform.hpp>
 #include <cholmod.h>
-#include <tools/normalization.hpp>
 
 arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, double alpha, int max_it, int thread_no) {
     int n = G.n_rows;

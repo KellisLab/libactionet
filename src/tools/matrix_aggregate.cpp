@@ -1,4 +1,4 @@
-#include "tools/matrix_misc.hpp"
+#include "tools/matrix_aggregate.hpp"
 
 namespace actionet {
     arma::mat computeGroupedRowSums(arma::sp_mat& S, arma::vec& sample_assignments) {
