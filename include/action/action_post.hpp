@@ -55,9 +55,9 @@ namespace actionet {
     ///
     /// @remark See <code>ResCollectArch</code>.
     ResCollectArch
-        collectArchetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
-                           double spec_th,
-                           int min_obs = 3);
+        collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace,
+                          double spec_th,
+                          int min_obs = 3);
 
     /// @brief Identify and merge redundant archetypes into a representative subset
     ///
@@ -67,15 +67,15 @@ namespace actionet {
     /// Output of <code>collectArchetypes()</code> in <code>ResCollectArch["C_stacked"]</code>.
     /// @param H_stacked Concatenated (and filtered) <code>H</code> (<code>S_r.n_rows</code> x <em>n</em>) matrix.
     /// Output of <code>collectArchetypes()</code> in <code>ResCollectArch["H_stacked"]</code>.
-    /// @param normalization Normalization method to apply to <b>S_r</b>.
+    /// @param norm If >0, p-norm to normalize <b>S_r</b>.
     /// @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
     ///
     /// @return <code>struct</code> of type <code>ResMergeArch</code>.
     ///
     /// @remark See <code>ResMergeArch</code> and <code>collectArchetypes()</code>.
     ResMergeArch
-        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int normalization = 0,
-                         int thread_no = 0);
+        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int norm = 0,
+                        int thread_no = 0);
 } // namespace actionet
 
 #endif //ACTIONET_ACTION_POST_HPP

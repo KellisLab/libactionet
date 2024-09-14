@@ -8,7 +8,7 @@
 // TODO: Unused. Remove?
 // [[Rcpp::export]]
 Rcpp::List
-    autocorrelation_Moran_parametric(arma::sp_mat G, arma::mat scores, int normalization_method = 4,
+    autocorrelation_Moran_parametric(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 4,
                                      int thread_no = 0) {
     arma::field<arma::vec> out = actionet::autocorrelation_Moran_parametric(G, scores, normalization_method, thread_no);
 
@@ -22,7 +22,7 @@ Rcpp::List
 }
 
 // [[Rcpp::export]]
-Rcpp::List autocorrelation_Moran(arma::sp_mat G, arma::mat scores, int normalization_method = 1, int perm_no = 30,
+Rcpp::List autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1, int perm_no = 30,
                                  int thread_no = 0) {
     arma::field<arma::vec> out = actionet::autocorrelation_Moran(G, scores, normalization_method, perm_no, thread_no);
 
@@ -36,7 +36,7 @@ Rcpp::List autocorrelation_Moran(arma::sp_mat G, arma::mat scores, int normaliza
 }
 
 // [[Rcpp::export]]
-Rcpp::List autocorrelation_Geary(arma::sp_mat G, arma::mat scores, int normalization_method = 1, int perm_no = 30,
+Rcpp::List autocorrelation_Geary(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1, int perm_no = 30,
                                  int thread_no = 0) {
     arma::field<arma::vec> out = actionet::autocorrelation_Geary(G, scores, normalization_method, perm_no, thread_no);
 
@@ -52,7 +52,7 @@ Rcpp::List autocorrelation_Geary(arma::sp_mat G, arma::mat scores, int normaliza
 // enrichment ==========================================================================================================
 
 // [[Rcpp::export]]
-arma::mat assess_label_enrichment(arma::sp_mat& G, arma::mat& M, int thread_no = 0) {
+arma::mat assess_label_enrichment(const arma::sp_mat& G, arma::mat& M, int thread_no = 0) {
     arma::mat logPvals = actionet::assess_label_enrichment(G, M, thread_no);
 
     return (logPvals);
@@ -72,7 +72,7 @@ arma::mat assess_label_enrichment(arma::sp_mat& G, arma::mat& M, int thread_no =
 //' associations = gProfilerDB_human$SYMBOL$REAC
 //' common.genes = intersect(rownames(ace), rownames(associations))
 //' specificity_scores = rowFactors(ace)[["H_merged_upper_significance"]]
-//' logPvals = compute_feature_specificity(
+//' logPvals = computeFeatureSpecificity(
 //' specificity_scores[common.genes, ], annotations[common.genes, ]
 //' )
 //' rownames(logPvals) = colnames(specificity_scores)
@@ -98,15 +98,15 @@ Rcpp::List assess_enrichment(arma::mat& scores, arma::sp_mat& associations, int 
 //' @return S matrix with columns of values aggregated within each group of sample_assignments
 //'
 // [[Rcpp::export]]
-arma::mat compute_grouped_rowsums(arma::sp_mat& S, arma::vec sample_assignments) {
-    arma::mat pb = actionet::compute_grouped_rowsums(S, sample_assignments);
+arma::mat computeGroupedRowSumsSparse(arma::sp_mat& S, arma::vec& sample_assignments) {
+    arma::mat pb = actionet::computeGroupedRowSums(S, sample_assignments);
 
     return pb;
 }
 
 // [[Rcpp::export]]
-arma::mat compute_grouped_rowsums_full(arma::mat& S, arma::vec sample_assignments) {
-    arma::mat pb = actionet::compute_grouped_rowsums(S, sample_assignments);
+arma::mat computeGroupedRowSumsDense(arma::mat& S, arma::vec& sample_assignments) {
+    arma::mat pb = actionet::computeGroupedRowSums(S, sample_assignments);
 
     return pb;
 }
@@ -119,29 +119,29 @@ arma::mat compute_grouped_rowsums_full(arma::mat& S, arma::vec sample_assignment
 //' @return S matrix with columns of values average within each group of sample_assignments
 //'
 // [[Rcpp::export]]
-arma::mat compute_grouped_rowmeans(arma::sp_mat& S, arma::vec sample_assignments) {
-    arma::mat pb = actionet::compute_grouped_rowmeans(S, sample_assignments);
+arma::mat computeGroupedRowMeansSparse(arma::sp_mat& S, arma::vec& sample_assignments) {
+    arma::mat pb = actionet::computeGroupedRowMeans(S, sample_assignments);
 
     return pb;
 }
 
 // [[Rcpp::export]]
-arma::mat compute_grouped_rowmeans_full(arma::mat& S, arma::vec sample_assignments) {
-    arma::mat pb = actionet::compute_grouped_rowmeans(S, sample_assignments);
+arma::mat computeGroupedRowMeansDense(arma::mat& S, arma::vec& sample_assignments) {
+    arma::mat pb = actionet::computeGroupedRowMeans(S, sample_assignments);
 
     return pb;
 }
 
 // [[Rcpp::export]]
-arma::mat compute_grouped_rowvars(arma::sp_mat& S, arma::vec sample_assignments) {
-    arma::mat pb = actionet::compute_grouped_rowvars(S, sample_assignments);
+arma::mat computeGroupedRowVarsSparse(arma::sp_mat& S, arma::vec& sample_assignments) {
+    arma::mat pb = actionet::computeGroupedRowVars(S, sample_assignments);
 
     return pb;
 }
 
 // [[Rcpp::export]]
-arma::mat compute_grouped_rowvars_full(arma::mat& S, arma::vec sample_assignments) {
-    arma::mat pb = actionet::compute_grouped_rowvars(S, sample_assignments);
+arma::mat computeGroupedRowVarsDense(arma::mat& S, arma::vec& sample_assignments) {
+    arma::mat pb = actionet::computeGroupedRowVars(S, sample_assignments);
 
     return pb;
 }
@@ -165,7 +165,7 @@ arma::mat MWM_hungarian(arma::mat& G) {
 }
 
 // [[Rcpp::export]]
-arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold = 0, double v_threshold = 0) {
+arma::umat MWM_rank1(const arma::vec& u, const arma::vec& v, double u_threshold = 0, double v_threshold = 0) {
     arma::umat pairs = actionet::MWM_rank1(u, v, u_threshold, v_threshold);
 
     pairs = pairs + 1;
@@ -176,13 +176,13 @@ arma::umat MWM_rank1(arma::vec u, arma::vec v, double u_threshold = 0, double v_
 // normalization =======================================================================================================
 
 // [[Rcpp::export]]
-arma::sp_mat normalize_spmat(arma::sp_mat& X, unsigned int p = 1, unsigned int dim = 0) {
+arma::sp_mat normalizeMatrixSparse(arma::sp_mat& X, unsigned int p = 1, unsigned int dim = 0) {
     arma::sp_mat X_norm = actionet::normalizeMatrix(X, p, dim);
     return (X_norm);
 }
 
 // [[Rcpp::export]]
-arma::mat normalize_mat(arma::mat& X, unsigned int p = 1, unsigned int dim = 0) {
+arma::mat normalizeMatrixDense(arma::mat& X, unsigned int p = 1, unsigned int dim = 0) {
     arma::mat X_norm = actionet::normalizeMatrix(X, p, dim);
 
     return (X_norm);

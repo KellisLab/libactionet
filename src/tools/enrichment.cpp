@@ -3,16 +3,16 @@
 #include "utils_internal/utils_matrix.hpp"
 
 namespace actionet {
-    arma::mat assess_label_enrichment(const arma::sp_mat& H, arma::mat& M, int thread_no) {
-        arma::mat Obs = spmat_mat_product_parallel(H, M, thread_no);
+    arma::mat assess_label_enrichment(const arma::sp_mat& G, arma::mat& M, int thread_no) {
+        arma::mat Obs = spmat_mat_product_parallel(G, M, thread_no);
 
         arma::rowvec p = mean(M, 0);
-        arma::mat Exp = sum(H, 1) * p;
+        arma::mat Exp = sum(G, 1) * p;
 
         arma::mat Lambda = Obs - Exp;
 
-        arma::mat Nu = arma::sum(arma::square(H), 1) * p;
-        arma::vec a = arma::vec(arma::max(H, 1));
+        arma::mat Nu = arma::sum(arma::square(G), 1) * p;
+        arma::vec a = arma::vec(arma::max(G, 1));
 
         arma::mat Lambda_scaled = Lambda;
         for (int j = 0; j < Lambda_scaled.n_rows; j++) {

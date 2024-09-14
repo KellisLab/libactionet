@@ -3,7 +3,7 @@
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> reduceKernel(T& S, int dim, int svd_alg, int max_it, int seed, int verbose) {
+    arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg, int max_it, int seed, int verbose) {
         if (verbose) {
             stdout_printf("Computing reduced ACTION kernel:\n");
             FLUSH;
@@ -11,7 +11,7 @@ namespace actionet {
 
         arma::field<arma::mat> SVD_results(3);
 
-        SVD_results = runSVD(S, dim, max_it, seed, svd_alg, verbose);
+        SVD_results = runSVD(S, k, max_it, seed, svd_alg, verbose);
 
         // Update 1: Orthogonalize columns w.r.t. background (mean)
         arma::vec mu = arma::vec(arma::mean(S, 1));
@@ -53,9 +53,9 @@ namespace actionet {
         return out;
     }
 
-    template arma::field<arma::mat> reduceKernel<arma::mat>(arma::mat& S, int dim, int svd_alg,
-                                                             int iter, int seed, int verbose);
+    template arma::field<arma::mat> reduceKernel<arma::mat>(arma::mat& S, int k, int svd_alg,
+                                                            int iter, int seed, int verbose);
 
-    template arma::field<arma::mat> reduceKernel<arma::sp_mat>(arma::sp_mat& S, int dim, int svd_alg,
-                                                                int iter, int seed, int verbose);
+    template arma::field<arma::mat> reduceKernel<arma::sp_mat>(arma::sp_mat& S, int k, int svd_alg,
+                                                               int iter, int seed, int verbose);
 } // namespace actionet

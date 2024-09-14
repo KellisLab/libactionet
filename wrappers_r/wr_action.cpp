@@ -52,10 +52,10 @@ Rcpp::List runAA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e-
 //' H8 = ACTION.out$H[[8]]
 //' cell.assignments = apply(H8, 2, which.max)
 // [[Rcpp::export]]
-Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normalization = 1, int max_it = 100,
-                      double tol = 1e-6, int thread_no = 0) {
+Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int norm = 1, int max_it = 100,
+                     double tol = 1e-6, int thread_no = 0) {
     actionet::ResACTION trace =
-        actionet::runACTION(S_r, k_min, k_max, normalization, max_it, tol, thread_no);
+        actionet::runACTION(S_r, k_min, k_max, norm, max_it, tol, thread_no);
 
     Rcpp::List res;
 
@@ -100,7 +100,7 @@ Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int normaliz
 //' reconstruction.out = reconstruct_archetypes(S, ACTION.out$C, ACTION.out$H)
 // [[Rcpp::export]]
 Rcpp::List collectArchetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trace,
-                              double spec_th = -3, int min_obs = 3) {
+                             double spec_th = -3, int min_obs = 3) {
     int n_list = H_trace.size();
     arma::field<arma::mat> C_trace_vec(n_list + 1);
     arma::field<arma::mat> H_trace_vec(n_list + 1);
@@ -149,10 +149,10 @@ Rcpp::List collectArchetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trac
 //' cell.clusters = unification.out$sample_assignments
 // [[Rcpp::export]]
 Rcpp::List
-    mergeArchetypes(arma::mat& S_r, arma::mat C_stacked, arma::mat H_stacked, int normalization = 0,
-                     int thread_no = 0) {
+    mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int norm = 0,
+                    int thread_no = 0) {
     actionet::ResMergeArch results =
-        actionet::mergeArchetypes(S_r, C_stacked, H_stacked, normalization, thread_no);
+        actionet::mergeArchetypes(S_r, C_stacked, H_stacked, norm, thread_no);
 
     Rcpp::List out_list;
 
@@ -195,10 +195,10 @@ Rcpp::List
 //' reduction.out = reduce(S, reduced_dim = 50)
 //' S_r = reduction.out$S_r
 // [[Rcpp::export]]
-Rcpp::List reduceKernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
-                         int SVD_algorithm = 0, int verbose = 1) {
+Rcpp::List reduceKernelSparse(arma::sp_mat& S, int k = 50, int max_it = 5, int seed = 0,
+                        int svd_alg = 0, int verbose = 1) {
     arma::field<arma::mat> reduction =
-        actionet::reduceKernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+        actionet::reduceKernel(S, k, svd_alg, max_it, seed, verbose);
 
     Rcpp::List res;
     res["S_r"] = reduction(0);
@@ -211,10 +211,10 @@ Rcpp::List reduceKernel(arma::sp_mat& S, int reduced_dim = 50, int iter = 5, int
 }
 
 // [[Rcpp::export]]
-Rcpp::List reduceKernel_full(arma::mat& S, int reduced_dim = 50, int iter = 5, int seed = 0,
-                              int SVD_algorithm = 0, int verbose = 1) {
+Rcpp::List reduceKernelDense(arma::mat& S, int k = 50, int iter = 5, int seed = 0,
+                             int SVD_algorithm = 0, int verbose = 1) {
     arma::field<arma::mat> reduction =
-        actionet::reduceKernel(S, reduced_dim, SVD_algorithm, iter, seed, verbose);
+        actionet::reduceKernel(S, k, SVD_algorithm, iter, seed, verbose);
 
     Rcpp::List res;
     res["S_r"] = reduction(0);

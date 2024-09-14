@@ -254,7 +254,7 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
 
 namespace actionet {
     arma::sp_mat
-        buildNetwork(const arma::mat& H, const std::string& algorithm, const std::string& distance_metric, double density, int thread_no,
+        buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_metric, double density, int thread_no,
                      double M, double ef_construction, double ef, bool mutual_edges_only, int k) {
         // Verify that valid distance metric has been specified
         if (distance_metrics.find(distance_metric) == distance_metrics.end()) {

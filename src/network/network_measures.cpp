@@ -156,7 +156,7 @@ namespace actionet {
         return (cores);
     }
 
-    arma::vec computeArchetypeCentrality(arma::sp_mat& G, arma::uvec sample_assignments) {
+    arma::vec computeArchetypeCentrality(arma::sp_mat& G, const arma::uvec& sample_assignments) {
         arma::vec conn = arma::zeros(G.n_cols);
 
         for (int i = 0; i <= arma::max(sample_assignments); i++) {

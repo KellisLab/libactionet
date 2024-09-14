@@ -5,7 +5,7 @@
 
 namespace actionet {
     arma::field<arma::vec>
-        autocorrelation_Moran_parametric(arma::sp_mat G, const arma::mat& scores, int normalization_method,
+        autocorrelation_Moran_parametric(const arma::sp_mat& G, const arma::mat& scores, int normalization_method,
                                          int thread_no) {
         double nV = G.n_rows;
         int scores_no = scores.n_cols;
@@ -72,7 +72,7 @@ namespace actionet {
     }
 
     arma::field<arma::vec>
-        autocorrelation_Moran(arma::sp_mat G, const arma::mat& scores, int normalization_method, int perm_no,
+        autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores, int normalization_method, int perm_no,
                               int thread_no) {
         int nV = G.n_rows;
         int scores_no = scores.n_cols;

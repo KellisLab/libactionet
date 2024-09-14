@@ -7,7 +7,7 @@
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> runSVD(T& A, int k, int max_it, int seed, int algorithm, int verbose) {
+    arma::field<arma::mat> runSVD(T& A, int k, int max_it, int seed, const int algorithm, int verbose) {
         // out: U, sigma, V
         arma::field<arma::mat> out(3);
 
@@ -31,18 +31,15 @@ namespace actionet {
         }
 
         switch (algorithm) {
-            case ALG_IRLB:
-                out = svdIRLB(A, k, max_it, seed, verbose);
-                break;
             case ALG_HALKO:
                 out = svdHalko(A, k, max_it, seed, verbose);
                 break;
             case ALG_FENG:
                 out = svdFeng(A, k, max_it, seed, verbose);
                 break;
+            case ALG_IRLB:
             default:
                 out = svdIRLB(A, k, max_it, seed, verbose);
-                break;
         }
 
         return out;
@@ -53,7 +50,7 @@ namespace actionet {
     template arma::field<arma::mat> runSVD<arma::sp_mat>(arma::sp_mat& A, int k, int max_it, int seed, int algorithm,
                                                          int verbose);
 
-    arma::field<arma::mat> perturbedSVD(arma::field<arma::mat> SVD_results, arma::mat& A, arma::mat& B) {
+    arma::field<arma::mat> perturbedSVD(arma::field<arma::mat>& SVD_results, arma::mat& A, arma::mat& B) {
         arma::field<arma::mat> out(5); // out: U', sigma', V', A, B
 
         const arma::mat& U = SVD_results(0);

@@ -8,7 +8,7 @@
 namespace actionet {
     arma::uvec computeCoreness(arma::sp_mat& G);
 
-    arma::vec computeArchetypeCentrality(arma::sp_mat& G, arma::uvec sample_assignments);
+    arma::vec computeArchetypeCentrality(arma::sp_mat& G, const arma::uvec& sample_assignments);
 } // namespace actionet
 
 #endif //ACTIONET_NETWORK_MEASURES_HPP

@@ -11,7 +11,7 @@ namespace actionet {
     ///
     /// @param S Input matrix (<em>vars</em> x <em>obs</em>).
     /// May be <code>arma::mat</code> or <code>arma::sp_mat</code>.
-    /// @param dim Number of singular vectors to estimate. Passed to <code>runSVD()</code>.
+    /// @param k Number of singular vectors to estimate. Passed to <code>runSVD()</code>.
     /// @param svd_alg Singular value decomposition algorithm. See to <code>runSVD()</code> for options.
     /// @param max_it Maximum number of iterations. Passed to <code>runSVD()</code>.
     /// @param seed Random seed.
@@ -26,8 +26,8 @@ namespace actionet {
     ///
     /// @remark See <code>runSVD()</code>.
     template <typename T>
-    arma::field<arma::mat> reduceKernel(T& S, int dim, int svd_alg = 0, int max_it = 0,
-                                         int seed = 0, int verbose = 1);
+    arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg = 0, int max_it = 0,
+                                        int seed = 0, int verbose = 1);
 }
 
 #endif //ACTIONET_REDUCE_KERNEL_HPP

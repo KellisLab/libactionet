@@ -5,6 +5,8 @@
 * Further modularize cmake
 * Fast matrix normalization/manipulation interface for R/Python preprocessing
 * Test network diffusion
+* network_measures: Parallelize
+* * network_measures: argument and return types (uvec/vec)
 
 ## Secondary
 * Fix compile warnings for svd.cpp

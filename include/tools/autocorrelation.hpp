@@ -9,11 +9,11 @@ namespace actionet {
 
     // TODO: Unused. Remove?
     arma::field<arma::vec>
-        autocorrelation_Moran_parametric(arma::sp_mat G, const arma::mat& scores, int normalization_method = 4,
+        autocorrelation_Moran_parametric(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 4,
                                          int thread_no = 0);
 
     arma::field<arma::vec>
-        autocorrelation_Moran(arma::sp_mat G, const arma::mat& scores, int normalization_method = 1, int perm_no = 30,
+        autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores, int normalization_method = 1, int perm_no = 30,
                               int thread_no = 0);
 
     arma::field<arma::vec>

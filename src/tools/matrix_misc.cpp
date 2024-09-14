@@ -1,7 +1,7 @@
 #include "tools/matrix_misc.hpp"
 
 namespace actionet {
-    arma::mat compute_grouped_rowsums(arma::sp_mat& S, arma::vec& sample_assignments) {
+    arma::mat computeGroupedRowSums(arma::sp_mat& S, arma::vec& sample_assignments) {
         arma::vec lv_vec = arma::unique(sample_assignments);
         arma::mat pb = arma::zeros(S.n_rows, lv_vec.n_elem);
 
@@ -16,7 +16,7 @@ namespace actionet {
         return (pb);
     }
 
-    arma::mat compute_grouped_rowsums(arma::mat& S, arma::vec& sample_assignments) {
+    arma::mat computeGroupedRowSums(arma::mat& S, arma::vec& sample_assignments) {
         arma::vec lv_vec = arma::unique(sample_assignments);
         arma::mat pb = arma::zeros(S.n_rows, lv_vec.n_elem);
 
@@ -37,8 +37,8 @@ namespace actionet {
     }
 
     template <typename T>
-    arma::mat compute_grouped_rowmeans(T& S, arma::vec& sample_assignments) {
-        arma::mat pb = compute_grouped_rowsums(S, sample_assignments);
+    arma::mat computeGroupedRowMeans(T& S, arma::vec& sample_assignments) {
+        arma::mat pb = computeGroupedRowSums(S, sample_assignments);
 
         for (int j = 0; j < pb.n_cols; j++) {
             arma::uvec idx = arma::find(sample_assignments == (j + 1));
@@ -48,11 +48,11 @@ namespace actionet {
         return (pb);
     }
 
-    template arma::mat compute_grouped_rowmeans<arma::mat>(arma::mat& S, arma::vec& sample_assignments);
-    template arma::mat compute_grouped_rowmeans<arma::sp_mat>(arma::sp_mat& S, arma::vec& sample_assignments);
+    template arma::mat computeGroupedRowMeans<arma::mat>(arma::mat& S, arma::vec& sample_assignments);
+    template arma::mat computeGroupedRowMeans<arma::sp_mat>(arma::sp_mat& S, arma::vec& sample_assignments);
 
-    arma::mat compute_grouped_rowvars(arma::sp_mat& S, arma::vec sample_assignments) {
-        arma::mat pb_mu = compute_grouped_rowmeans(S, sample_assignments);
+    arma::mat computeGroupedRowVars(arma::sp_mat& S, arma::vec& sample_assignments) {
+        arma::mat pb_mu = computeGroupedRowMeans(S, sample_assignments);
         arma::mat pb = arma::zeros(pb_mu.n_rows, pb_mu.n_cols);
         arma::mat pbz = arma::zeros(pb_mu.n_rows, pb_mu.n_cols);
 
@@ -79,7 +79,7 @@ namespace actionet {
         return (pb);
     }
 
-    arma::mat compute_grouped_rowvars(arma::mat& S, arma::vec& sample_assignments) {
+    arma::mat computeGroupedRowVars(arma::mat& S, arma::vec& sample_assignments) {
         arma::vec lv_vec = unique(sample_assignments);
         arma::mat pb = arma::zeros(S.n_rows, lv_vec.n_elem);
 

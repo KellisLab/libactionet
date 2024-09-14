@@ -7,18 +7,19 @@
 #include "utils_internal/utils_stats.hpp"
 
 namespace actionet {
-    ResCollectArch collectArchetypes(arma::field<arma::mat> C_trace, arma::field<arma::mat> H_trace,
-                                      double spec_th, int min_obs) {
+    // TODO: Clean up potentially unused code.
+    ResCollectArch collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace,
+                                     double spec_th, int min_obs) {
         arma::mat C_stacked;
         arma::mat H_stacked;
-        int depth = H_trace.size();
+        size_t depth = H_trace.size();
 
         ResCollectArch results;
 
         // Vector contains an element for k==0, this have to -1
-        stdout_printf("Joining trace of C & H matrices (depth = %d) ... ", depth - 1);
+        stdout_printf("Joining trace of C & H matrices (depth = %d) ... ", (int)depth - 1);
         // Group H and C matrices for different values of k (#archs) into joint matrix
-        for (int k = 0; k < depth; k++) {
+        for (size_t k = 0; k < depth; k++) {
             if (H_trace[k].n_rows == 0)
                 continue;
 
@@ -31,7 +32,7 @@ namespace actionet {
                 H_stacked = arma::join_cols(H_stacked, H_trace[k]);
             }
         }
-        int total_archs = H_stacked.n_rows;
+        size_t total_archs = H_stacked.n_rows;
 
         stdout_printf("done (%d archetypes)\n", (int)C_stacked.n_cols);
         stdout_printf("Pruning archetypes:\n");
@@ -48,11 +49,11 @@ namespace actionet {
         arma::vec transitivity = arma::zeros(total_archs);
         arma::vec s = arma::sum(backbone, 1); // strength of nodes
         arma::vec d = arma::vec(arma::sum(arma::spones(arma::sp_mat(backbone)), 1));
-        for (int k = 0; k < total_archs; k++) {
+        for (size_t k = 0; k < total_archs; k++) {
             double sum = 0;
-            for (int i = 0; i < total_archs; i++) {
+            for (size_t i = 0; i < total_archs; i++) {
                 double w_ki = backbone(k, i);
-                for (int j = 0; j < total_archs; j++) {
+                for (size_t j = 0; j < total_archs; j++) {
                     double w_kj = backbone(k, j);
 
                     double mean_weight = (w_ki + w_kj) / 2.0;
@@ -76,7 +77,7 @@ namespace actionet {
         double epsilon = 1e-3;
         int bad_archs = 0;
         arma::vec landmark_cells = -arma::ones(total_archs);
-        for (int i = 0; i < total_archs; i++) {
+        for (size_t i = 0; i < total_archs; i++) {
             arma::vec h = arma::trans(H_stacked.row(i));
             arma::vec c = C_stacked.col(i);
 
@@ -86,7 +87,8 @@ namespace actionet {
 
             if (0 < common_landmarks.n_elem) { // They don't agree on any samples!
                 landmark_cells(i) = common_landmarks(arma::index_max(c(common_landmarks)));
-            } else { // Potentially noisy archetype
+            }
+            else { // Potentially noisy archetype
                 pruned(i) = 1;
                 bad_archs++;
             }
@@ -113,8 +115,7 @@ namespace actionet {
     }
 
     ResMergeArch
-        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int normalization, int thread_no) {
-
+        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int norm, int thread_no) {
         stdout_printf("Merging %d archetypes:\n", (int)C_stacked.n_cols);
         FLUSH;
 
@@ -140,7 +141,7 @@ namespace actionet {
 
         arma::mat C_merged = C_stacked.cols(candidates);
 
-        arma::mat X_r = normalizeMatrix(S_r, normalization, 0);
+        arma::mat X_r = normalizeMatrix(S_r, norm, 0);
 
         arma::mat W_r_merged = X_r * C_merged;
 

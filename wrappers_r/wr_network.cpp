@@ -1,6 +1,8 @@
 // Rcpp interface for `network` module
 // Organized by module header in th order imported.
 // [[Rcpp::interfaces(r, cpp)]]
+#include <utility>
+
 #include "actionet_r_config.h"
 
 // build_network =======================================================================================================
@@ -20,10 +22,10 @@
 //' prune.out = collectArchetypes(ACTION.out$C, ACTION.out$H)
 //'	G = buildNetwork(prune.out$H_stacked)
 // [[Rcpp::export]]
-arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
+arma::sp_mat buildNetwork(const arma::mat& H, std::string algorithm = "k*nn", std::string distance_metric = "jsd",
                           double density = 1.0, int thread_no = 0, double M = 16, double ef_construction = 200,
                           double ef = 50, bool mutual_edges_only = true, int k = 10) {
-    arma::sp_mat G = actionet::buildNetwork(H, algorithm, distance_metric, density, thread_no, M,
+    arma::sp_mat G = actionet::buildNetwork(H, std::move(algorithm), std::move(distance_metric), density, thread_no, M,
                                             ef_construction, ef, mutual_edges_only, k);
 
     return G;
@@ -32,9 +34,10 @@ arma::sp_mat buildNetwork(arma::mat H, std::string algorithm = "k*nn", std::stri
 // label_propagation ===================================================================================================
 
 // [[Rcpp::export]]
-arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters = 3,
+arma::vec runLPA(arma::sp_mat& G, arma::vec& labels, double lambda = 1, int iters = 3,
                  double sig_threshold = 3, Rcpp::Nullable<Rcpp::IntegerVector> fixed_labels_ = R_NilValue,
                  int thread_no = 0) {
+    // TODO: This is ugly. Find a better way to fix labels.
     arma::uvec fixed_labels_vec;
     if (fixed_labels_.isNotNull()) {
         Rcpp::NumericVector fixed_labels(fixed_labels_);
@@ -45,7 +48,7 @@ arma::vec runLPA(arma::sp_mat& G, arma::vec labels, double lambda = 1, int iters
     }
 
     arma::vec new_labels =
-        actionet::runLPA(G, std::move(labels), lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
+        actionet::runLPA(G, labels, lambda, iters, sig_threshold, fixed_labels_vec, thread_no);
 
     return (new_labels);
 }
@@ -102,7 +105,7 @@ arma::uvec computeCoreness(arma::sp_mat& G) {
 //' assignments = ace$archetype.assignment
 //' connectivity = computeCoreness(G, assignments)
 // [[Rcpp::export]]
-arma::vec computeArchetypeCentrality(arma::sp_mat& G, arma::uvec sample_assignments) {
+arma::vec computeArchetypeCentrality(arma::sp_mat& G, const arma::uvec& sample_assignments) {
     arma::vec conn = actionet::computeArchetypeCentrality(G, sample_assignments);
 
     return (conn);

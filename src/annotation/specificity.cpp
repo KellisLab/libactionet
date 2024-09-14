@@ -44,7 +44,7 @@ arma::field<arma::mat> getProbsObs(const arma::sp_mat& S, arma::mat& Ht, int thr
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> compute_feature_specificity(T& S, arma::mat& H, int thread_no) {
+    arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
 
         // make sure all values are positive
@@ -102,12 +102,12 @@ namespace actionet {
         return (res);
     }
 
-    template arma::field<arma::mat> compute_feature_specificity<arma::mat>(arma::mat& S, arma::mat& H, int thread_no);
-    template arma::field<arma::mat> compute_feature_specificity<arma::sp_mat>(
+    template arma::field<arma::mat> computeFeatureSpecificity<arma::mat>(arma::mat& S, arma::mat& H, int thread_no);
+    template arma::field<arma::mat> computeFeatureSpecificity<arma::sp_mat>(
         arma::sp_mat& S, arma::mat& H, int thread_no);
 
     template <typename T>
-    arma::field<arma::mat> compute_feature_specificity(T& S, arma::uvec sample_assignments, int thread_no) {
+    arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::uvec& sample_assignments, int thread_no) {
         arma::mat H(arma::max(sample_assignments), S.n_cols);
 
         for (int i = 1; i <= arma::max(sample_assignments); i++) {
@@ -117,13 +117,13 @@ namespace actionet {
             H.row(i - 1) = arma::trans(v);
         }
 
-        arma::field<arma::mat> res = compute_feature_specificity(S, H, thread_no);
+        arma::field<arma::mat> res = computeFeatureSpecificity(S, H, thread_no);
 
         return (res);
     }
 
-    template arma::field<arma::mat> compute_feature_specificity<arma::mat>(
-        arma::mat& S, arma::uvec sample_assignments, int thread_no);
-    template arma::field<arma::mat> compute_feature_specificity<arma::sp_mat>(
-        arma::sp_mat& S, arma::uvec sample_assignments, int thread_no);
+    template arma::field<arma::mat> computeFeatureSpecificity<arma::mat>(
+        arma::mat& S, arma::uvec& sample_assignments, int thread_no);
+    template arma::field<arma::mat> computeFeatureSpecificity<arma::sp_mat>(
+        arma::sp_mat& S, arma::uvec& sample_assignments, int thread_no);
 } // namespace actionet
