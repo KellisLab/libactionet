@@ -195,8 +195,8 @@ Rcpp::List
 //' reduction.out = reduce(S, reduced_dim = 50)
 //' S_r = reduction.out$S_r
 // [[Rcpp::export]]
-Rcpp::List reduceKernelSparse(arma::sp_mat& S, int k = 50, int max_it = 5, int seed = 0,
-                        int svd_alg = 0, int verbose = 1) {
+Rcpp::List reduceKernelSparse(arma::sp_mat& S, int k = 50, int svd_alg = 0, int max_it = 0, int seed = 0,
+                              int verbose = 1) {
     arma::field<arma::mat> reduction =
         actionet::reduceKernel(S, k, svd_alg, max_it, seed, verbose);
 
@@ -211,10 +211,9 @@ Rcpp::List reduceKernelSparse(arma::sp_mat& S, int k = 50, int max_it = 5, int s
 }
 
 // [[Rcpp::export]]
-Rcpp::List reduceKernelDense(arma::mat& S, int k = 50, int iter = 5, int seed = 0,
-                             int SVD_algorithm = 0, int verbose = 1) {
+Rcpp::List reduceKernelDense(arma::mat& S, int k = 50, int svd_alg = 0, int max_it = 0, int seed = 0, int verbose = 1) {
     arma::field<arma::mat> reduction =
-        actionet::reduceKernel(S, k, SVD_algorithm, iter, seed, verbose);
+        actionet::reduceKernel(S, k, svd_alg, max_it, seed, verbose);
 
     Rcpp::List res;
     res["S_r"] = reduction(0);
