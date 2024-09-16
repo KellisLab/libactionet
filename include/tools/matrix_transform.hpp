@@ -4,7 +4,7 @@
 #include "libactionet_config.hpp"
 
 namespace actionet {
-    // `p` is p-norm. 1 ; 2: Euclidean norm. 0 (or negative) returns original X.
+    // `p` is p-norm. 1: unit norm; 2: Euclidean norm. 0 (or negative) returns unnormalize matrix.
     template <typename T>
     T normalizeMatrix(T& X, unsigned int p = 1, unsigned int dim = 0);
 

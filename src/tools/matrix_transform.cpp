@@ -12,12 +12,12 @@ arma::sp_mat normalize_matrix_internal(arma::sp_mat X, const unsigned int p, con
 
     if (dim == 0) {
         for (arma::sp_mat::const_iterator it = X.begin(); it != X.end(); ++it) {
-            sum_vec[it.col()] += (*it);
+            sum_vec[it.col()] += std::abs(*it);
         }
     }
     else {
         for (arma::sp_mat::const_iterator it = X.begin(); it != X.end(); ++it) {
-            sum_vec[it.row()] += (*it);
+            sum_vec[it.row()] += std::abs(*it);
         }
     }
 
