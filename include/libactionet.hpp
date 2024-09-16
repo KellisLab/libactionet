@@ -14,6 +14,7 @@
 // action: Main archetypal analysis for cell type identification (ACTION) module
 #include "action/aa.hpp"
 #include "action/action_decomp.hpp"
+#include "action/action_main.hpp"
 #include "action/action_post.hpp"
 #include "action/reduce_kernel.hpp"
 #include "action/simplex_regression.hpp"

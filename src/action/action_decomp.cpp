@@ -1,12 +1,11 @@
 #include "action/action_decomp.hpp"
 #include "action/spa.hpp"
 #include "action/aa.hpp"
-#include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
 namespace actionet {
     ResACTION
-        runACTION(arma::mat& S_r, int k_min, int k_max, int max_it, double tol, int thread_no) {
+        decompACTION(arma::mat& S_r, int k_min, int k_max, int max_it, double tol, int thread_no) {
         if (k_max == -1)
             k_max = (int)S_r.n_cols;
 
@@ -34,12 +33,12 @@ namespace actionet {
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
-            ResSPA SPA_res = runSPA(X_r, k);
+            ResSPA SPA_res = runSPA(S_r, k);
             trace.selected_cols[k] = SPA_res.selected_cols;
 
-            arma::mat W = X_r.cols(trace.selected_cols[k]);
+            arma::mat W = S_r.cols(trace.selected_cols[k]);
 
-            arma::field<arma::mat> AA_res = runAA(X_r, W, max_it, tol);
+            arma::field<arma::mat> AA_res = runAA(S_r, W, max_it, tol);
             trace.C[k] = AA_res(0);
             trace.H[k] = AA_res(1);
             k_curr++;

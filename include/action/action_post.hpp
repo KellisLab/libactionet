@@ -55,8 +55,7 @@ namespace actionet {
     ///
     /// @remark See <code>ResCollectArch</code>.
     ResCollectArch
-        collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace,
-                          double spec_th,
+        collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace, double spec_th = -3,
                           int min_obs = 3);
 
     /// @brief Identify and merge redundant archetypes into a representative subset

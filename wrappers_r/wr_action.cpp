@@ -52,10 +52,10 @@ Rcpp::List runAA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e-
 //' H8 = ACTION.out$H[[8]]
 //' cell.assignments = apply(H8, 2, which.max)
 // [[Rcpp::export]]
-Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max_it = 100,
-                     double tol = 1e-16, int thread_no = 0) {
+Rcpp::List decompACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max_it = 100,
+                        double tol = 1e-16, int thread_no = 0) {
     actionet::ResACTION trace =
-        actionet::runACTION(S_r, k_min, k_max, max_it, tol, thread_no);
+        actionet::decompACTION(S_r, k_min, k_max, max_it, tol, thread_no);
 
     Rcpp::List res;
 
@@ -74,6 +74,22 @@ Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max_it =
     res["H"] = H;
 
     return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max_it = 100, double tol = 1e-16,
+                     double spec_th = -3, int min_obs = 3, int norm = 0, int thread_no = 0) {
+    arma::field<arma::mat> action_out = actionet::runACTION(S_r, k_min, k_max, max_it, tol, spec_th, min_obs, norm,
+                                                            thread_no);
+
+    Rcpp::List out;
+    out["H_stacked"] = action_out(0);
+    out["C_stacked"] = action_out(1);
+    out["H_merged"] = action_out(2);
+    out["C_merged"] = action_out(3);
+    out["assigned_archetypes"] = arma::vec(action_out(4)) + 1; // Shift index
+
+    return out;
 }
 
 // action_post =========================================================================================================
@@ -116,11 +132,7 @@ Rcpp::List collectArchetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trac
         actionet::collectArchetypes(C_trace_vec, H_trace_vec, spec_th, min_obs);
 
     Rcpp::List out_list;
-
-    for (int i = 0; i < results.selected_archs.n_elem; i++)
-        results.selected_archs[i]++;
-    out_list["selected_archs"] = results.selected_archs;
-
+    out_list["selected_archs"] = results.selected_archs + 1;
     out_list["C_stacked"] = results.C_stacked;
     out_list["H_stacked"] = results.H_stacked;
 
@@ -155,18 +167,10 @@ Rcpp::List
         actionet::mergeArchetypes(S_r, C_stacked, H_stacked, norm, thread_no);
 
     Rcpp::List out_list;
-
-    for (int i = 0; i < results.selected_archetypes.n_elem; i++)
-        results.selected_archetypes[i]++;
-    out_list["selected_archetypes"] = results.selected_archetypes;
-
+    out_list["selected_archetypes"] = results.selected_archetypes + 1;
     out_list["C_merged"] = results.C_merged;
     out_list["H_merged"] = results.H_merged;
-
-    for (int i = 0; i < results.assigned_archetypes.n_elem; i++)
-        results.assigned_archetypes[i]++;
-
-    out_list["assigned_archetypes"] = results.assigned_archetypes;
+    out_list["assigned_archetypes"] = results.assigned_archetypes + 1;
 
     return out_list;
 }

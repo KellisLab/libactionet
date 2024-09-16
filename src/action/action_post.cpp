@@ -2,7 +2,6 @@
 #include "action/spa.hpp"
 #include "action/simplex_regression.hpp"
 #include "tools/matrix_transform.hpp"
-#include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_stats.hpp"
 
@@ -140,7 +139,7 @@ namespace actionet {
         output.selected_archetypes = candidates;
 
         arma::mat C_merged = C_stacked.cols(candidates);
-
+        // TODO: Remove?
         arma::mat X_r = normalizeMatrix(S_r, norm, 0);
 
         arma::mat W_r_merged = X_r * C_merged;
