@@ -7,7 +7,7 @@
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> runSVD(T& A, int k, int max_it, int seed, const int algorithm, int verbose) {
+    arma::field<arma::mat> runSVD(T& A, int k, int max_it, int seed, const int algorithm, bool verbose) {
         // out: U, sigma, V
         arma::field<arma::mat> out(3);
 
@@ -46,9 +46,9 @@ namespace actionet {
     }
 
     template arma::field<arma::mat> runSVD<arma::mat>(arma::mat& A, int k, int max_it, int seed, int algorithm,
-                                                      int verbose);
+                                                      bool verbose);
     template arma::field<arma::mat> runSVD<arma::sp_mat>(arma::sp_mat& A, int k, int max_it, int seed, int algorithm,
-                                                         int verbose);
+                                                         bool verbose);
 
     arma::field<arma::mat> perturbedSVD(arma::field<arma::mat>& SVD_results, arma::mat& A, arma::mat& B) {
         arma::field<arma::mat> out(5); // out: U', sigma', V', A, B

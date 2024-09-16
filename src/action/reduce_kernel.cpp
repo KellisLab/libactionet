@@ -3,7 +3,7 @@
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg, int max_it, int seed, int verbose) {
+    arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg, int max_it, int seed, bool verbose) {
         if (verbose) {
             stdout_printf("Computing reduced ACTION kernel:\n");
             FLUSH;
@@ -54,8 +54,8 @@ namespace actionet {
     }
 
     template arma::field<arma::mat> reduceKernel<arma::mat>(arma::mat& S, int k, int svd_alg,
-                                                            int iter, int seed, int verbose);
+                                                            int iter, int seed, bool verbose);
 
     template arma::field<arma::mat> reduceKernel<arma::sp_mat>(arma::sp_mat& S, int k, int svd_alg,
-                                                               int iter, int seed, int verbose);
+                                                               int iter, int seed, bool verbose);
 } // namespace actionet

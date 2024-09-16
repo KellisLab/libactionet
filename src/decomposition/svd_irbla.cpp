@@ -4,7 +4,7 @@
 #include "utils_internal/utils_decomp.hpp"
 #include <cholmod.h>
 
-arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, int verbose) {
+arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {
     int m = A.n_rows;
     int n = A.n_cols;
 
@@ -255,7 +255,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, in
     return (orient_SVD(out));
 }
 
-arma::field<arma::mat> svdIRLB(arma::mat& A, int dim, int iters, int seed, int verbose) {
+arma::field<arma::mat> svdIRLB(arma::mat& A, int dim, int iters, int seed, bool verbose) {
     double eps = 3e-13;
     double tol = 1e-05, svtol = 1e-5;
 

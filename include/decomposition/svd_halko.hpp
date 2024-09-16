@@ -8,6 +8,6 @@
 #include "libactionet_config.hpp"
 
 template <typename T>
-arma::field<arma::mat> svdHalko(T& A, int dim, int iters = 5, int seed = 0, int verbose = 1);
+arma::field<arma::mat> svdHalko(T& A, int dim, int iters = 5, int seed = 0, bool verbose = true);
 
 #endif //ACTIONET_SVD_HALKO_HPP

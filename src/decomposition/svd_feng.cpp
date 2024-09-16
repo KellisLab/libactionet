@@ -3,7 +3,7 @@
 #include "utils_internal/utils_decomp.hpp"
 
 template <typename T>
-arma::field<arma::mat> svdFeng(T& A, int dim, int max_it, int seed, int verbose) {
+arma::field<arma::mat> svdFeng(T& A, int dim, int max_it, int seed, bool verbose) {
     int s = 5;
     int m = A.n_rows;
     int n = A.n_cols;
@@ -106,6 +106,6 @@ arma::field<arma::mat> svdFeng(T& A, int dim, int max_it, int seed, int verbose)
     return (orient_SVD(out));
 }
 
-template arma::field<arma::mat> svdFeng<arma::mat>(arma::mat& A, int dim, int max_it, int seed, int verbose);
+template arma::field<arma::mat> svdFeng<arma::mat>(arma::mat& A, int dim, int max_it, int seed, bool verbose);
 
-template arma::field<arma::mat> svdFeng<arma::sp_mat>(arma::sp_mat& A, int dim, int max_it, int seed, int verbose);
+template arma::field<arma::mat> svdFeng<arma::sp_mat>(arma::sp_mat& A, int dim, int max_it, int seed, bool verbose);

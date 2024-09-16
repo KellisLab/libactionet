@@ -53,9 +53,9 @@ Rcpp::List runAA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e-
 //' cell.assignments = apply(H8, 2, which.max)
 // [[Rcpp::export]]
 Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int norm = 1, int max_it = 100,
-                     double tol = 1e-6, int thread_no = 0) {
+                     double tol = 1e-16, int thread_no = 0) {
     actionet::ResACTION trace =
-        actionet::runACTION(S_r, k_min, k_max, norm, max_it, tol, thread_no);
+        actionet::decompACTION(S_r, k_min, k_max, norm, max_it, tol, thread_no);
 
     Rcpp::List res;
 
@@ -196,7 +196,7 @@ Rcpp::List
 //' S_r = reduction.out$S_r
 // [[Rcpp::export]]
 Rcpp::List reduceKernelSparse(arma::sp_mat& S, int k = 50, int svd_alg = 0, int max_it = 0, int seed = 0,
-                              int verbose = 1) {
+                              bool verbose = true) {
     arma::field<arma::mat> reduction =
         actionet::reduceKernel(S, k, svd_alg, max_it, seed, verbose);
 
@@ -211,7 +211,8 @@ Rcpp::List reduceKernelSparse(arma::sp_mat& S, int k = 50, int svd_alg = 0, int 
 }
 
 // [[Rcpp::export]]
-Rcpp::List reduceKernelDense(arma::mat& S, int k = 50, int svd_alg = 0, int max_it = 0, int seed = 0, int verbose = 1) {
+Rcpp::List reduceKernelDense(arma::mat& S, int k = 50, int svd_alg = 0, int max_it = 0, int seed = 0,
+                             bool verbose = true) {
     arma::field<arma::mat> reduction =
         actionet::reduceKernel(S, k, svd_alg, max_it, seed, verbose);
 
