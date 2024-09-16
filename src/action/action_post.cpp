@@ -114,7 +114,7 @@ namespace actionet {
     }
 
     ResMergeArch
-        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int norm, int thread_no) {
+        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int thread_no) {
         stdout_printf("Merging %d archetypes:\n", (int)C_stacked.n_cols);
         FLUSH;
 
@@ -136,18 +136,12 @@ namespace actionet {
         stdout_printf("Archetypes in merged set: %d\n", arch_no);
         FLUSH;
 
-        output.selected_archetypes = candidates;
-
         arma::mat C_merged = C_stacked.cols(candidates);
-        // TODO: Remove?
-        arma::mat X_r = normalizeMatrix(S_r, norm, 0);
-
-        arma::mat W_r_merged = X_r * C_merged;
-
-        arma::mat H_merged = runSimplexRegression(W_r_merged, X_r, false);
-
+        arma::mat W_r_merged = S_r * C_merged;
+        arma::mat H_merged = runSimplexRegression(W_r_merged, S_r, false);
         arma::uvec assigned_archetypes = arma::trans(arma::index_max(H_merged, 0));
 
+        output.selected_archetypes = candidates;
         output.C_merged = C_merged;
         output.H_merged = H_merged;
         output.assigned_archetypes = assigned_archetypes;
