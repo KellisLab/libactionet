@@ -52,10 +52,10 @@ Rcpp::List runAA(arma::mat& A, arma::mat& W0, int max_it = 100, double tol = 1e-
 //' H8 = ACTION.out$H[[8]]
 //' cell.assignments = apply(H8, 2, which.max)
 // [[Rcpp::export]]
-Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int norm = 1, int max_it = 100,
+Rcpp::List runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max_it = 100,
                      double tol = 1e-16, int thread_no = 0) {
     actionet::ResACTION trace =
-        actionet::decompACTION(S_r, k_min, k_max, norm, max_it, tol, thread_no);
+        actionet::runACTION(S_r, k_min, k_max, max_it, tol, thread_no);
 
     Rcpp::List res;
 

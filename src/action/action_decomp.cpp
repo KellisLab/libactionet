@@ -6,7 +6,7 @@
 
 namespace actionet {
     ResACTION
-        runACTION(arma::mat& S_r, int k_min, int k_max, int norm, int max_it, double tol, int thread_no) {
+        runACTION(arma::mat& S_r, int k_min, int k_max, int max_it, double tol, int thread_no) {
         if (k_max == -1)
             k_max = (int)S_r.n_cols;
 
@@ -18,9 +18,6 @@ namespace actionet {
         trace.H = arma::field<arma::mat>(k_max + 1);
         trace.C = arma::field<arma::mat>(k_max + 1);
         trace.selected_cols = arma::field<arma::uvec>(k_max + 1);
-
-        // TODO: ???
-        arma::mat X_r = normalizeMatrix(S_r, norm, 0);
 
         int k_tot = k_max - k_min + 1;
         int threads_use = get_num_threads(k_tot, thread_no);

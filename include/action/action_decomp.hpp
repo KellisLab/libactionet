@@ -29,7 +29,6 @@ namespace actionet {
     /// Usually a reduced representation of the raw data.
     /// @param k_min Minimum depth of decomposition (>= 2), and the beginning of the search range.
     /// @param k_max Maximum depth of decomposition (<= <code>S_r.n_cols</code>), and the end of the search range.
-    /// @param normalization Normalization method to apply on <b>S_r</b> before running ACTION.
     /// @param max_it Maximum number of iterations. Passed to <code>runAA()</code>.
     /// @param tol Convergence tolerance. Passed to <code>runAA()</code>.
     /// @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
@@ -39,8 +38,8 @@ namespace actionet {
     /// @remark <code>k</code> in [<code>k_min</code>, <code>k_max</code>] passed to <code>runSPA(k=k)</code>.
     /// @remark See <code>ResACTION</code>, <code>runSPA()</code>, <code>runAA()</code>.
     ResACTION
-        runACTION(arma::mat& S_r, int k_min, int k_max, int normalization = 0, int max_it = 100, double tol = 1e-6,
-                   int thread_no = 0);
+        runACTION(arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-6,
+                  int thread_no = 0);
 } // namespace actionet
 
 #endif //ACTIONET_ACTION_DECOMP_HPP
