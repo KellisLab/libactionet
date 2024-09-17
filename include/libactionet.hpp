@@ -32,6 +32,7 @@
 
 // visualization: Generate embeddings for visualization
 #include "visualization/layout_network.hpp"
+#include "visualization/color_map.hpp"
 
 // tools: Exported tools and convenience functions
 #include "tools/autocorrelation.hpp"

@@ -12,6 +12,7 @@ std::set<std::string> nn_approaches = {"k*nn", "knn"};
 
 // k^{*}-Nearest Neighbors: From Global to Local (NIPS 2016)
 arma::sp_mat
+    // TODO:: remove unused arguments
     buildNetwork_KstarNN(arma::mat H, double density = 1.0, int thread_no = 0, double M = 16,
                          double ef_construction = 200, double ef = 200, bool mutual_edges_only = true,
                          const std::string& distance_metric = "jsd") {
@@ -162,7 +163,8 @@ arma::sp_mat
 }
 
 arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 16, double ef_construction = 200,
-                              double ef = 200, bool mutual_edges_only = true, const std::string& distance_metric = "jsd") {
+                              double ef = 200, bool mutual_edges_only = true,
+                              const std::string& distance_metric = "jsd") {
     // verify that a support distance metric has been specified
     //  the following distance metrics are supported in hnswlib: https://github.com/hnswlib/hnswlib#supported-distances
     if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
@@ -254,7 +256,8 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
 
 namespace actionet {
     arma::sp_mat
-        buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_metric, double density, int thread_no,
+        buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_metric, double density,
+                     int thread_no,
                      double M, double ef_construction, double ef, bool mutual_edges_only, int k) {
         // Verify that valid distance metric has been specified
         if (distance_metrics.find(distance_metric) == distance_metrics.end()) {

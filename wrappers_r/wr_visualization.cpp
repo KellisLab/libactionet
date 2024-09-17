@@ -24,3 +24,9 @@ arma::mat C_layoutNetwork(arma::sp_mat& G, arma::mat& initial_coordinates, std::
 
     return coordinates;
 }
+
+// [[Rcpp::export]]
+arma::mat C_computeNodeColors(const arma::mat& coordinates, int thread_no = 1) {
+    arma::mat colors = actionet::computeNodeColors(coordinates, thread_no);
+    return (colors);
+}
