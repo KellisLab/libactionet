@@ -151,7 +151,6 @@ arma::sp_mat
     }
     else {
         // Default to MNN
-        stdout_printf("\n\t\tKeeping mutual nearest-neighbors only ... ");
         G_sym = arma::sqrt(G % Gt);
     }
     stdout_printf("done\n");

@@ -82,15 +82,15 @@ public:
           learning_rate(learning_rate),
           repulsion_strength(repulsion_strength),
           negative_sample_rate(negative_sample_rate),
-          method(method),
           approx_pow(approx_pow),
           pcg_rand(pcg_rand),
           batch(batch),
-          seed(seed),
           n_threads(n_threads),
           grain_size(grain_size),
           verbose(verbose),
-          opt_args(opt_args) {
+          opt_args(opt_args),
+          method(method),
+          seed(seed) {
         set_method(method);
         set_ab();
         set_seed(seed);

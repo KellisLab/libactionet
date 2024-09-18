@@ -103,7 +103,8 @@ namespace actionet {
                 for (int j = 0; j < logPvals_k.n_cols; j++) {
                     arma::vec v = logPvals_k.col(j);
                     logPvals(k, j) = arma::max(v);
-                    thresholds(k, j) = rows[v.index_max(), j];
+                    // thresholds(k, j) = rows[v.index_max(), j];
+                    thresholds(k, j) = rows(v.index_max(), j);
                 }
             }
         }

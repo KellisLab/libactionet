@@ -104,7 +104,7 @@ arma::mat spmat_mat_product(const arma::sp_mat& A, arma::mat& B) {
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    cholmod_sparse* chol_A;
+    cholmod_sparse* chol_A = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
 
     cholmod_dense* chol_B = cholmod_allocate_dense(B.n_rows, B.n_cols, B.n_rows, CHOLMOD_REAL, &chol_c);
@@ -135,7 +135,7 @@ arma::sp_mat spmat_spmat_product(const arma::sp_mat& A, const arma::sp_mat& B) {
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    cholmod_sparse *chol_A, *chol_B;
+    cholmod_sparse *chol_A = nullptr, *chol_B = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
     chol_B = as_cholmod_sparse(B, chol_B, &chol_c);
 
@@ -160,7 +160,7 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, arma::mat& B, int th
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    cholmod_sparse* chol_A;
+    cholmod_sparse* chol_A = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
 
     int M = A.n_rows;

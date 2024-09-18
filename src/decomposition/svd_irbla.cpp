@@ -19,7 +19,8 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
     cholmod_start(&chol_c);
     chol_c.final_ll = 1; /* LL' form of simplicial factorization */
 
-    cholmod_sparse* AS = as_cholmod_sparse(A, AS, &chol_c);
+    cholmod_sparse* AS = nullptr;
+    AS = as_cholmod_sparse(A, AS, &chol_c);
 
     double eps = 3e-13;
     double tol = 1e-05, svtol = 1e-5;
@@ -68,10 +69,9 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
     // Initialize first column of V
     std::mt19937_64 engine(seed);
 
-    double ss;
     StdNorm(V, n, engine);
 
-    ss = 0;
+    double ss = 0;
     for (int i = 0; i < n; i++)
         ss += V[i];
 

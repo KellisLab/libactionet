@@ -12,7 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Suppress warning
-add_compile_options(-Wno-psabi -Wno-deprecated-declarations)
+add_compile_options(-Wno-psabi -Wno-deprecated-declarations)# -ferror-limit=10)#-fmax-errors=10)
 #add_compile_options(-w)
 
 ## Detect usable logical CPUs
