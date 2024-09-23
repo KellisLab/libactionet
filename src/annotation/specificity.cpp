@@ -107,12 +107,12 @@ namespace actionet {
         arma::sp_mat& S, arma::mat& H, int thread_no);
 
     template <typename T>
-    arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::uvec& sample_assignments, int thread_no) {
-        arma::mat H(arma::max(sample_assignments), S.n_cols);
+    arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::uvec& labels, int thread_no) {
+        arma::mat H(arma::max(labels), S.n_cols);
 
-        for (int i = 1; i <= arma::max(sample_assignments); i++) {
+        for (int i = 1; i <= arma::max(labels); i++) {
             arma::vec v = arma::zeros(S.n_cols);
-            arma::uvec idx = arma::find(sample_assignments == i);
+            arma::uvec idx = arma::find(labels == i);
             v(idx) = arma::ones(idx.n_elem);
             H.row(i - 1) = arma::trans(v);
         }
@@ -123,7 +123,7 @@ namespace actionet {
     }
 
     template arma::field<arma::mat> computeFeatureSpecificity<arma::mat>(
-        arma::mat& S, arma::uvec& sample_assignments, int thread_no);
+        arma::mat& S, arma::uvec& labels, int thread_no);
     template arma::field<arma::mat> computeFeatureSpecificity<arma::sp_mat>(
-        arma::sp_mat& S, arma::uvec& sample_assignments, int thread_no);
+        arma::sp_mat& S, arma::uvec& labels, int thread_no);
 } // namespace actionet
