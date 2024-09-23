@@ -14,5 +14,6 @@
 // #include "libactionet_config.hpp"
 #include "libactionet.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::interfaces(r)]]
 
 #endif //ACTIONET_R_CONFIG_H
