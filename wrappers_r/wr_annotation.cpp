@@ -7,9 +7,9 @@
 // [[Rcpp::export]]
 arma::mat C_computeFeatureStats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_type = 2,
                                 double alpha = 0.85, int max_it = 5, bool approx = false, int thread_no = 0,
-                                bool ignore_baseline_expression = false) {
+                                bool ignore_baseline = false) {
     arma::mat stats = actionet::computeFeatureStats(G, S, X, norm_type, alpha, max_it,
-                                                    approx, thread_no, ignore_baseline_expression);
+                                                    approx, thread_no, ignore_baseline);
 
     return (stats);
 }
