@@ -5,12 +5,12 @@
 
 namespace actionet {
     arma::mat computeFeatureStats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_type,
-                                  double alpha, int max_it, int thread_no, bool ignore_baseline_expression) {
+                                  double alpha, int max_it, bool approx, int thread_no, bool ignore_baseline) {
         arma::mat stats = arma::zeros(S.n_cols, X.n_cols);
 
         int n = G.n_rows;
         arma::sp_mat o = arma::sp_mat(arma::ones(n, 1));
-        arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no, true).col(0);
+        arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no, approx).col(0);
 
         for (int i = 0; i < X.n_cols; i++) {
             // int marker_count = (int)sum(sum(spones(X.col(i))));
@@ -27,14 +27,14 @@ namespace actionet {
                 baseline(idx) = arma::accu(raw_expression.col(idx));
                 idx++;
             }
-            if (!ignore_baseline_expression) {
+            if (!ignore_baseline) {
                 baseline = baseline / arma::sum(baseline);
                 w = w % baseline;
             }
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
             arma::mat imputed_expression = computeNetworkDiffusion(G, raw_expression, alpha, max_it, thread_no,
-                                                                   true, norm_type, 1E-8);
+                                                                   approx, norm_type, 1E-8);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
                 arma::vec ppr = imputed_expression.col(j);
@@ -52,7 +52,7 @@ namespace actionet {
 
     arma::mat computeFeatureStatsVision(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X,
                                         int norm_type, double alpha, int max_it,
-                                        int thread_no) {
+                                        bool approx, int thread_no) {
         // `X` is features; formerly `marker_mat`
         if (S.n_rows != X.n_rows) {
             throw std::invalid_argument("Incompatible dimensions (S.n_rows != X.n_rows)");
@@ -62,8 +62,6 @@ namespace actionet {
         }
 
         arma::sp_mat St = arma::trans(S);
-
-        // arma::mat stats = spmat_mat_product_parallel(St, X, thread_no);
         arma::mat stats = arma::mat(spmat_spmat_product(St, X));
 
         // Compute cell-specific stats to adjust for depth, etc.
@@ -97,7 +95,7 @@ namespace actionet {
         if (alpha != 0) {
             stdout_printf("Smoothing scores ... ");
             // marker_stats_smoothed = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, true, norm_type, 1E-8);
-            marker_stats = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, true,
+            marker_stats = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, approx,
                                                              norm_type, 1E-8);
             stdout_printf("done\n");
             FLUSH;
