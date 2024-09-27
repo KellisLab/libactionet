@@ -63,8 +63,8 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, doub
 }
 
 // norm_type: 0 (pagerank), 2 (sym_pagerank)
-arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_type, double alpha, int max_it, double tol,
-                                    int thread_no) {
+arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_type, double alpha, int max_it,
+                                    double tol, int thread_no) {
     // Traditional definition is to have alpha as weight of prior. Here, alpha is depth of diffusion
     alpha = 1 - alpha;
 
@@ -113,7 +113,7 @@ namespace actionet {
             return arma::mat(X0);
         }
         if (alpha <= 0 || alpha > 1) {
-            throw std::invalid_argument("Invalid `alpha`");
+            throw std::invalid_argument("'alpha' must be in (0,1)");
         }
 
         arma::mat X_out(X0.n_rows, X0.n_cols);

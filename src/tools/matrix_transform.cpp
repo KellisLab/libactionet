@@ -108,7 +108,7 @@ namespace actionet {
         size_t mat_dim = (dim == 0) ? X.n_cols : X.n_rows;
 
         if (mat_dim != v.n_elem) {
-            throw std::invalid_argument("Sizes of `S` and `v` do not match for given dimension.");
+            throw std::invalid_argument("Sizes of 'S' and 'v' do not match for given 'dim'");
         }
 
         X = scale_matrix_internal(X, v, dim);
@@ -154,7 +154,7 @@ namespace actionet {
             }
             break;
             default:
-                throw std::invalid_argument("normalizeGraph: invalid norm type");
+                throw std::invalid_argument("Invalid 'norm_type'");
         }
 
         return (P);

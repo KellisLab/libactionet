@@ -26,7 +26,7 @@ namespace actionet {
 
             arma::mat M = one_hot_encoding(updated_labels);
 
-            arma::mat logPvals = assess_label_enrichment(H, M, thread_no);
+            arma::mat logPvals = computeGraphLabelEnrichment(H, M, thread_no);
 
             arma::vec max_sig = arma::max(logPvals, 1);
             arma::vec new_labels = vals(arma::index_max(logPvals, 1));

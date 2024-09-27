@@ -3,11 +3,11 @@
 #include "utils_internal/utils_matrix.hpp"
 
 namespace actionet {
-    arma::mat assess_label_enrichment(const arma::sp_mat& G, arma::mat& M, int thread_no) {
-        arma::mat Obs = spmat_mat_product_parallel(G, M, thread_no);
+    arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, arma::mat& scores, int thread_no) {
+        arma::mat Obs = spmat_mat_product_parallel(G, scores, thread_no);
 
-        arma::rowvec p = mean(M, 0);
-        arma::mat Exp = sum(G, 1) * p;
+        arma::rowvec p = arma::mean(scores, 0);
+        arma::mat Exp = arma::sum(G, 1) * p;
 
         arma::mat Lambda = Obs - Exp;
 
