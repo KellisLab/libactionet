@@ -3,6 +3,8 @@
 #include "network/network_diffusion.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
+double tol_approx = 1E-8;
+
 namespace actionet {
     arma::mat computeFeatureStats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_type,
                                   double alpha, int max_it, bool approx, int thread_no, bool ignore_baseline) {
@@ -34,7 +36,7 @@ namespace actionet {
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
             arma::mat imputed_expression = computeNetworkDiffusion(G, raw_expression, alpha, max_it, thread_no,
-                                                                   approx, norm_type, 1E-8);
+                                                                   approx, norm_type, tol_approx);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
                 arma::vec ppr = imputed_expression.col(j);
@@ -93,12 +95,9 @@ namespace actionet {
 
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
-            stdout_printf("Smoothing scores ... ");
             // marker_stats_smoothed = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, true, norm_type, 1E-8);
             marker_stats = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, approx,
-                                                             norm_type, 1E-8);
-            stdout_printf("done\n");
-            FLUSH;
+                                                             norm_type, tol_approx);
         }
 
         // arma::field<arma::mat> out(3);

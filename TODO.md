@@ -1,12 +1,11 @@
 ## Primary
-* Fix various normalizations
 * pybind 11 wrappers
 * Document C++ interface
 * Further modularize cmake
-* Fast matrix normalization/manipulation interface for R/Python preprocessing
-* Test network diffusion
 * network_measures: Parallelize
 * * network_measures: argument and return types (uvec/vec)
+* Standardize 'norm_type' vs. 'norm_method'
+* Detect Rosetta build (x86) outside R "CMAKE_OSX_ARCHITECTURES"
 
 ## Secondary
 * Fix compile warnings for svd.cpp
@@ -65,3 +64,5 @@
   * Modular graph optimization
 * Stand-alone color mapping i.e. de novo colors.
 * Consolidate and abstract network_diffusion
+* Fix various normalizations 
+  * Fast matrix normalization/manipulation interface for R/Python preprocessing
