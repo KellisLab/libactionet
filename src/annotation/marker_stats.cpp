@@ -4,23 +4,24 @@
 #include "utils_internal/utils_matrix.hpp"
 
 namespace actionet {
-    arma::mat compute_marker_aggregate_stats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& marker_mat, double alpha,
-                                             int max_it, int thread_no, bool ignore_baseline_expression) {
-        arma::mat stats = arma::zeros(S.n_cols, marker_mat.n_cols);
+    arma::mat computeFeatureStats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_type,
+                                  double alpha, int max_it, int thread_no, bool ignore_baseline_expression) {
+        arma::mat stats = arma::zeros(S.n_cols, X.n_cols);
 
         int n = G.n_rows;
         arma::sp_mat o = arma::sp_mat(arma::ones(n, 1));
-        arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no).col(0);
+        arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no, true).col(0);
 
-        for (int i = 0; i < marker_mat.n_cols; i++) {
-            int marker_count = (int)sum(sum(spones(marker_mat.col(i))));
+        for (int i = 0; i < X.n_cols; i++) {
+            // int marker_count = (int)sum(sum(spones(X.col(i))));
+            int marker_count = arma::accu(arma::spones(X.col(i)));
 
             int idx = 0;
             arma::vec w = arma::zeros(marker_count);
             arma::vec baseline = arma::zeros(marker_count);
             arma::sp_mat raw_expression(S.n_cols, marker_count);
-            for (arma::sp_mat::col_iterator it = marker_mat.begin_col(i);
-                 it != marker_mat.end_col(i); ++it) {
+            for (arma::sp_mat::col_iterator it = X.begin_col(i);
+                 it != X.end_col(i); ++it) {
                 raw_expression.col(idx) = trans(S.row(it.row()));
                 w(idx) = (*it);
                 baseline(idx) = arma::accu(raw_expression.col(idx));
@@ -32,7 +33,8 @@ namespace actionet {
             }
             w = w / std::sqrt(arma::sum(arma::square(w)));
 
-            arma::mat imputed_expression = computeNetworkDiffusion(G, raw_expression, alpha, max_it, thread_no);
+            arma::mat imputed_expression = computeNetworkDiffusion(G, raw_expression, alpha, max_it, thread_no,
+                                                                   true, norm_type, 1E-8);
 
             for (int j = 0; j < imputed_expression.n_cols; j++) {
                 arma::vec ppr = imputed_expression.col(j);
@@ -48,26 +50,21 @@ namespace actionet {
         return (stats);
     }
 
-    arma::field<arma::mat> aggregate_genesets_vision(arma::sp_mat& G, arma::sp_mat& S, arma::mat& X,
-                                                     int norm_type, double alpha, int max_it, double tol,
-                                                     int thread_no) {
-        arma::field<arma::mat> out(3);
-
+    arma::mat computeFeatureStatsVision(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X,
+                                        int norm_type, double alpha, int max_it,
+                                        int thread_no) {
         // `X` is features; formerly `marker_mat`
         if (S.n_rows != X.n_rows) {
-            stderr_printf("Number of genes in the expression matrix (S) and marker matrix (X) do not match\n");
-            FLUSH;
-            return (out);
+            throw std::invalid_argument("Incompatible dimensions (S.n_rows != X.n_rows)");
         }
         if (S.n_cols != G.n_rows) {
-            stderr_printf("Number of cell in the expression matrix (S) and cell network (G) do not match\n");
-            FLUSH;
-            return (out);
+            throw std::invalid_argument("Incompatible dimensions (S.n_cols != G.n_rows)");
         }
 
         arma::sp_mat St = arma::trans(S);
 
-        arma::mat stats = spmat_mat_product_parallel(St, X, thread_no);
+        // arma::mat stats = spmat_mat_product_parallel(St, X, thread_no);
+        arma::mat stats = arma::mat(spmat_spmat_product(St, X));
 
         // Compute cell-specific stats to adjust for depth, etc.
         arma::vec mu = arma::zeros(S.n_cols);
@@ -98,17 +95,19 @@ namespace actionet {
 
         arma::mat marker_stats_smoothed = marker_stats;
         if (alpha != 0) {
-            stdout_printf("Smoothing geneset scores ... ");
-            marker_stats_smoothed = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it,
-                                                                      thread_no, true, norm_type, tol);
+            stdout_printf("Smoothing scores ... ");
+            // marker_stats_smoothed = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, true, norm_type, 1E-8);
+            marker_stats = actionet::computeNetworkDiffusion(G, marker_stats_smoothed, alpha, max_it, thread_no, true,
+                                                             norm_type, 1E-8);
             stdout_printf("done\n");
             FLUSH;
         }
 
-        out(0) = marker_stats_smoothed;
-        out(1) = marker_stats;
-        out(2) = stats;
+        // arma::field<arma::mat> out(3);
+        // out(0) = marker_stats_smoothed;
+        // out(1) = marker_stats;
+        // out(2) = stats;
 
-        return (out);
+        return (marker_stats);
     }
 } // namespace actionet
