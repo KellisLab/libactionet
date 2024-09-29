@@ -1,11 +1,9 @@
 ## Primary
 * pybind 11 wrappers
 * Document C++ interface
-* Further modularize cmake
 * network_measures: Parallelize
 * * network_measures: argument and return types (uvec/vec)
 * Standardize 'norm_type' vs. 'norm_method'
-* Detect Rosetta build (x86) outside R "CMAKE_OSX_ARCHITECTURES"
 
 ## Secondary
 * Fix compile warnings for svd.cpp
@@ -66,3 +64,5 @@
 * Consolidate and abstract network_diffusion
 * Fix various normalizations 
   * Fast matrix normalization/manipulation interface for R/Python preprocessing
+* Detect Rosetta build (x86) outside R "CMAKE_OSX_ARCHITECTURES
+* Modular cmake

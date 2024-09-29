@@ -18,13 +18,13 @@ This module conditionally defines the following:
 
 The following variables control the behaviour of this module:
 
-``BLA_VENDOR``
-    Specify vendor for BLAS and LAPACK (optional)
+``BLA_VENDOR`` (optional)
+    Specify vendor for BLAS and LAPACK
 
 ]=============================================================================]
 
 ## Configure Intel MKL
-macro(CONFIGURE_BLAS_MKL)
+macro(CONFIGURE_BLAS_MKL libtarget)
     message(STATUS "Using Intel MKL for BLAS and LAPACK")
 
     ## Check if MKL is active
@@ -37,21 +37,21 @@ macro(CONFIGURE_BLAS_MKL)
     if (EXISTS "${BLAS_HEADERS_USE}")
         message(STATUS "MKL headers: ${BLAS_HEADERS_USE}")
         ## Enable MKL in libactionet_config.hpp
-        add_compile_definitions(LIBACTIONET_BLAS_MKL)
+        target_compile_definitions(${libtarget} PUBLIC LIBACTIONET_BLAS_MKL)
     else ()
         message("Not using MKL headers")
     endif ()
 endmacro()
 
 ## Configure Apple Accelerate
-macro(CONFIGURE_BLAS_ACCELERATE)
+macro(CONFIGURE_BLAS_ACCELERATE libtarget)
     if (NOT APPLE)
         message(FATAL_ERROR "Accelerate can only be used on macOS")
     endif ()
 
     message(STATUS "Using Apple Accelerate for BLAS and LAPACK")
     ## Enable Accelerate in libactionet_config.hpp
-    add_compile_definitions(LIBACTIONET_BLAS_ACCELERATE)
+    target_compile_definitions(${libtarget} PUBLIC LIBACTIONET_BLAS_ACCELERATE)
 
     ## Find required Accelerate headers
     set(BLAS_HEADERS_USE "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
@@ -61,30 +61,30 @@ macro(CONFIGURE_BLAS_ACCELERATE)
     message(STATUS "Accelerate headers: ${BLAS_HEADERS_USE}")
 
     ## Set required compiler options
-    add_compile_options(-framework Accelerate)
+    target_compile_options(${libtarget} PUBLIC -framework Accelerate)
     #    TODO: Probably unneeded. Suppress deprecation warnings.
     #    add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
 endmacro()
 
 ## Find dependencies for MKL and Accelerate
-macro(CONFIGURE_BLAS_DEPENDS)
+macro(CONFIGURE_BLAS_DEPENDS libtarget)
     if ((DEFINED BLA_VENDOR) AND (NOT ${BLA_VENDOR} STREQUAL "All"))
         ## Find dependencies for user-specified BLAS
         message(STATUS "Using provided BLA_VENDOR")
         if ("${BLA_VENDOR}" MATCHES "Intel")
-            CONFIGURE_BLAS_MKL()
+            CONFIGURE_BLAS_MKL(${libtarget})
         elseif ("${BLA_VENDOR}" STREQUAL "Apple")
-            CONFIGURE_BLAS_ACCELERATE()
+            CONFIGURE_BLAS_ACCELERATE(${libtarget})
         endif ()
     else ()
         ## Find dependencies based on BLAS link line pattern
         message(STATUS "Detecting BLAS implementation from BLAS_LIBRARIES")
         foreach (lib ${BLAS_LIBRARIES})
             if (${lib} MATCHES "mkl")
-                CONFIGURE_BLAS_MKL()
+                CONFIGURE_BLAS_MKL(${libtarget})
                 break()
             elseif ((${lib} MATCHES "Accelerate\.framework") OR (${lib} MATCHES "vecLib\.framework"))
-                CONFIGURE_BLAS_ACCELERATE()
+                CONFIGURE_BLAS_ACCELERATE(${libtarget})
                 break()
             endif ()
         endforeach ()
@@ -93,17 +93,17 @@ macro(CONFIGURE_BLAS_DEPENDS)
     ## Include BLAS headers if found
     if (DEFINED BLAS_HEADERS_USE)
         target_include_directories(
-                actionet
+                ${libtarget}
                 PRIVATE "${BLAS_HEADERS_USE}"
         )
     endif ()
 endmacro()
 
 ## Configure BLAS/LAPACK
-macro(CONFIGURE_BLAS)
+macro(CONFIGURE_BLAS libtarget)
     message(NOTICE "Configuring BLAS/LAPACK")
     find_package(BLAS REQUIRED) ## Find BLAS
     find_package(LAPACK REQUIRED) ## Find LAPACK
 
-    CONFIGURE_BLAS_DEPENDS()
+    CONFIGURE_BLAS_DEPENDS(${libtarget})
 endmacro()
