@@ -29,7 +29,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(actionet STATIC ${SOURCES})
 
 ############# TEST MODES ### Must be set before any other macros
-TEST_BUILD_R(actionet) ## Uncomment to test R build mode.
+#TEST_BUILD_R(actionet) ## Uncomment to test R build mode.
 
 ############# FUNCTIONS AND MACROS
 ## Set BLAS vendor default

@@ -61,7 +61,7 @@ macro(CONFIGURE_BLAS_ACCELERATE libtarget)
     message(STATUS "Accelerate headers: ${BLAS_HEADERS_USE}")
 
     ## Set required compiler options
-    target_compile_options(${libtarget} PUBLIC -framework Accelerate)
+    target_compile_options(${libtarget} INTERFACE -framework Accelerate)
     #    TODO: Probably unneeded. Suppress deprecation warnings.
     #    add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
 endmacro()
