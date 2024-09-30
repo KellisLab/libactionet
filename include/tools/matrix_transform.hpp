@@ -11,8 +11,9 @@ namespace actionet {
     template <typename T>
     T scaleMatrix(T& X, arma::vec& v, unsigned int dim = 0);
 
-    // norm_type: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
-    arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type = 1);
+    // norm_method: 0 (column; pagerank), 1 (row), 2 (sym_pagerank)
+    arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_method = 1);
+
 
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);
 } // namespace actionet

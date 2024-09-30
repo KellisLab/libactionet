@@ -5,7 +5,7 @@
 #include <tools/matrix_transform.hpp>
 #include <cholmod.h>
 
-arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, double alpha, int max_it, int thread_no) {
+arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, double alpha, int max_it, int thread_no) {
     int n = G.n_rows;
 
     cholmod_common chol_c;
@@ -14,7 +14,7 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, doub
     int *Ti, *Tj;
     double* Tx;
 
-    arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_type);
+    arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_method);
 
     cholmod_triplet* T = cholmod_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
                                                   0, CHOLMOD_REAL, &chol_c);
@@ -62,13 +62,13 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_type, doub
     return (X_out);
 }
 
-// norm_type: 0 (pagerank), 2 (sym_pagerank)
-arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_type, double alpha, int max_it,
+// norm_method: 0 (pagerank), 2 (sym_pagerank)
+arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_method, double alpha, int max_it,
                                     double tol, int thread_no) {
     // Traditional definition is to have alpha as weight of prior. Here, alpha is depth of diffusion
     alpha = 1 - alpha;
 
-    arma::sp_mat P = actionet::normalizeGraph(G, norm_type);
+    arma::sp_mat P = actionet::normalizeGraph(G, norm_method);
 
     arma::mat mPPreviousScore = X0; // zeros(size(X0));
     arma::mat mPreviousScore = (1 - alpha) * spmat_mat_product_parallel(P, mPPreviousScore, thread_no) + alpha * X0;

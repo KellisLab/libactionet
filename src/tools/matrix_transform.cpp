@@ -120,15 +120,15 @@ namespace actionet {
     template arma::sp_mat scaleMatrix<arma::sp_mat>(arma::sp_mat& X, arma::vec& v, unsigned int dim);
 
     // Graph pre-normalization for PageRank
-    // norm_type 0/1 is standard unit normalization columns/rows with edge-cases.
-    // norm_type 2 symmetrizes graph, i.e. colsums == rowsums.
-    arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_type) {
+    // norm_method 0/1 is standard unit normalization columns/rows with edge-cases.
+    // norm_method 2 symmetrizes graph, i.e. colsums == rowsums.
+    arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_method) {
         arma::sp_mat P = G;
-        switch (norm_type) {
+        switch (norm_method) {
             case 0: // Column-normalize
             case 1: // Row-normalize
             {
-                P = normalize_matrix_internal(P, 1, norm_type, true, 1.0);
+                P = normalize_matrix_internal(P, 1, norm_method, true, 1.0);
             }
             break;
             case 2: // Symmetrize
@@ -154,7 +154,7 @@ namespace actionet {
             }
             break;
             default:
-                throw std::invalid_argument("Invalid 'norm_type'");
+                throw std::invalid_argument("Invalid 'norm_method'");
         }
 
         return (P);

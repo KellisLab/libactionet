@@ -3,7 +3,6 @@
 * Document C++ interface
 * network_measures: Parallelize
 * * network_measures: argument and return types (uvec/vec)
-* Standardize 'norm_type' vs. 'norm_method'
 
 ## Secondary
 * Fix compile warnings for svd.cpp
@@ -66,3 +65,4 @@
   * Fast matrix normalization/manipulation interface for R/Python preprocessing
 * Detect Rosetta build (x86) outside R "CMAKE_OSX_ARCHITECTURES
 * Modular cmake
+* Standardize 'norm_type' vs. 'norm_method'
