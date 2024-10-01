@@ -3,6 +3,8 @@
 * Document C++ interface
 * network_measures: Parallelize
 * * network_measures: argument and return types (uvec/vec)
+* Redo orthogonalization
+* sum(sum()) to accu where needed
 
 ## Secondary
 * Fix compile warnings for svd.cpp

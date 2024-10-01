@@ -2,7 +2,7 @@
 #include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
-
+// TODO: sum(sum()) to accu()
 namespace actionet {
     arma::field<arma::vec>
         autocorrelation_Moran_parametric(const arma::sp_mat& G, const arma::mat& scores, int normalization_method,
