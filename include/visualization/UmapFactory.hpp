@@ -114,7 +114,7 @@ struct UmapFactory {
                 float eps = opt_args.eps;
                 if (verbose) {
                     stderr_printf(
-                        "Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %e\n",
+                        "Optimizing with Adam:\n\t alpha = %0.3f,  beta1 = %0.3f, beta2 = %0.3f, eps = %0.3e\n",
                         alpha, beta1, beta2, eps);
                 }
                 return std::make_unique<uwot::Adam>(alpha, beta1, beta2, eps, head_embedding.size());
