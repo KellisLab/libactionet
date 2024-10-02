@@ -5,6 +5,7 @@
 * * network_measures: argument and return types (uvec/vec)
 * Redo orthogonalization
 * sum(sum()) to accu where needed
+* buildNetwork() template accept dense and sparse `H`
 
 ## Secondary
 * Fix compile warnings for svd.cpp
