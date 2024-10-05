@@ -6,6 +6,7 @@
 * Redo orthogonalization
 * sum(sum()) to accu where needed
 * buildNetwork() template accept dense and sparse `H`
+* Prohibit UMAP negative values
 
 ## Secondary
 * Fix compile warnings for svd.cpp
