@@ -5,16 +5,16 @@
 
 // Exported
 namespace actionet {
-    arma::mat computeGroupedRowSums(arma::sp_mat& S, arma::vec& sample_assignments);
+    arma::mat computeGroupedSums(arma::sp_mat& S, arma::vec& sample_assignments, int axis = 0);
 
-    arma::mat computeGroupedRowSums(arma::mat& S, arma::vec& sample_assignments);
+    arma::mat computeGroupedSums(arma::mat& S, arma::vec& sample_assignments, int axis = 0);
 
     template <typename T>
-    arma::mat computeGroupedRowMeans(T& S, arma::vec& sample_assignments);
+    arma::mat computeGroupedMeans(T& S, arma::vec& sample_assignments, int axis = 0);
 
-    arma::mat computeGroupedRowVars(arma::sp_mat& S, arma::vec& sample_assignments);
+    arma::mat computeGroupedVars(arma::sp_mat& S, arma::vec& sample_assignments, int axis = 0);
 
-    arma::mat computeGroupedRowVars(arma::mat& S, arma::vec& sample_assignments);
+    arma::mat computeGroupedVars(arma::mat& S, arma::vec& sample_assignments, int axis = 0);
 } // namespace actionet
 
 #endif //ACTIONET_MATRIX_MISC_HPP
