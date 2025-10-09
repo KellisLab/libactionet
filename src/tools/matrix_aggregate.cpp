@@ -2,6 +2,9 @@
 
 namespace actionet {
     arma::mat computeGroupedSums(arma::sp_mat& S, arma::vec& sample_assignments, int axis) {
+        if ((axis == 0 && sample_assignments.n_elem != S.n_cols) || (axis == 1 && sample_assignments.n_elem != S.n_rows)) {
+            throw std::invalid_argument("Length of 'sample_assignments' must match the number of columns (axis=0) or rows (axis=1) of S.");
+        }
         arma::vec lv_vec = arma::unique(sample_assignments);
         if (axis == 0) { // rowwise (default)
             arma::mat pb = arma::zeros(S.n_rows, lv_vec.n_elem);
@@ -27,6 +30,9 @@ namespace actionet {
     }
 
     arma::mat computeGroupedSums(arma::mat& S, arma::vec& sample_assignments, int axis) {
+        if ((axis == 0 && sample_assignments.n_elem != S.n_cols) || (axis == 1 && sample_assignments.n_elem != S.n_rows)) {
+            throw std::invalid_argument("Length of 'sample_assignments' must match the number of columns (axis=0) or rows (axis=1) of S.");
+        }
         arma::vec lv_vec = arma::unique(sample_assignments);
         if (axis == 0) { // rowwise (default)
             arma::mat pb = arma::zeros(S.n_rows, lv_vec.n_elem);
@@ -59,6 +65,9 @@ namespace actionet {
 
     template <typename T>
     arma::mat computeGroupedMeans(T& S, arma::vec& sample_assignments, int axis) {
+        if ((axis == 0 && sample_assignments.n_elem != S.n_cols) || (axis == 1 && sample_assignments.n_elem != S.n_rows)) {
+            throw std::invalid_argument("Length of 'sample_assignments' must match the number of columns (axis=0) or rows (axis=1) of S.");
+        }
         arma::mat pb = computeGroupedSums(S, sample_assignments, axis);
         if (axis == 0) {
             for (int j = 0; j < pb.n_cols; j++) {
@@ -78,6 +87,9 @@ namespace actionet {
     template arma::mat computeGroupedMeans<arma::sp_mat>(arma::sp_mat& S, arma::vec& sample_assignments, int axis);
 
     arma::mat computeGroupedVars(arma::sp_mat& S, arma::vec& sample_assignments, int axis) {
+        if ((axis == 0 && sample_assignments.n_elem != S.n_cols) || (axis == 1 && sample_assignments.n_elem != S.n_rows)) {
+            throw std::invalid_argument("Length of 'sample_assignments' must match the number of columns (axis=0) or rows (axis=1) of S.");
+        }
         arma::mat pb_mu = computeGroupedMeans(S, sample_assignments, axis);
         if (axis == 0) {
             arma::mat pb = arma::zeros(pb_mu.n_rows, pb_mu.n_cols);
@@ -127,6 +139,9 @@ namespace actionet {
     }
 
     arma::mat computeGroupedVars(arma::mat& S, arma::vec& sample_assignments, int axis) {
+        if ((axis == 0 && sample_assignments.n_elem != S.n_cols) || (axis == 1 && sample_assignments.n_elem != S.n_rows)) {
+            throw std::invalid_argument("Length of 'sample_assignments' must match the number of columns (axis=0) or rows (axis=1) of S.");
+        }
         arma::vec lv_vec = arma::unique(sample_assignments);
         if (axis == 0) {
             arma::mat pb = arma::zeros(S.n_rows, lv_vec.n_elem);
