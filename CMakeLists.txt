@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.19)
 
 project(actionet)
 ## Include third-party cmake modules
-list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
+## Use PREPEND to ensure our FindBLAS/FindLAPACK wrappers are found before system modules
+list(PREPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
 include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
