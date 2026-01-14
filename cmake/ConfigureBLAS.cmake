@@ -39,7 +39,8 @@ macro(CONFIGURE_BLAS_MKL libtarget)
         ## Enable MKL in libactionet_config.hpp
         target_compile_definitions(${libtarget} PUBLIC LIBACTIONET_BLAS_MKL)
     else ()
-        message("Not using MKL headers")
+        message(WARNING "MKL headers not found at ${BLAS_HEADERS_USE}")
+        unset(BLAS_HEADERS_USE)
     endif ()
 endmacro()
 
@@ -54,23 +55,41 @@ macro(CONFIGURE_BLAS_ACCELERATE libtarget)
     target_compile_definitions(${libtarget} PUBLIC LIBACTIONET_BLAS_ACCELERATE)
 
     ## Find required Accelerate headers
-    set(BLAS_HEADERS_USE "${BLAS_LIBRARIES}/Frameworks/vecLib.framework/Headers")
-    if (NOT EXISTS "${BLAS_HEADERS_USE}")
-        message(FATAL_ERROR "Cannot locate Apple Accelerate headers")
+    # Try multiple possible locations for Accelerate headers
+    set(ACCELERATE_HEADER_SEARCH_PATHS
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Headers"
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Headers"
+        "/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Headers"
+    )
+
+    # Also check for SDK paths dynamically
+    if (CMAKE_OSX_SYSROOT)
+        list(APPEND ACCELERATE_HEADER_SEARCH_PATHS
+            "${CMAKE_OSX_SYSROOT}/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Headers")
+    endif()
+
+    unset(BLAS_HEADERS_USE)
+    foreach(header_path ${ACCELERATE_HEADER_SEARCH_PATHS})
+        if (EXISTS "${header_path}/cblas.h")
+            set(BLAS_HEADERS_USE "${header_path}")
+            break()
+        endif()
+    endforeach()
+
+    if (NOT BLAS_HEADERS_USE)
+        message(FATAL_ERROR "Cannot locate Apple Accelerate cblas.h header. Searched paths: ${ACCELERATE_HEADER_SEARCH_PATHS}")
     endif ()
     message(STATUS "Accelerate headers: ${BLAS_HEADERS_USE}")
 
-    ## Set required compiler options
-    target_compile_options(${libtarget} INTERFACE -framework Accelerate)
-    #    TODO: Probably unneeded. Suppress deprecation warnings.
-    #    add_compile_definitions(ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
+    ## Set required compiler/linker options
+    target_link_options(${libtarget} PUBLIC "-framework" "Accelerate")
 endmacro()
 
 ## Find dependencies for MKL and Accelerate
 macro(CONFIGURE_BLAS_DEPENDS libtarget)
     if ((DEFINED BLA_VENDOR) AND (NOT ${BLA_VENDOR} STREQUAL "All"))
         ## Find dependencies for user-specified BLAS
-        message(STATUS "Using provided BLA_VENDOR")
+        message(STATUS "Using provided BLA_VENDOR: ${BLA_VENDOR}")
         if ("${BLA_VENDOR}" MATCHES "Intel")
             CONFIGURE_BLAS_MKL(${libtarget})
         elseif ("${BLA_VENDOR}" STREQUAL "Apple")
@@ -78,32 +97,75 @@ macro(CONFIGURE_BLAS_DEPENDS libtarget)
         endif ()
     else ()
         ## Find dependencies based on BLAS link line pattern
-        message(STATUS "Detecting BLAS implementation from BLAS_LIBRARIES")
+        message(STATUS "Detecting BLAS implementation from BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
+        set(BLAS_VENDOR_DETECTED FALSE)
         foreach (lib ${BLAS_LIBRARIES})
             if (${lib} MATCHES "mkl")
                 CONFIGURE_BLAS_MKL(${libtarget})
+                set(BLAS_VENDOR_DETECTED TRUE)
                 break()
-            elseif ((${lib} MATCHES "Accelerate\.framework") OR (${lib} MATCHES "vecLib\.framework"))
+            elseif ((${lib} MATCHES "Accelerate") OR (${lib} MATCHES "vecLib"))
                 CONFIGURE_BLAS_ACCELERATE(${libtarget})
+                set(BLAS_VENDOR_DETECTED TRUE)
                 break()
             endif ()
         endforeach ()
+
+        if (NOT BLAS_VENDOR_DETECTED)
+            message(STATUS "Using generic BLAS/LAPACK (no vendor-specific optimizations)")
+            # For generic BLAS, try to find cblas.h in common locations
+            find_path(GENERIC_CBLAS_INCLUDE_DIR
+                NAMES cblas.h
+                PATHS
+                    /usr/include
+                    /usr/local/include
+                    /usr/include/openblas
+                    /usr/local/opt/openblas/include
+                    /opt/homebrew/opt/openblas/include
+                    /opt/local/include
+                PATH_SUFFIXES cblas
+            )
+            if (GENERIC_CBLAS_INCLUDE_DIR)
+                set(BLAS_HEADERS_USE "${GENERIC_CBLAS_INCLUDE_DIR}")
+                message(STATUS "Found generic cblas.h at: ${BLAS_HEADERS_USE}")
+            else()
+                message(WARNING "Could not find cblas.h header. Build may fail if code uses CBLAS directly.")
+            endif()
+        endif()
     endif ()
 
     ## Include BLAS headers if found
-    if (DEFINED BLAS_HEADERS_USE)
+    if (DEFINED BLAS_HEADERS_USE AND BLAS_HEADERS_USE)
         target_include_directories(
                 ${libtarget}
                 PRIVATE "${BLAS_HEADERS_USE}"
         )
+        message(STATUS "Added BLAS header include directory: ${BLAS_HEADERS_USE}")
     endif ()
 endmacro()
 
 ## Configure BLAS/LAPACK
 macro(CONFIGURE_BLAS libtarget)
     message(NOTICE "Configuring BLAS/LAPACK")
-    find_package(BLAS REQUIRED) ## Find BLAS
-    find_package(LAPACK REQUIRED) ## Find LAPACK
+
+    # Store the BLA_VENDOR for potential retry
+    set(_SAVED_BLA_VENDOR "${BLA_VENDOR}")
+
+    find_package(BLAS QUIET) ## Find BLAS
+    find_package(LAPACK QUIET) ## Find LAPACK
+
+    if (NOT BLAS_FOUND OR NOT LAPACK_FOUND)
+        message(WARNING "Initial BLAS/LAPACK detection failed. Attempting with BLA_VENDOR=All")
+        set(BLA_VENDOR "All")
+        find_package(BLAS REQUIRED)
+        find_package(LAPACK REQUIRED)
+    else()
+        message(STATUS "BLAS found: ${BLAS_LIBRARIES}")
+        message(STATUS "LAPACK found: ${LAPACK_LIBRARIES}")
+    endif()
+
+    # Restore BLA_VENDOR
+    set(BLA_VENDOR "${_SAVED_BLA_VENDOR}")
 
     CONFIGURE_BLAS_DEPENDS(${libtarget})
 endmacro()

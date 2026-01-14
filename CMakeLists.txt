@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 project(actionet)
-## Include third-part cmake modules
+## Include third-party cmake modules
 list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
 include(ConfigureApple)
 include(ConfigureBLAS)
@@ -55,19 +55,34 @@ elseif (UNIX) # Build for Unix-alike configurations (including macOS)
 endif ()
 
 ############ CONFIGURE BUILD
-if (LAPACK_LINKER_FLAGS)
-    target_compile_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS})
-endif ()
-if (BLAS_LINKER_FLAGS)
-    target_compile_options(actionet PUBLIC ${BLAS_LINKER_FLAGS})
-endif ()
+# Link BLAS and LAPACK - properly handle both library paths and linker flags
+if (BLAS_FOUND AND LAPACK_FOUND)
+    # Modern CMake: use targets if available
+    if (TARGET BLAS::BLAS)
+        target_link_libraries(actionet PUBLIC BLAS::BLAS)
+    else()
+        target_link_libraries(actionet PUBLIC ${BLAS_LIBRARIES})
+    endif()
 
-## Link BLAS and LAPACK
-target_link_libraries(
-        actionet
-        PUBLIC ${LAPACK_LIBRARIES}
-        PUBLIC ${BLAS_LIBRARIES}
-)
+    if (TARGET LAPACK::LAPACK)
+        target_link_libraries(actionet PUBLIC LAPACK::LAPACK)
+    else()
+        target_link_libraries(actionet PUBLIC ${LAPACK_LIBRARIES})
+    endif()
+
+    # Handle linker flags separately (if provided)
+    if (BLAS_LINKER_FLAGS)
+        target_link_options(actionet PUBLIC ${BLAS_LINKER_FLAGS})
+    endif ()
+    if (LAPACK_LINKER_FLAGS)
+        target_link_options(actionet PUBLIC ${LAPACK_LINKER_FLAGS})
+    endif ()
+
+    message(STATUS "Linked BLAS libraries: ${BLAS_LIBRARIES}")
+    message(STATUS "Linked LAPACK libraries: ${LAPACK_LIBRARIES}")
+else()
+    message(WARNING "BLAS or LAPACK not found - build may fail")
+endif()
 
 message(NOTICE "Searching for SuiteSparse installation")
 ## Find and link CHOLMOD
@@ -91,6 +106,7 @@ if (OpenMP_FOUND)
             PRIVATE OpenMP::OpenMP_CXX
     )
     target_compile_definitions(actionet PUBLIC ARMA_OPENMP_THREADS=${NPROC})
+    message(STATUS "OpenMP enabled with ${NPROC} threads")
 else ()
     message(NOTICE "OpenMP not found")
     message(STATUS "Building without OpenMP")
@@ -100,7 +116,10 @@ endif ()
 target_compile_options(actionet PUBLIC -Wno-psabi -Wno-deprecated-declarations)# -ferror-limit=10)#-fmax-errors=10)
 #add_compile_options(-w)
 
-## Build diagnostics and debugging
+## Export compile commands for IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+## Build diagnostics (uncomment for debugging)
 #get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
 #message(NOTICE "Debug info:")
 #message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
@@ -110,5 +129,3 @@ target_compile_options(actionet PUBLIC -Wno-psabi -Wno-deprecated-declarations)#
 #message(STATUS "BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
 #message(STATUS "OpenMP_C_INCLUDE_DIRS: ${OpenMP_C_INCLUDE_DIRS}")
 #message(STATUS "OpenMP_CXX_INCLUDE_DIRS: ${OpenMP_CXX_INCLUDE_DIRS}")
-#
-#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
