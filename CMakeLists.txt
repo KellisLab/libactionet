@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 
 project(actionet)
 ## Include third-party cmake modules
-## Use PREPEND to ensure our FindBLAS/FindLAPACK wrappers are found before system modules
-list(PREPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
 include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
@@ -85,10 +84,56 @@ else()
     message(WARNING "BLAS or LAPACK not found - build may fail")
 endif()
 
-message(NOTICE "Searching for SuiteSparse installation")
-## Find and link CHOLMOD
-find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD)
-target_link_libraries(actionet PUBLIC SuiteSparse::CHOLMOD)
+message(NOTICE "Searching for CHOLMOD library")
+## Find CHOLMOD (part of SuiteSparse) - simple direct search
+## CHOLMOD is typically installed via package managers (brew, apt, etc.)
+## Common locations: /usr/local, /usr, /opt/homebrew
+
+# Find cholmod.h header
+find_path(CHOLMOD_INCLUDE_DIR
+    NAMES cholmod.h
+    PATHS
+        /usr/local/include/suitesparse
+        /usr/include/suitesparse
+        /opt/homebrew/include/suitesparse
+        /opt/local/include/suitesparse
+        /usr/local/include
+        /usr/include
+        /opt/homebrew/include
+        /opt/local/include
+    DOC "CHOLMOD include directory"
+)
+
+# Find libcholmod library
+find_library(CHOLMOD_LIBRARY
+    NAMES cholmod
+    PATHS
+        /usr/local/lib
+        /usr/lib
+        /opt/homebrew/lib
+        /opt/local/lib
+    DOC "CHOLMOD library"
+)
+
+# Check if found
+if (CHOLMOD_INCLUDE_DIR AND CHOLMOD_LIBRARY)
+    message(STATUS "Found CHOLMOD:")
+    message(STATUS "  Include: ${CHOLMOD_INCLUDE_DIR}")
+    message(STATUS "  Library: ${CHOLMOD_LIBRARY}")
+
+    # Add include directory
+    target_include_directories(actionet PRIVATE ${CHOLMOD_INCLUDE_DIR})
+
+    # Link library
+    target_link_libraries(actionet PUBLIC ${CHOLMOD_LIBRARY})
+else()
+    if (NOT CHOLMOD_INCLUDE_DIR)
+        message(FATAL_ERROR "Could not find cholmod.h. Please install SuiteSparse (brew install suite-sparse or apt-get install libsuitesparse-dev)")
+    endif()
+    if (NOT CHOLMOD_LIBRARY)
+        message(FATAL_ERROR "Could not find libcholmod. Please install SuiteSparse (brew install suite-sparse or apt-get install libsuitesparse-dev)")
+    endif()
+endif()
 
 ## Add included headers
 target_include_directories(

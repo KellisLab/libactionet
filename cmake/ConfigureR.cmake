@@ -117,14 +117,9 @@ macro(CONFIGURE_R)
             message(STATUS "R BLAS_LIBS: ${BLAS_LIBRARIES}")
             message(STATUS "R LAPACK_LIBS: ${LAPACK_LIBRARIES}")
 
-            # Set preload variables for FindBLAS/FindLAPACK wrappers
-            # Our custom FindBLAS.cmake and FindLAPACK.cmake in cmake/ directory will detect these
-            # and short-circuit the search, returning R's BLAS/LAPACK instead
-            set(PRELOAD_BLAS_LIBRARIES "${BLAS_LIBRARIES}" CACHE INTERNAL "BLAS libraries from R")
-            set(PRELOAD_LAPACK_LIBRARIES "${LAPACK_LIBRARIES}" CACHE INTERNAL "LAPACK libraries from R")
-
-            message(STATUS "Set PRELOAD_BLAS_LIBRARIES for FindBLAS wrapper")
-            message(STATUS "Set PRELOAD_LAPACK_LIBRARIES for FindLAPACK wrapper")
+            # Mark BLAS/LAPACK as found to prevent redundant searches
+            set(BLAS_FOUND TRUE)
+            set(LAPACK_FOUND TRUE)
 
             ## Find BLAS dependencies (headers, etc.)
             CONFIGURE_BLAS_DEPENDS(actionet)
