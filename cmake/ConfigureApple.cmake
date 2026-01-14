@@ -1,7 +1,7 @@
 #[=============================================================================[
 ConfigureApple.cmake
 ================================================================================
-Set Mac target architecture and Apple CPU=specific compiler flags.
+Set Mac target architecture and Apple CPU-specific compiler flags.
 
 The following variables control the behaviour of this module:
 
@@ -31,10 +31,21 @@ macro(CONFIGURE_APPLE libtarget)
                 OUTPUT_VARIABLE arch
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        message(STATUS "Building for ${arch}")
+        message(STATUS "Building for current system architecture: ${arch}")
+        set(CMAKE_OSX_ARCHITECTURES "${arch}" CACHE STRING "Target architecture for macOS" FORCE)
     endif ()
 
-    if (${arch} MATCHES "arm64")
+    # Apply architecture-specific compiler flags
+    if (${arch} MATCHES "arm64" OR ${arch} MATCHES "aarch64")
         target_compile_options(${libtarget} PUBLIC -flax-vector-conversions)
+        message(STATUS "Applied ARM64-specific compiler flags")
+    elseif (${arch} MATCHES "x86_64")
+        message(STATUS "Applied x86_64-specific compiler flags")
     endif ()
+
+    # Set minimum macOS deployment target if not already set
+    if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment target" FORCE)
+        message(STATUS "Set CMAKE_OSX_DEPLOYMENT_TARGET to ${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
 endmacro()

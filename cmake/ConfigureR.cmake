@@ -52,7 +52,7 @@ macro(CONFIGURE_R)
 
     ## Find R headers
     execute_process(
-            COMMAND bash -c "${R_HOME}/bin/R CMD config --cppflags | sed s/-I//g"
+            COMMAND bash -c "${R_HOME}/bin/R CMD config --cppflags | sed 's/-I//g'"
             OUTPUT_VARIABLE r_RInclude
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -62,6 +62,7 @@ macro(CONFIGURE_R)
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"Rcpp\"))'"
             OUTPUT_VARIABLE r_RcppInclude
+            OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     message(STATUS "Rcpp headers: ${r_RcppInclude}")
 
@@ -69,6 +70,7 @@ macro(CONFIGURE_R)
     execute_process(
             COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(system.file(\"include\", package=\"RcppArmadillo\"))'"
             OUTPUT_VARIABLE r_RcppArmaInclude
+            OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     message(STATUS "RcppArmadillo headers: ${r_RcppArmaInclude}")
 
@@ -83,27 +85,45 @@ macro(CONFIGURE_R)
 
     ## Set BLAS and LAPACK libraries
     if ((DEFINED BLA_VENDOR) AND (NOT ${BLA_VENDOR} STREQUAL "All")) ## User provided
-        CONFIGURE_BLAS()
+        message(STATUS "Using user-specified BLA_VENDOR: ${BLA_VENDOR}")
+        CONFIGURE_BLAS(actionet)
     else () ## Get BLAS/LAPACK from R
         message(NOTICE "Using BLAS/LAPACK from R")
         ## Find R BLAS_LIBS
         execute_process(
-                COMMAND bash -c "${R_HOME}/bin/R CMD config BLAS_LIBS | sed s/-I//g"
-                OUTPUT_VARIABLE BLAS_LIBRARIES
+                COMMAND bash -c "${R_HOME}/bin/R CMD config BLAS_LIBS"
+                OUTPUT_VARIABLE BLAS_LIBRARIES_RAW
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        separate_arguments(BLAS_LIBRARIES NATIVE_COMMAND ${BLAS_LIBRARIES})
-        message(STATUS "R BLAS_LIBS: ${BLAS_LIBRARIES}")
+        message(STATUS "R BLAS_LIBS (raw): ${BLAS_LIBRARIES_RAW}")
+
         ## Find R LAPACK_LIBS
         execute_process(
-                COMMAND bash -c "${R_HOME}/bin/R CMD config LAPACK_LIBS | sed s/-I//g"
-                OUTPUT_VARIABLE LAPACK_LIBRARIES
+                COMMAND bash -c "${R_HOME}/bin/R CMD config LAPACK_LIBS"
+                OUTPUT_VARIABLE LAPACK_LIBRARIES_RAW
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        separate_arguments(LAPACK_LIBRARIES NATIVE_COMMAND ${LAPACK_LIBRARIES})
-        message(STATUS "R LAPACK_LIBS: ${LAPACK_LIBRARIES}")
-        ## Find BLAS dependencies
-        CONFIGURE_BLAS_DEPENDS(actionet)
+        message(STATUS "R LAPACK_LIBS (raw): ${LAPACK_LIBRARIES_RAW}")
+
+        # Check if R provides valid BLAS/LAPACK libraries
+        if (BLAS_LIBRARIES_RAW STREQUAL "" OR LAPACK_LIBRARIES_RAW STREQUAL "")
+            message(WARNING "R BLAS/LAPACK libraries are empty. Falling back to system BLAS/LAPACK detection.")
+            CONFIGURE_BLAS(actionet)
+        else()
+            # Parse the R BLAS/LAPACK flags
+            separate_arguments(BLAS_LIBRARIES NATIVE_COMMAND ${BLAS_LIBRARIES_RAW})
+            separate_arguments(LAPACK_LIBRARIES NATIVE_COMMAND ${LAPACK_LIBRARIES_RAW})
+
+            message(STATUS "R BLAS_LIBS: ${BLAS_LIBRARIES}")
+            message(STATUS "R LAPACK_LIBS: ${LAPACK_LIBRARIES}")
+
+            # Mark BLAS/LAPACK as found to prevent redundant searches
+            set(BLAS_FOUND TRUE)
+            set(LAPACK_FOUND TRUE)
+
+            ## Find BLAS dependencies (headers, etc.)
+            CONFIGURE_BLAS_DEPENDS(actionet)
+        endif()
     endif ()
 
     target_include_directories(actionet
