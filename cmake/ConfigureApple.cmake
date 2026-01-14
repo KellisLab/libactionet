@@ -22,10 +22,6 @@ macro(CONFIGURE_APPLE libtarget)
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
         message(STATUS "Building for architecture of R installation: ${arch}")
-        # Set CMAKE_OSX_ARCHITECTURES if not already set
-        if (NOT DEFINED CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL "")
-            set(CMAKE_OSX_ARCHITECTURES "${arch}" CACHE STRING "Target architecture for macOS" FORCE)
-        endif()
     elseif ((DEFINED CMAKE_OSX_ARCHITECTURES) AND (NOT ${CMAKE_OSX_ARCHITECTURES} STREQUAL "")) ## User specific compilation target
         message(STATUS "CMAKE_OSX_ARCHITECTURES set: ${CMAKE_OSX_ARCHITECTURES}")
         set(arch "${CMAKE_OSX_ARCHITECTURES}")
@@ -40,7 +36,7 @@ macro(CONFIGURE_APPLE libtarget)
     endif ()
 
     # Apply architecture-specific compiler flags
-    if (${arch} MATCHES "arm64")
+    if (${arch} MATCHES "arm64" OR ${arch} MATCHES "aarch64")
         target_compile_options(${libtarget} PUBLIC -flax-vector-conversions)
         message(STATUS "Applied ARM64-specific compiler flags")
     elseif (${arch} MATCHES "x86_64")
