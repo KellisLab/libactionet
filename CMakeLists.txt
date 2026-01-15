@@ -7,6 +7,7 @@ include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
+include(ConfigureCHOLMOD)
 include(BuildTest)
 
 ############# COMPILER OPTIONS
@@ -91,89 +92,8 @@ else()
     message(WARNING "BLAS or LAPACK not found - build may fail")
 endif()
 
-message(NOTICE "Searching for CHOLMOD library")
-## Find CHOLMOD (part of SuiteSparse) - simple direct search
-## CHOLMOD is typically installed via package managers (brew, apt, etc.)
-## Architecture-aware Homebrew paths:
-##   - ARM64 (Apple Silicon): /opt/homebrew
-##   - x86_64 (Intel): /usr/local
-##   - Generic/unknown: try both
-
-set(CHOLMOD_SEARCH_INCLUDE_PATHS
-    /usr/local/include/suitesparse
-    /usr/include/suitesparse
-    /opt/local/include/suitesparse
-    /usr/local/include
-    /usr/include
-)
-
-set(CHOLMOD_SEARCH_LIB_PATHS
-    /usr/local/lib
-    /usr/lib
-    /opt/local/lib
-)
-
-# Add architecture-specific Homebrew paths if on macOS
-if (APPLE)
-    if (DEFINED TARGET_ARCHITECTURE)
-        if ("${TARGET_ARCHITECTURE}" MATCHES "arm64" OR "${TARGET_ARCHITECTURE}" MATCHES "aarch64")
-            list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 /opt/homebrew/include/suitesparse)
-            list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 /opt/homebrew/lib)
-            message(STATUS "Using ARM64 Homebrew paths for CHOLMOD search")
-        elseif ("${TARGET_ARCHITECTURE}" MATCHES "x86_64")
-            list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 /usr/local/opt/suite-sparse/include/suitesparse)
-            list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 /usr/local/include/suitesparse)
-            list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 /usr/local/opt/suite-sparse/lib)
-            list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 /usr/local/lib)
-            message(STATUS "Using x86_64 Homebrew paths for CHOLMOD search")
-        endif()
-    else()
-        # Fallback: add both Homebrew paths
-        list(APPEND CHOLMOD_SEARCH_INCLUDE_PATHS
-            /opt/homebrew/include/suitesparse
-            /opt/homebrew/opt/suite-sparse/include/suitesparse)
-        list(APPEND CHOLMOD_SEARCH_LIB_PATHS
-            /opt/homebrew/lib
-            /opt/homebrew/opt/suite-sparse/lib)
-        message(VERBOSE "Added both ARM64 and x86_64 Homebrew paths for CHOLMOD")
-    endif()
-endif()
-
-# Find cholmod.h header
-find_path(CHOLMOD_INCLUDE_DIR
-    NAMES cholmod.h
-    PATHS ${CHOLMOD_SEARCH_INCLUDE_PATHS}
-
-
-    DOC "CHOLMOD include directory"
-)
-
-# Find libcholmod library
-find_library(CHOLMOD_LIBRARY
-    NAMES cholmod
-    PATHS ${CHOLMOD_SEARCH_LIB_PATHS}
-    DOC "CHOLMOD library"
-)
-
-# Check if found
-if (CHOLMOD_INCLUDE_DIR AND CHOLMOD_LIBRARY)
-    message(STATUS "Found CHOLMOD:")
-    message(STATUS "  Include: ${CHOLMOD_INCLUDE_DIR}")
-    message(STATUS "  Library: ${CHOLMOD_LIBRARY}")
-
-    # Add include directory
-    target_include_directories(actionet PRIVATE ${CHOLMOD_INCLUDE_DIR})
-
-    # Link library
-    target_link_libraries(actionet PUBLIC ${CHOLMOD_LIBRARY})
-else()
-    if (NOT CHOLMOD_INCLUDE_DIR)
-        message(FATAL_ERROR "Could not find cholmod.h. Please install SuiteSparse (brew install suite-sparse or apt-get install libsuitesparse-dev)")
-    endif()
-    if (NOT CHOLMOD_LIBRARY)
-        message(FATAL_ERROR "Could not find libcholmod. Please install SuiteSparse (brew install suite-sparse or apt-get install libsuitesparse-dev)")
-    endif()
-endif()
+## Configure CHOLMOD library
+CONFIGURE_CHOLMOD(actionet)
 
 ## Add included headers
 target_include_directories(
