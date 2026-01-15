@@ -95,7 +95,7 @@ macro(CONFIGURE_R)
                 OUTPUT_VARIABLE BLAS_LIBRARIES_RAW
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        message(STATUS "R BLAS_LIBS (raw): ${BLAS_LIBRARIES_RAW}")
+#        message(STATUS "R BLAS_LIBS (raw): ${BLAS_LIBRARIES_RAW}")
 
         ## Find R LAPACK_LIBS
         execute_process(
@@ -103,7 +103,7 @@ macro(CONFIGURE_R)
                 OUTPUT_VARIABLE LAPACK_LIBRARIES_RAW
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        message(STATUS "R LAPACK_LIBS (raw): ${LAPACK_LIBRARIES_RAW}")
+#        message(STATUS "R LAPACK_LIBS (raw): ${LAPACK_LIBRARIES_RAW}")
 
         # Check if R provides valid BLAS/LAPACK libraries
         if (BLAS_LIBRARIES_RAW STREQUAL "" OR LAPACK_LIBRARIES_RAW STREQUAL "")
