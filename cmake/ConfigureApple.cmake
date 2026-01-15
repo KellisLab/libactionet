@@ -15,31 +15,38 @@ The following variables control the behaviour of this module:
 
 macro(CONFIGURE_APPLE libtarget)
     message(NOTICE "Configuring cmake build for macOS")
-    if (LIBACTIONET_BUILD_R) ## Detect R architecture on Apple systems
-        execute_process(
-                COMMAND bash -c "${R_HOME}/bin/Rscript -e 'cat(R.version[[\"arch\"]])'"
-                OUTPUT_VARIABLE arch
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        message(STATUS "Building for architecture of R installation: ${arch}")
-    elseif ((DEFINED CMAKE_OSX_ARCHITECTURES) AND (NOT ${CMAKE_OSX_ARCHITECTURES} STREQUAL "")) ## User specific compilation target
-        message(STATUS "CMAKE_OSX_ARCHITECTURES set: ${CMAKE_OSX_ARCHITECTURES}")
+
+    # For R builds, CMAKE_OSX_ARCHITECTURES must be set by the configure script
+    if (LIBACTIONET_BUILD_R)
+        if (NOT CMAKE_OSX_ARCHITECTURES)
+            message(FATAL_ERROR "CMAKE_OSX_ARCHITECTURES must be set when building for R. Please pass it via cmake command line.")
+        endif()
         set(arch "${CMAKE_OSX_ARCHITECTURES}")
+        message(STATUS "Building for R with architecture: ${arch}")
+    # Check if CMAKE_OSX_ARCHITECTURES was set (e.g., from command line or cache)
+    elseif (CMAKE_OSX_ARCHITECTURES)
+        set(arch "${CMAKE_OSX_ARCHITECTURES}")
+        message(STATUS "Using CMAKE_OSX_ARCHITECTURES: ${arch}")
     else () ## Default to current system architecture
         execute_process(
                 COMMAND bash -c "uname -m"
                 OUTPUT_VARIABLE arch
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        message(STATUS "Building for current system architecture: ${arch}")
         set(CMAKE_OSX_ARCHITECTURES "${arch}" CACHE STRING "Target architecture for macOS" FORCE)
+        message(STATUS "Building for current system architecture: ${arch}")
     endif ()
 
+    # Ensure arch is set
+    if (NOT DEFINED arch OR "${arch}" STREQUAL "")
+        message(FATAL_ERROR "Architecture not detected. Please set CMAKE_OSX_ARCHITECTURES explicitly.")
+    endif()
+
     # Apply architecture-specific compiler flags
-    if (${arch} MATCHES "arm64" OR ${arch} MATCHES "aarch64")
+    if ("${arch}" MATCHES "arm64" OR "${arch}" MATCHES "aarch64")
         target_compile_options(${libtarget} PUBLIC -flax-vector-conversions)
         message(STATUS "Applied ARM64-specific compiler flags")
-    elseif (${arch} MATCHES "x86_64")
+    elseif ("${arch}" MATCHES "x86_64")
         message(STATUS "Applied x86_64-specific compiler flags")
     endif ()
 
