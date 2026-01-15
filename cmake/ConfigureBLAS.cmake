@@ -114,15 +114,30 @@ macro(CONFIGURE_BLAS_DEPENDS libtarget)
         if (NOT BLAS_VENDOR_DETECTED)
             message(STATUS "Using generic BLAS/LAPACK (no vendor-specific optimizations)")
             # For generic BLAS, try to find cblas.h in common locations
+            set(GENERIC_CBLAS_SEARCH_PATHS
+                /usr/include
+                /usr/local/include
+                /usr/include/openblas
+                /usr/local/opt/openblas/include
+                /opt/local/include
+            )
+
+            # Add architecture-specific Homebrew paths if on macOS
+            if (DEFINED TARGET_ARCHITECTURE)
+                if ("${TARGET_ARCHITECTURE}" MATCHES "arm64" OR "${TARGET_ARCHITECTURE}" MATCHES "aarch64")
+                    list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 /opt/homebrew/opt/openblas/include)
+                elseif ("${TARGET_ARCHITECTURE}" MATCHES "x86_64")
+                    list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 /usr/local/opt/openblas/include)
+                endif()
+            else()
+                # Fallback: add both Homebrew paths
+                list(APPEND GENERIC_CBLAS_SEARCH_PATHS
+                    /opt/homebrew/opt/openblas/include)
+            endif()
+
             find_path(GENERIC_CBLAS_INCLUDE_DIR
                 NAMES cblas.h
-                PATHS
-                    /usr/include
-                    /usr/local/include
-                    /usr/include/openblas
-                    /usr/local/opt/openblas/include
-                    /opt/homebrew/opt/openblas/include
-                    /opt/local/include
+                PATHS ${GENERIC_CBLAS_SEARCH_PATHS}
                 PATH_SUFFIXES cblas
             )
             if (GENERIC_CBLAS_INCLUDE_DIR)

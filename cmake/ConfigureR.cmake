@@ -41,6 +41,74 @@ The following variables control the behaviour of this module:
 
 ]=============================================================================]
 
+macro(CONFIGURE_R_ARCHITECTURE)
+    # This is called early to set CMAKE_OSX_ARCHITECTURES before CONFIGURE_APPLE
+    message(STATUS "Extracting R target architecture for CMake configuration")
+    if (NOT DEFINED R_HOME)
+        message(FATAL_ERROR "R_HOME not defined")
+    else ()
+        message(STATUS "Using R installation: ${R_HOME}")
+    endif ()
+
+    ## Extract target architecture from R if on macOS
+    if (APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
+        message(STATUS "Detecting R target architecture on macOS")
+
+        # Primary method: Detect from R binary using file command
+        execute_process(
+                COMMAND bash -c "file '${R_HOME}/bin/R' 2>/dev/null | grep -oE '(arm64|aarch64|x86_64|i386)' | head -1"
+                OUTPUT_VARIABLE R_BINARY_ARCH
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                RESULT_VARIABLE FILE_CMD_RESULT
+        )
+
+        if (R_BINARY_ARCH AND FILE_CMD_RESULT EQUAL 0)
+            # Normalize architecture names
+            if ("${R_BINARY_ARCH}" MATCHES "aarch64")
+                set(R_BINARY_ARCH "arm64")
+            endif()
+            message(STATUS "R target architecture detected from binary: ${R_BINARY_ARCH}")
+            set(CMAKE_OSX_ARCHITECTURES "${R_BINARY_ARCH}" CACHE STRING "Target architecture from R binary" FORCE)
+        else()
+            # Fallback: Try to detect from R config variables
+            execute_process(
+                    COMMAND bash -c "${R_HOME}/bin/R CMD config SIZEOF_LONG_DOUBLE 2>/dev/null | head -c 1"
+                    OUTPUT_VARIABLE R_SIZEOF_RESULT
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+
+            # Also try OBJECT_MODE which might indicate 64-bit
+            execute_process(
+                    COMMAND bash -c "${R_HOME}/bin/R CMD config SHLIB_CXXLD 2>/dev/null | grep -oE '(arm64|aarch64|x86_64|i386)' | head -1"
+                    OUTPUT_VARIABLE R_COMPILER_ARCH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+
+            if (R_COMPILER_ARCH)
+                if ("${R_COMPILER_ARCH}" MATCHES "aarch64")
+                    set(R_COMPILER_ARCH "arm64")
+                endif()
+                message(STATUS "R target architecture detected from compiler settings: ${R_COMPILER_ARCH}")
+                set(CMAKE_OSX_ARCHITECTURES "${R_COMPILER_ARCH}" CACHE STRING "Target architecture from R compiler" FORCE)
+            else()
+                message(WARNING "Could not automatically detect R target architecture. Attempting system default.")
+                # Use current system architecture as fallback
+                execute_process(
+                        COMMAND bash -c "uname -m"
+                        OUTPUT_VARIABLE SYSTEM_ARCH
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+                if (SYSTEM_ARCH)
+                    message(STATUS "Using system architecture as fallback: ${SYSTEM_ARCH}")
+                    set(CMAKE_OSX_ARCHITECTURES "${SYSTEM_ARCH}" CACHE STRING "Target architecture (system default)" FORCE)
+                else()
+                    message(FATAL_ERROR "Could not detect R target architecture. Please set CMAKE_OSX_ARCHITECTURES explicitly.")
+                endif()
+            endif()
+        endif()
+    endif()
+endmacro()
+
 macro(CONFIGURE_R)
     message(NOTICE "Configuring for R library")
     if (NOT DEFINED R_HOME)

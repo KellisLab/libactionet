@@ -6,6 +6,7 @@ list(APPEND CMAKE_MODULE_PATH "${actionet_SOURCE_DIR}/cmake")
 include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
+include(ConfigureOpenMP)
 include(BuildTest)
 
 ############# COMPILER OPTIONS
@@ -34,6 +35,12 @@ add_library(actionet STATIC ${SOURCES})
 ############# FUNCTIONS AND MACROS
 ## Set BLAS vendor default
 set(BLA_VENDOR All)
+
+## Handle R build configuration FIRST (before CONFIGURE_APPLE) to extract architecture
+if (LIBACTIONET_BUILD_R)
+    # Extract R's target architecture before calling CONFIGURE_APPLE
+    CONFIGURE_R_ARCHITECTURE()
+endif()
 
 ## Set Apple CPU-specific compiler flags
 if (APPLE)
@@ -87,31 +94,64 @@ endif()
 message(NOTICE "Searching for CHOLMOD library")
 ## Find CHOLMOD (part of SuiteSparse) - simple direct search
 ## CHOLMOD is typically installed via package managers (brew, apt, etc.)
-## Common locations: /usr/local, /usr, /opt/homebrew
+## Architecture-aware Homebrew paths:
+##   - ARM64 (Apple Silicon): /opt/homebrew
+##   - x86_64 (Intel): /usr/local
+##   - Generic/unknown: try both
+
+set(CHOLMOD_SEARCH_INCLUDE_PATHS
+    /usr/local/include/suitesparse
+    /usr/include/suitesparse
+    /opt/local/include/suitesparse
+    /usr/local/include
+    /usr/include
+)
+
+set(CHOLMOD_SEARCH_LIB_PATHS
+    /usr/local/lib
+    /usr/lib
+    /opt/local/lib
+)
+
+# Add architecture-specific Homebrew paths if on macOS
+if (APPLE)
+    if (DEFINED TARGET_ARCHITECTURE)
+        if ("${TARGET_ARCHITECTURE}" MATCHES "arm64" OR "${TARGET_ARCHITECTURE}" MATCHES "aarch64")
+            list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 /opt/homebrew/include/suitesparse)
+            list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 /opt/homebrew/lib)
+            message(STATUS "Using ARM64 Homebrew paths for CHOLMOD search")
+        elseif ("${TARGET_ARCHITECTURE}" MATCHES "x86_64")
+            list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 /usr/local/opt/suite-sparse/include/suitesparse)
+            list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 /usr/local/include/suitesparse)
+            list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 /usr/local/opt/suite-sparse/lib)
+            list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 /usr/local/lib)
+            message(STATUS "Using x86_64 Homebrew paths for CHOLMOD search")
+        endif()
+    else()
+        # Fallback: add both Homebrew paths
+        list(APPEND CHOLMOD_SEARCH_INCLUDE_PATHS
+            /opt/homebrew/include/suitesparse
+            /opt/homebrew/opt/suite-sparse/include/suitesparse)
+        list(APPEND CHOLMOD_SEARCH_LIB_PATHS
+            /opt/homebrew/lib
+            /opt/homebrew/opt/suite-sparse/lib)
+        message(VERBOSE "Added both ARM64 and x86_64 Homebrew paths for CHOLMOD")
+    endif()
+endif()
 
 # Find cholmod.h header
 find_path(CHOLMOD_INCLUDE_DIR
     NAMES cholmod.h
-    PATHS
-        /usr/local/include/suitesparse
-        /usr/include/suitesparse
-        /opt/homebrew/include/suitesparse
-        /opt/local/include/suitesparse
-        /usr/local/include
-        /usr/include
-        /opt/homebrew/include
-        /opt/local/include
+    PATHS ${CHOLMOD_SEARCH_INCLUDE_PATHS}
+
+
     DOC "CHOLMOD include directory"
 )
 
 # Find libcholmod library
 find_library(CHOLMOD_LIBRARY
     NAMES cholmod
-    PATHS
-        /usr/local/lib
-        /usr/lib
-        /opt/homebrew/lib
-        /opt/local/lib
+    PATHS ${CHOLMOD_SEARCH_LIB_PATHS}
     DOC "CHOLMOD library"
 )
 
@@ -144,18 +184,14 @@ target_include_directories(
 )
 
 ## Check for OpenMP support
-message(NOTICE "Detecting OpenMP capabilities")
-find_package(OpenMP)
+CONFIGURE_OPENMP(actionet)
+
+# Set OpenMP thread count in Armadillo configuration
 if (OpenMP_FOUND)
-    target_link_libraries(actionet
-            PRIVATE OpenMP::OpenMP_C
-            PRIVATE OpenMP::OpenMP_CXX
-    )
     target_compile_definitions(actionet PUBLIC ARMA_OPENMP_THREADS=${NPROC})
     message(STATUS "OpenMP enabled with ${NPROC} threads")
 else ()
-    message(NOTICE "OpenMP not found")
-    message(STATUS "Building without OpenMP")
+    message(NOTICE "Building without OpenMP")
 endif ()
 
 ## Additional (optional) compiler options
