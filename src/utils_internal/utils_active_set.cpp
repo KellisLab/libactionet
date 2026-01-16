@@ -1,4 +1,5 @@
 #include "utils_internal/utils_active_set.hpp"
+#include "blas_deps.hpp"
 #include <cassert>
 
 // min(|| AX - B ||) s.t. simplex constraint

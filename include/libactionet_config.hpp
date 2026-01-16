@@ -45,14 +45,7 @@
 
 #endif
 
-// Platform specific headers and macros
-#if defined(LIBACTIONET_BLAS_MKL)
-    #include <mkl_cblas.h>
-#elif defined(LIBACTIONET_BLAS_ACCELERATE)
-    //  #include <Accelerate.h>
-    #include <cblas.h>
-#else
-    #include <cblas.h>
-#endif
+// Platform-specific BLAS headers are included only in source files that call
+// CBLAS functions to keep public headers free of extra include requirements.
 
 #endif //ACTIONET_CONFIG_HPP

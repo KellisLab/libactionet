@@ -1,6 +1,7 @@
 // Solves the standard Archetypal Analysis (AA) problem
 #include "action/aa.hpp"
 #include "action/simplex_regression.hpp"
+#include "blas_deps.hpp"
 
 namespace actionet {
 

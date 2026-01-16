@@ -2,6 +2,7 @@
 #include "decomposition/svd_irbla.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
+#include "blas_deps.hpp"
 #include <cholmod.h>
 
 arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {

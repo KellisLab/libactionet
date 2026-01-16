@@ -1,4 +1,5 @@
 #include "utils_internal/utils_decomp.hpp"
+#include "blas_deps.hpp"
 
 void orthog(double *X, double *Y, double *T, int xm, int xn, int yn) {
     double a = 1, b = 1;
