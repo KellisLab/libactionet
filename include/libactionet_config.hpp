@@ -22,10 +22,6 @@
     #define ARMA_USE_BLAS
 #endif //ARMA_USE_BLAS
 
-#ifndef ARMA_USE_LAPACK
-    #define ARMA_USE_LAPACK
-#endif //ARMA_USE_LAPACK
-
 ////////////////////////////////////////////////////////////////
 // idk why this is like this but it was for a reason
 ////////////////////////////////////////////////////////////////
@@ -36,6 +32,10 @@
 // #endif //ARMA_64BIT_WORD
 
 //#define ARMA_BLAS_LONG_LONG
+
+#ifdef ARMA_USE_LAPACK
+    #undef ARMA_USE_LAPACK
+#endif //ARMA_USE_LAPACK
 ////////////////////////////////////////////////////////////////
 
 // StatsLib build configuration
