@@ -71,9 +71,6 @@ macro(CONFIGURE_CHOLMOD libtarget)
         endif()
     endif()
 
-    message(STATUS "BIG COWS ${CHOLMOD_SEARCH_INCLUDE_PATHS}")
-    message(STATUS "BIG COWS ${CHOLMOD_SEARCH_LIB_PATHS}")
-
     # Find cholmod.h header
     find_path(CHOLMOD_INCLUDE_DIR
         NAMES cholmod.h
