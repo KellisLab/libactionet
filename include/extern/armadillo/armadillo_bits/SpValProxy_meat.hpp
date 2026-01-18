@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -148,24 +148,17 @@ inline
 SpValProxy<T1>&
 SpValProxy<T1>::operator*=(const eT rhs)
   {
-  if(rhs != eT(0))
+  if(val_ptr)
     {
-    if(val_ptr)
-      {
-      // The value already exists and merely needs to be updated.
-      *val_ptr *= rhs;
-      parent.invalidate_cache();
-      check_zero();
-      }
+    *val_ptr *= rhs;
+    parent.invalidate_cache();
+    check_zero();
     }
   else
     {
-    if(val_ptr)
-      {
-      // Since we are multiplying by zero, the value can be deleted.
-      parent.delete_element(row, col);
-      val_ptr = nullptr;
-      }
+    const eT val = eT(0) * rhs;  // in case rhs is inf or nan
+    
+    if(val != eT(0))  { val_ptr = &parent.insert_element(row, col, val); }
     }
   
   return *this;
@@ -178,37 +171,17 @@ inline
 SpValProxy<T1>&
 SpValProxy<T1>::operator/=(const eT rhs)
   {
-  if(rhs != eT(0)) // I hope this is true!
+  if(val_ptr)
     {
-    if(val_ptr)
-      {
-      *val_ptr /= rhs;
-      parent.invalidate_cache();
-      check_zero();
-      }
+    *val_ptr /= rhs;
+    parent.invalidate_cache();
+    check_zero();
     }
   else
     {
-    if(val_ptr)
-      {
-      *val_ptr /= rhs; // That is where it gets ugly.
-      // Now check if it's 0.
-      if(*val_ptr == eT(0))
-        {
-        parent.delete_element(row, col);
-        val_ptr = nullptr;
-        }
-      }
-    else
-      {
-      eT val = eT(0) / rhs; // This may vary depending on type and implementation.
-      
-      if(val != eT(0))
-        {
-        // Ok, now we have to insert it.
-        val_ptr = &parent.insert_element(row, col, val);
-        }
-      }
+    const eT val = eT(0) / rhs;  // in case rhs is zero or nan
+    
+    if(val != eT(0))  { val_ptr = &parent.insert_element(row, col, val); }
     }
   
   return *this;

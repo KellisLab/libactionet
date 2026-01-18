@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -525,7 +525,7 @@ subview_field<oT>::extract(field<oT>& actual_out, const subview_field<oT>& in)
   
   out.set_size(n_rows, n_cols, n_slices);
   
-  arma_debug_print(arma_str::format("out.n_rows: %u; out.n_cols: %u; out.n_slices: %u; n.m.n_rows: %u; in.m.n_cols: %u; in.m.n_slices: %u") % out.n_rows % out.n_cols % out.n_slices % in.f.n_rows % in.f.n_cols % in.f.n_slices);
+  arma_debug_print(arma_str::format("out.n_rows: %u; out.n_cols: %u; out.n_slices: %u; in.f.n_rows: %u; in.f.n_cols: %u; in.f.n_slices: %u") % out.n_rows % out.n_cols % out.n_slices % in.f.n_rows % in.f.n_cols % in.f.n_slices);
   
   if(n_slices == 1)
     {
@@ -550,7 +550,6 @@ subview_field<oT>::extract(field<oT>& actual_out, const subview_field<oT>& in)
     actual_out = out;
     delete tmp;
     }
-  
   }
 
 

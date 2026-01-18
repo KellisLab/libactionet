@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,8 +33,8 @@ struct get_pod_type< std::complex<T2> >
 template<typename T>
 struct is_Mat_fixed_only
   {
-  typedef char yes[1];
-  typedef char  no[2];
+  using yes = char[1];
+  using no  = char[2];
   
   template<typename X> static yes& check(typename X::Mat_fixed_type*);
   template<typename>   static  no& check(...);
@@ -47,8 +47,8 @@ struct is_Mat_fixed_only
 template<typename T>
 struct is_Row_fixed_only
   {
-  typedef char yes[1];
-  typedef char  no[2];
+  using yes = char[1];
+  using no  = char[2];
   
   template<typename X> static yes& check(typename X::Row_fixed_type*);
   template<typename>   static  no& check(...);
@@ -61,8 +61,8 @@ struct is_Row_fixed_only
 template<typename T>
 struct is_Col_fixed_only
   {
-  typedef char yes[1];
-  typedef char  no[2];
+  using yes = char[1];
+  using no  = char[2];
   
   template<typename X> static yes& check(typename X::Col_fixed_type*);
   template<typename>   static  no& check(...);
@@ -956,6 +956,26 @@ struct is_double<double>
 
 
 template<typename T1>
+struct is_fp16
+  {
+  static constexpr bool value = false;
+  static constexpr bool yes   = false;
+  static constexpr bool no    = true;
+  };
+
+#ifdef ARMA_HAVE_FP16
+template<>
+struct is_fp16<fp16>
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+#endif
+
+
+
+template<typename T1>
 struct is_real
   {
   static constexpr bool value = false;
@@ -979,6 +999,42 @@ struct is_real<double>
   static constexpr bool no    = false;
   };
 
+#ifdef ARMA_HAVE_FP16
+template<>
+struct is_real<fp16>
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+#endif
+
+
+
+template<typename T1>
+struct is_blas_real
+  {
+  static constexpr bool value = false;
+  static constexpr bool yes   = false;
+  static constexpr bool no    = true;
+  };
+
+template<>
+struct is_blas_real<float>
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+  
+template<>
+struct is_blas_real<double>
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+
 
 
 
@@ -993,6 +1049,32 @@ struct is_cx
 // template<>
 template<typename T>
 struct is_cx< std::complex<T> >
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+
+
+
+template<typename T1>
+struct is_blas_cx
+  {
+  static constexpr bool value = false;
+  static constexpr bool yes   = false;
+  static constexpr bool no    = true;
+  };
+
+template<>
+struct is_blas_cx< std::complex<float> >
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+
+template<>
+struct is_blas_cx< std::complex<double> >
   {
   static constexpr bool value = true;
   static constexpr bool yes   = true;
@@ -1038,6 +1120,26 @@ struct is_cx_double< std::complex<double> >
 
 
 template<typename T1>
+struct is_cx_fp16
+  {
+  static constexpr bool value = false;
+  static constexpr bool yes   = false;
+  static constexpr bool no    = true;
+  };
+
+#ifdef ARMA_HAVE_FP16
+template<>
+struct is_cx_fp16< std::complex<fp16> >
+  {
+  static constexpr bool value = true;
+  static constexpr bool yes   = true;
+  static constexpr bool no    = false;
+  };
+#endif
+
+
+
+template<typename T1>
 struct is_supported_elem_type
   {
   static constexpr bool value = \
@@ -1054,13 +1156,15 @@ struct is_supported_elem_type
     is_float<T1>::value ||
     is_double<T1>::value ||
     is_cx_float<T1>::value ||
-    is_cx_double<T1>::value;
+    is_cx_double<T1>::value ||
+    is_fp16<T1>::value ||
+    is_cx_fp16<T1>::value;
   };
 
 
 
 template<typename T1>
-struct is_supported_blas_type
+struct is_blas_type
   {
   static constexpr bool value = \
     is_float<T1>::value ||
@@ -1098,23 +1202,28 @@ template<> struct is_signed<ulng_t> { static constexpr bool value = false; };
 
 
 template<typename T>
-struct is_non_integral
+struct is_real_or_cx
   {
   static constexpr bool value = false;
   };
 
 
-template<> struct is_non_integral<              float   > { static constexpr bool value = true; };
-template<> struct is_non_integral<              double  > { static constexpr bool value = true; };
-template<> struct is_non_integral< std::complex<float>  > { static constexpr bool value = true; };
-template<> struct is_non_integral< std::complex<double> > { static constexpr bool value = true; };
+template<> struct is_real_or_cx<              float   > { static constexpr bool value = true; };
+template<> struct is_real_or_cx<              double  > { static constexpr bool value = true; };
+template<> struct is_real_or_cx< std::complex<float>  > { static constexpr bool value = true; };
+template<> struct is_real_or_cx< std::complex<double> > { static constexpr bool value = true; };
+
+#if defined(ARMA_HAVE_FP16)
+template<> struct is_real_or_cx<              fp16    > { static constexpr bool value = true; };
+template<> struct is_real_or_cx< std::complex<fp16>   > { static constexpr bool value = true; };
+#endif
 
 
 
 
 //
 
-class arma_junk_class;
+struct arma_junk_class;
 
 template<typename T1, typename T2>
 struct force_different_type
@@ -1283,8 +1392,8 @@ struct has_op_inv_any< Glue<T1, Op<T2,op_inv_spd_default>, glue_times> >
 template<typename T>
 struct has_nested_op_traits
   {
-  typedef char yes[1];
-  typedef char  no[2];
+  using yes = char[1];
+  using no  = char[2];
   
   template<typename X> static yes& check(typename X::template traits<void>*);
   template<typename>   static  no& check(...);
@@ -1295,8 +1404,8 @@ struct has_nested_op_traits
 template<typename T>
 struct has_nested_glue_traits
   {
-  typedef char yes[1];
-  typedef char  no[2];
+  using yes = char[1];
+  using no  = char[2];
   
   template<typename X> static yes& check(typename X::template traits<void,void>*);
   template<typename>   static  no& check(...);
@@ -1340,6 +1449,30 @@ struct is_sym_expr< Glue< Op<Mat<eT>, op_htrans>, Mat<eT>, glue_times > >
     const Mat<eT>& Y = expr.B;
     
     return (&X == &Y);
+    }
+  };
+
+template<typename T1>
+struct is_sym_expr< Op<T1, op_symmatu> >
+  {
+  static
+  arma_inline
+  bool
+  eval(const Op<T1, op_symmatu>&)
+    {
+    return true;
+    }
+  };
+
+template<typename T1>
+struct is_sym_expr< Op<T1, op_symmatl> >
+  {
+  static
+  arma_inline
+  bool
+  eval(const Op<T1, op_symmatl>&)
+    {
+    return true;
     }
   };
 

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -191,7 +191,7 @@ op_inv_spd_full::apply_direct(Mat<typename T1::elem_type>& out, const Base<typen
   
   if(is_op_diagmat<T1>::value || out.is_diagmat())
     {
-    arma_debug_print("op_inv_spd_full: detected diagonal matrix");
+    arma_debug_print("op_inv_spd_full: diag optimisation");
     
     eT* colmem = out.memptr();
     
@@ -300,7 +300,7 @@ op_inv_spd_rcond::apply_direct(Mat<typename T1::elem_type>& out, op_inv_spd_stat
   
   if(is_op_diagmat<T1>::value || out.is_diagmat())
     {
-    arma_debug_print("op_inv_spd_rcond: detected diagonal matrix");
+    arma_debug_print("op_inv_spd_rcond: diag optimisation");
     
     out_state.is_diag = true;
     
@@ -336,28 +336,7 @@ op_inv_spd_rcond::apply_direct(Mat<typename T1::elem_type>& out, op_inv_spd_stat
     return true;
     }
   
-  if(auxlib::crippled_lapack(out))
-    {
-    arma_debug_print("op_inv_spd_rcond: workaround for crippled lapack");
-    
-    Mat<eT> tmp = out;
-    
-    bool sympd_state = false;
-    
-    auxlib::inv_sympd(out, sympd_state);
-    
-    if(sympd_state == false)  { out.soft_reset(); out_state.rcond = T(0); return false; }
-    
-    out_state.rcond = auxlib::rcond(tmp);
-    
-    if(out_state.rcond == T(0))  { out.soft_reset(); return false; }
-    
-    return true;
-    }
-  
-  bool is_sympd_junk = false;
-  
-  return auxlib::inv_sympd_rcond(out, is_sympd_junk, out_state.rcond);
+  return auxlib::inv_sympd_rcond(out, out_state.rcond);
   }
 
 

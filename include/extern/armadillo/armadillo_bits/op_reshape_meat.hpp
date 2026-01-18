@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 template<typename T1>
 inline
 void
-op_reshape::apply(Mat<typename T1::elem_type>& actual_out, const Op<T1,op_reshape>& in)
+op_reshape::apply(Mat<typename T1::elem_type>& out, const Op<T1,op_reshape>& in)
   {
   arma_debug_sigprint();
   
@@ -34,41 +34,80 @@ op_reshape::apply(Mat<typename T1::elem_type>& actual_out, const Op<T1,op_reshap
   const uword new_n_rows = in.aux_uword_a;
   const uword new_n_cols = in.aux_uword_b;
   
-  if(is_Mat<T1>::value || (arma_config::openmp && Proxy<T1>::use_mp))
+  if(is_Mat<T1>::value)
     {
     const unwrap<T1>   U(in.m);
     const Mat<eT>& A = U.M;
     
-    if(&actual_out == &A)
+    if(&out == &A)
       {
-      op_reshape::apply_mat_inplace(actual_out, new_n_rows, new_n_cols);
+      op_reshape::apply_mat_inplace(out, new_n_rows, new_n_cols);
       }
     else
       {
-      op_reshape::apply_mat_noalias(actual_out, A, new_n_rows, new_n_cols);
+      op_reshape::apply_mat_noalias(out, A, new_n_rows, new_n_cols);
+      }
+    }
+  else
+  if( (quasi_unwrap<T1>::has_orig_mem) || (is_Mat<typename Proxy<T1>::stored_type>::value) || (arma_config::openmp && Proxy<T1>::use_mp) )
+    {
+    const quasi_unwrap<T1> U(in.m);
+    
+    if(U.is_alias(out))
+      {
+      Mat<eT> tmp;
+      
+      op_reshape::apply_mat_noalias(tmp, U.M, new_n_rows, new_n_cols);
+      
+      out.steal_mem(tmp);
+      }
+    else
+      {
+      op_reshape::apply_mat_noalias(out, U.M, new_n_rows, new_n_cols);
       }
     }
   else
     {
     const Proxy<T1> P(in.m);
     
-    const bool is_alias = P.is_alias(actual_out);
-    
-    Mat<eT>  tmp;
-    Mat<eT>& out = (is_alias) ? tmp : actual_out;
-    
-    if(is_Mat<typename Proxy<T1>::stored_type>::value)
+    if(P.is_alias(out))
       {
-      const quasi_unwrap<typename Proxy<T1>::stored_type> U(P.Q);
+      Mat<eT> tmp;
       
-      op_reshape::apply_mat_noalias(out, U.M, new_n_rows, new_n_cols);
+      op_reshape::apply_proxy_noalias(tmp, P, new_n_rows, new_n_cols);
+      
+      out.steal_mem(tmp);
       }
     else
       {
       op_reshape::apply_proxy_noalias(out, P, new_n_rows, new_n_cols);
       }
+    }
+  }
+
+
+
+template<typename T1>
+inline
+void
+op_reshape::apply(Mat_noalias<typename T1::elem_type>& out, const Op<T1,op_reshape>& in)
+  {
+  arma_debug_sigprint();
+  
+  const uword new_n_rows = in.aux_uword_a;
+  const uword new_n_cols = in.aux_uword_b;
+  
+  if( (quasi_unwrap<T1>::has_orig_mem) || (is_Mat<typename Proxy<T1>::stored_type>::value) || (arma_config::openmp && Proxy<T1>::use_mp) )
+    {
+    const quasi_unwrap<T1> U(in.m);
     
-    if(is_alias)  { actual_out.steal_mem(tmp); }
+    op_reshape::apply_mat_noalias(out, U.M, new_n_rows, new_n_cols);
+    }
+  else
+    {
+    const Proxy<T1> P(in.m);
+    
+    op_reshape::apply_proxy_noalias(out, P, new_n_rows, new_n_cols);
     }
   }
 
@@ -81,14 +120,21 @@ op_reshape::apply_mat_inplace(Mat<eT>& A, const uword new_n_rows, const uword ne
   {
   arma_debug_sigprint();
   
+  if( (A.n_rows == new_n_rows) && (A.n_cols == new_n_cols) )  { return; }
+  
   arma_conform_check( (A.vec_state == 1) && (new_n_cols != 1), "reshape(): requested size is not compatible with column vector layout" );
   arma_conform_check( (A.vec_state == 2) && (new_n_rows != 1), "reshape(): requested size is not compatible with row vector layout"    );
   
-  const uword new_n_elem = new_n_rows * new_n_cols;
+  if(A.is_empty())  { A.zeros(new_n_rows, new_n_cols); return; }
   
-  if(A.n_elem == new_n_elem)  { A.set_size(new_n_rows, new_n_cols); return; }
+  const bool is_into_empty  = ( (new_n_cols == uword(0)) || (new_n_rows == uword(0)) );
+  const bool is_into_colvec = ( (new_n_cols == uword(1)) && (new_n_rows == A.n_elem) );
+  const bool is_into_rowvec = ( (new_n_rows == uword(1)) && (new_n_cols == A.n_elem) );
+  const bool is_rowcol_swap = ( (new_n_cols == A.n_rows) && (new_n_rows == A.n_cols) );
   
-  Mat<eT> B;
+  if(is_into_empty || is_into_colvec || is_into_rowvec || is_rowcol_swap)  { A.set_size(new_n_rows, new_n_cols); return; }
+  
+  Mat<eT> B(new_n_rows, new_n_cols, arma_nozeros_indicator());
   
   op_reshape::apply_mat_noalias(B, A, new_n_rows, new_n_cols);
   
@@ -208,11 +254,18 @@ op_reshape::apply_cube_inplace(Cube<eT>& A, const uword new_n_rows, const uword 
   {
   arma_debug_sigprint();
   
-  const uword new_n_elem = new_n_rows * new_n_cols * new_n_slices;
+  if( (A.n_rows == new_n_rows) && (A.n_cols == new_n_cols) && (A.n_slices == new_n_slices) )  { return; }
   
-  if(A.n_elem == new_n_elem)  { A.set_size(new_n_rows, new_n_cols, new_n_slices); return; }
+  if(A.is_empty())  { A.zeros(new_n_rows, new_n_cols, new_n_slices); return; }
   
-  Cube<eT> B;
+  const bool is_into_empty  = ( (new_n_cols == uword(0)) || (new_n_rows == uword(0)) || (new_n_slices == uword(0)  ) );
+  const bool is_into_colvec = ( (new_n_cols == uword(1)) && (new_n_rows == A.n_elem) && (new_n_slices == uword(1)  ) );
+  const bool is_into_rowvec = ( (new_n_rows == uword(1)) && (new_n_cols == A.n_elem) && (new_n_slices == uword(1)  ) );
+  const bool is_rowcol_swap = ( (new_n_cols == A.n_rows) && (new_n_rows == A.n_cols) && (new_n_slices == A.n_slices) );
+  
+  if(is_into_empty || is_into_colvec || is_into_rowvec || is_rowcol_swap)  { A.set_size(new_n_rows, new_n_cols, new_n_slices); return; }
+  
+  Cube<eT> B(new_n_rows, new_n_cols, new_n_slices, arma_nozeros_indicator());
   
   op_reshape::apply_cube_noalias(B, A, new_n_rows, new_n_cols, new_n_slices);
   

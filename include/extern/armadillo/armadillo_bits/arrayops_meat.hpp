@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -239,7 +239,7 @@ arrayops::convert(out_eT* dest, const in_eT* src, const uword n_elem)
     {
     const out_eT* src2 = (const out_eT*)src;
     
-    if(dest != src2)  { arrayops::copy(dest, src2, n_elem); }
+    arrayops::copy(dest, src2, n_elem);
     
     return;
     }
@@ -304,6 +304,15 @@ inline
 void
 arrayops::convert_cx(out_eT* dest, const in_eT* src, const uword n_elem)
   {
+  if(is_same_type<out_eT,in_eT>::value)
+    {
+    const out_eT* src2 = (const out_eT*)src;
+    
+    arrayops::copy(dest, src2, n_elem);
+    
+    return;
+    }
+  
   uword j;
   
   for(j=1; j<n_elem; j+=2)
@@ -1041,13 +1050,13 @@ arrayops::is_finite(const eT* src, const uword n_elem)
     const eT val_i = (*src);  src++;
     const eT val_j = (*src);  src++;
     
-    if(arma_isfinite(val_i) == false)  { return false; }
-    if(arma_isfinite(val_j) == false)  { return false; }
+    if(arma_isnonfinite(val_i))  { return false; }
+    if(arma_isnonfinite(val_j))  { return false; }
     }
   
   if((j-1) < n_elem)
     {
-    if(arma_isfinite(*src) == false)  { return false; }
+    if(arma_isnonfinite(*src))  { return false; }
     }
   
   return true;

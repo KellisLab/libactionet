@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,8 @@
 //! @{
 
 
-class memory
+struct memory
   {
-  public:
-  
   template<typename eT> arma_malloc inline static eT* acquire(const uword n_elem);
   
   template<typename eT> arma_inline static void release(eT* mem);
@@ -90,7 +88,7 @@ memory::acquire(const uword n_elem)
   #else
     {
     //return ( new(std::nothrow) eT[n_elem] );
-    out_memptr = (eT *) malloc(sizeof(eT)*n_elem);
+    out_memptr = (eT *) std::malloc(sizeof(eT)*n_elem);
     }
   #endif
   
@@ -124,7 +122,7 @@ memory::release(eT* mem)
     }
   #elif defined(ARMA_HAVE_POSIX_MEMALIGN)
     {
-    free( (void *)(mem) );
+    std::free( (void *)(mem) );
     }
   #elif defined(_MSC_VER)
     {
@@ -134,7 +132,7 @@ memory::release(eT* mem)
   #else
     {
     //delete [] mem;
-    free( (void *)(mem) );
+    std::free( (void *)(mem) );
     }
   #endif
   
@@ -148,7 +146,7 @@ arma_inline
 bool
 memory::is_aligned(const eT* mem)
   {
-  #if (defined(ARMA_HAVE_ICC_ASSUME_ALIGNED) || defined(ARMA_HAVE_GCC_ASSUME_ALIGNED)) && !defined(ARMA_DONT_CHECK_ALIGNMENT)
+  #if (defined(ARMA_HAVE_GCC_ASSUME_ALIGNED) || defined(__cpp_lib_assume_aligned)) && !defined(ARMA_DONT_CHECK_ALIGNMENT)
     {
     return (sizeof(std::size_t) >= sizeof(eT*)) ? ((std::size_t(mem) & 0x0F) == 0) : false;
     }
@@ -168,33 +166,19 @@ arma_inline
 void
 memory::mark_as_aligned(eT*& mem)
   {
-  #if defined(ARMA_HAVE_ICC_ASSUME_ALIGNED)
-    {
-    __assume_aligned(mem, 16);
-    }
-  #elif defined(ARMA_HAVE_GCC_ASSUME_ALIGNED)
+  #if defined(ARMA_HAVE_GCC_ASSUME_ALIGNED)
     {
     mem = (eT*)__builtin_assume_aligned(mem, 16);
+    }
+  #elif defined(__cpp_lib_assume_aligned)
+    {
+    mem = (eT*)std::assume_aligned<16>(mem);
     }
   #else
     {
     arma_ignore(mem);
     }
   #endif
-  
-  // TODO: look into C++20 std::assume_aligned()
-  // TODO: https://en.cppreference.com/w/cpp/memory/assume_aligned
-  
-  // TODO: MSVC?  __assume( (mem & 0x0F) == 0 );
-  //
-  // http://comments.gmane.org/gmane.comp.gcc.patches/239430
-  // GCC __builtin_assume_aligned is similar to ICC's __assume_aligned,
-  // so for lvalue first argument ICC's __assume_aligned can be emulated using
-  // #define __assume_aligned(lvalueptr, align) lvalueptr = __builtin_assume_aligned (lvalueptr, align) 
-  //
-  // http://www.inf.ethz.ch/personal/markusp/teaching/263-2300-ETH-spring11/slides/class19.pdf
-  // http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/lin/index.htm
-  // http://d3f8ykwhia686p.cloudfront.net/1live/intel/CompilerAutovectorizationGuide.pdf
   }
 
 
@@ -204,13 +188,13 @@ arma_inline
 void
 memory::mark_as_aligned(const eT*& mem)
   {
-  #if defined(ARMA_HAVE_ICC_ASSUME_ALIGNED)
-    {
-    __assume_aligned(mem, 16);
-    }
-  #elif defined(ARMA_HAVE_GCC_ASSUME_ALIGNED)
+  #if defined(ARMA_HAVE_GCC_ASSUME_ALIGNED)
     {
     mem = (const eT*)__builtin_assume_aligned(mem, 16);
+    }
+  #elif defined(__cpp_lib_assume_aligned)
+    {
+    mem = (const eT*)std::assume_aligned<16>(mem);
     }
   #else
     {

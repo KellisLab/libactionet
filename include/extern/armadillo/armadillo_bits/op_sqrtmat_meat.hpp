@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -116,7 +116,7 @@ op_sqrtmat::apply_direct(Mat< std::complex<typename T1::elem_type> >& out, const
   
   if(A.is_diagmat())
     {
-    arma_debug_print("op_sqrtmat: detected diagonal matrix");
+    arma_debug_print("op_sqrtmat: diag optimisation");
     
     const uword N = A.n_rows;
     
@@ -325,7 +325,7 @@ op_sqrtmat_cx::apply_direct(Mat<typename T1::elem_type>& out, const Base<typenam
   
   if(S.is_diagmat())
     {
-    arma_debug_print("op_sqrtmat_cx: detected diagonal matrix");
+    arma_debug_print("op_sqrtmat_cx: diag optimisation");
     
     const uword N = S.n_rows;
     
@@ -489,7 +489,7 @@ op_sqrtmat_sympd::apply_direct(Mat<typename T1::elem_type>& out, const Base<type
     
     if(is_op_diagmat<T1>::value || X.is_diagmat())
       {
-      arma_debug_print("op_sqrtmat_sympd: detected diagonal matrix");
+      arma_debug_print("op_sqrtmat_sympd: diag optimisation");
       
       out = X;
       

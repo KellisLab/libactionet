@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,22 +24,43 @@
 //! conversion from Armadillo Base and BaseCube objects to scalars
 //! NOTE: use as_scalar() instead; this functionality is kept only for compatibility with old user code
 template<typename out_eT>
-class conv_to
+struct conv_to
   {
-  public:
+  template<typename in_eT>
+  [[deprecated("replace conv_to<...>::from(X) with as_scalar(X)")]] inline static out_eT from(const in_eT& in, const typename arma_scalar_only<in_eT>::result* junk = nullptr);
   
   template<typename in_eT, typename T1>
-  arma_frown("use as_scalar() instead") inline static out_eT from(const Base<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
+  [[deprecated("replace conv_to<...>::from(X) with as_scalar(X)")]] inline static out_eT from(const Base<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
   template<typename in_eT, typename T1>
-  arma_frown("use as_scalar() instead") inline static out_eT from(const Base<in_eT, T1>& in, const typename arma_cx_only<in_eT>::result* junk = nullptr);
+  [[deprecated("replace conv_to<...>::from(X) with as_scalar(X)")]] inline static out_eT from(const Base<in_eT, T1>& in, const typename arma_cx_only<in_eT>::result* junk = nullptr);
   
   template<typename in_eT, typename T1>
-  arma_frown("use as_scalar() instead") inline static out_eT from(const BaseCube<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
+  [[deprecated("replace conv_to<...>::from(X) with as_scalar(X)")]] inline static out_eT from(const BaseCube<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
   template<typename in_eT, typename T1>
-  arma_frown("use as_scalar() instead") inline static out_eT from(const BaseCube<in_eT, T1>& in, const typename arma_cx_only<in_eT>::result* junk = nullptr);
+  [[deprecated("replace conv_to<...>::from(X) with as_scalar(X)")]] inline static out_eT from(const BaseCube<in_eT, T1>& in, const typename arma_cx_only<in_eT>::result* junk = nullptr);
   };
+
+
+
+template<typename out_eT>
+template<typename in_eT>
+arma_warn_unused
+inline
+out_eT
+conv_to<out_eT>::from(const in_eT& in, const typename arma_scalar_only<in_eT>::result* junk)
+  {
+  arma_debug_sigprint();
+  arma_ignore(junk);
+  
+  arma_type_check(( is_supported_elem_type<out_eT>::value == false ));
+  
+  // NOTE: this is meant only as a workaround for old user code;
+  // NOTE: it doesn't handle conversions from complex to real
+  
+  return out_eT(in);
+  }
 
 
 
@@ -137,10 +158,8 @@ conv_to<out_eT>::from(const BaseCube<in_eT, T1>& in, const typename arma_cx_only
 
 //! conversion to Armadillo matrices from Armadillo Base objects, as well as from std::vector
 template<typename out_eT>
-class conv_to< Mat<out_eT> >
+struct conv_to< Mat<out_eT> >
   {
-  public:
-  
   template<typename in_eT, typename T1>
   inline static Mat<out_eT> from(const Base<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
@@ -318,10 +337,8 @@ conv_to< Mat<out_eT> >::from(const std::vector<in_eT>& in, const typename arma_c
 
 //! conversion to Armadillo row vectors from Armadillo Base objects, as well as from std::vector
 template<typename out_eT>
-class conv_to< Row<out_eT> >
+struct conv_to< Row<out_eT> >
   {
-  public:
-  
   template<typename in_eT, typename T1>
   inline static Row<out_eT> from(const Base<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
@@ -437,10 +454,8 @@ conv_to< Row<out_eT> >::from(const std::vector<in_eT>& in, const typename arma_c
 
 //! conversion to Armadillo column vectors from Armadillo Base objects, as well as from std::vector
 template<typename out_eT>
-class conv_to< Col<out_eT> >
+struct conv_to< Col<out_eT> >
   {
-  public:
-  
   template<typename in_eT, typename T1>
   inline static Col<out_eT> from(const Base<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
@@ -556,10 +571,8 @@ conv_to< Col<out_eT> >::from(const std::vector<in_eT>& in, const typename arma_c
 
 //! convert between SpMat types
 template<typename out_eT>
-class conv_to< SpMat<out_eT> >
+struct conv_to< SpMat<out_eT> >
   {
-  public:
-  
   template<typename in_eT, typename T1>
   inline static SpMat<out_eT> from(const SpBase<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
@@ -803,10 +816,8 @@ conv_to< SpMat<out_eT> >::from(const Base<in_eT, T1>& in, const typename arma_cx
 
 //! conversion to Armadillo cubes from Armadillo BaseCube objects
 template<typename out_eT>
-class conv_to< Cube<out_eT> >
+struct conv_to< Cube<out_eT> >
   {
-  public:
-  
   template<typename in_eT, typename T1>
   inline static Cube<out_eT> from(const BaseCube<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   
@@ -862,10 +873,8 @@ conv_to< Cube<out_eT> >::from(const BaseCube<in_eT, T1>& in, const typename arma
 
 //! conversion to std::vector from Armadillo Base objects
 template<typename out_eT>
-class conv_to< std::vector<out_eT> >
+struct conv_to< std::vector<out_eT> >
   {
-  public:
-  
   template<typename in_eT, typename T1>
   inline static std::vector<out_eT> from(const Base<in_eT, T1>& in, const typename arma_not_cx<in_eT>::result* junk = nullptr);
   

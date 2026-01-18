@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,13 +59,25 @@ linspace
     
     const uword num_m1 = num - 1;
     
-    if(is_non_integral<T>::value)
+    if(is_float<T>::value || is_double<T>::value)
       {
       const T delta = (end-start)/T(num_m1);
       
       for(uword i=0; i<num_m1; ++i)
         {
         x_mem[i] = eT(start + i*delta);
+        }
+      
+      x_mem[num_m1] = eT(end);
+      }
+    else
+    if(is_fp16<T>::value)
+      {
+      const float delta = (float(end)-float(start)) / float(num_m1);
+      
+      for(uword i=0; i<num_m1; ++i)
+        {
+        x_mem[i] = eT(float(start) + i*delta);
         }
       
       x_mem[num_m1] = eT(end);
@@ -147,50 +159,10 @@ logspace(const double A, const double B, const uword N = 50u)
 
 
 
-//
-// log_exp_add
-
-template<typename eT>
-arma_warn_unused
-inline
-typename arma_real_only<eT>::result
-log_add_exp(eT log_a, eT log_b)
-  {
-  if(log_a < log_b)
-    {
-    std::swap(log_a, log_b);
-    }
-  
-  const eT negdelta = log_b - log_a;
-  
-  if( (negdelta < Datum<eT>::log_min) || (arma_isfinite(negdelta) == false) )
-    {
-    return log_a;
-    }
-  else
-    {
-    return (log_a + std::log1p(std::exp(negdelta)));
-    }
-  }
-
-
-
-// for compatibility with earlier versions
-template<typename eT>
-arma_warn_unused
-inline
-typename arma_real_only<eT>::result
-log_add(eT log_a, eT log_b)
-  {
-  return log_add_exp(log_a, log_b);
-  }
-  
-
-
 //! kept for compatibility with old user code
 template<typename eT>
-arma_warn_unused
-arma_inline
+[[deprecated("change arma::is_finite(val) to std::isfinite(val)")]]
+inline
 bool
 is_finite(const eT x, const typename arma_scalar_only<eT>::result* junk = nullptr)
   {
@@ -203,7 +175,7 @@ is_finite(const eT x, const typename arma_scalar_only<eT>::result* junk = nullpt
 
 //! kept for compatibility with old user code
 template<typename T1>
-arma_warn_unused
+[[deprecated("change arma::is_finite(X) to X.is_finite()")]]
 inline
 bool
 is_finite(const Base<typename T1::elem_type,T1>& X)
@@ -217,7 +189,7 @@ is_finite(const Base<typename T1::elem_type,T1>& X)
 
 //! kept for compatibility with old user code
 template<typename T1>
-arma_warn_unused
+[[deprecated("change arma::is_finite(X) to X.is_finite()")]]
 inline
 bool
 is_finite(const SpBase<typename T1::elem_type,T1>& X)
@@ -231,7 +203,7 @@ is_finite(const SpBase<typename T1::elem_type,T1>& X)
 
 //! kept for compatibility with old user code
 template<typename T1>
-arma_warn_unused
+[[deprecated("change arma::is_finite(X) to X.is_finite()")]]
 inline
 bool
 is_finite(const BaseCube<typename T1::elem_type,T1>& X)
@@ -580,6 +552,56 @@ affmul(const T1& A, const T2& B)
   arma_debug_sigprint();
   
   return Glue<T1, T2, glue_affmul>(A,B);
+  }
+
+
+
+namespace priv
+  {
+  // internal use only
+  template<typename eT>
+  arma_warn_unused
+  inline
+  typename arma_real_only<eT>::result
+  internal_log_add_exp(eT log_a, eT log_b)
+    {
+    if(log_a < log_b)  { std::swap(log_a, log_b); }
+    
+    const eT negdelta = log_b - log_a;
+    
+    if( (negdelta < Datum<eT>::log_min) || arma_isnonfinite(negdelta) )
+      {
+      return log_a;
+      }
+    else
+      {
+      return (log_a + std::log1p(std::exp(negdelta)));
+      }
+    }
+  }
+
+
+
+// DO NOT USE; kept only for compatibility with old user code
+template<typename eT>
+[[deprecated]]
+inline
+typename arma_real_only<eT>::result
+log_add_exp(eT log_a, eT log_b)
+  {
+  return priv::internal_log_add_exp(log_a, log_b);
+  }
+
+
+
+// DO NOT USE; kept only for compatibility with old user code
+template<typename eT>
+[[deprecated]]
+inline
+typename arma_real_only<eT>::result
+log_add(eT log_a, eT log_b)
+  {
+  return priv::internal_log_add_exp(log_a, log_b);
   }
 
 

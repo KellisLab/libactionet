@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -612,32 +612,25 @@ SpMat<eT>::operator*=(const eT val)
   {
   arma_debug_sigprint();
   
-  if(val != eT(0))
+  sync_csc();
+  invalidate_cache();
+  
+  const uword n_nz = n_nonzero;
+  
+  eT* vals = access::rwp(values);
+  
+  bool has_zero = false;
+  
+  for(uword i=0; i<n_nz; ++i)
     {
-    sync_csc();
-    invalidate_cache();
+    eT& vals_i = vals[i];
     
-    const uword n_nz = n_nonzero;
+    vals_i *= val;
     
-    eT* vals = access::rwp(values);
-    
-    bool has_zero = false;
-    
-    for(uword i=0; i<n_nz; ++i)
-      {
-      eT& vals_i = vals[i];
-      
-      vals_i *= val;
-      
-      if(vals_i == eT(0))  { has_zero = true; }
-      }
-    
-    if(has_zero)  { remove_zeros(); }
+    if(vals_i == eT(0))  { has_zero = true; }
     }
-  else
-    {
-    (*this).zeros();
-    }
+  
+  if(has_zero)  { remove_zeros(); }
   
   return *this;
   }
@@ -1673,7 +1666,7 @@ SpMat<eT>::SpMat(const SpOp<T1, spop_type>& X)
   
   arma_type_check(( is_same_type< eT, typename T1::elem_type >::no ));
   
-  spop_type::apply(*this, X);
+  spop_type::apply(static_cast< SpMat_noalias<eT>& >(*this), X);
   
   sync_csc();          // in case apply() used element accessors
   invalidate_cache();  // in case apply() modified the CSC representation
@@ -1813,7 +1806,7 @@ SpMat<eT>::SpMat(const SpGlue<T1, T2, spglue_type>& X)
   
   arma_type_check(( is_same_type< eT, typename T1::elem_type >::no ));
   
-  spglue_type::apply(*this, X);
+  spglue_type::apply(static_cast< SpMat_noalias<eT>& >(*this), X);
   
   sync_csc();          // in case apply() used element accessors
   invalidate_cache();  // in case apply() modified the CSC representation
@@ -3126,7 +3119,7 @@ SpMat<eT>::shed_rows(const uword in_row1, const uword in_row2)
   arma_conform_check_bounds
     (
     (in_row1 > in_row2) || (in_row2 >= n_rows),
-    "SpMat::shed_rows(): indices out of bounds or incorectly used"
+    "SpMat::shed_rows(): indices out of bounds or incorrectly used"
     );
   
   sync_csc();
@@ -3288,7 +3281,7 @@ SpMat<eT>::shed_cols(const uword in_col1, const uword in_col2)
 
 
 /**
- * Element access; acces the i'th element (works identically to the Mat accessors).
+ * Element access; access the i'th element (works identically to the Mat accessors).
  * If there is nothing at element i, 0 is returned.
  */
 
@@ -3374,7 +3367,7 @@ SpMat<eT>::operator()(const uword i) const
   
   template<typename eT>
   arma_inline
-    SpMat_MapMat_val<eT>
+  SpMat_MapMat_val<eT>
   SpMat<eT>::operator[] (const uword in_row, const uword in_col)
     {
     return SpMat_MapMat_val<eT>((*this), cache, in_row, in_col);
@@ -3384,7 +3377,7 @@ SpMat<eT>::operator()(const uword i) const
   
   template<typename eT>
   arma_inline
-    eT
+  eT
   SpMat<eT>::operator[] (const uword in_row, const uword in_col) const
     {
     return get_value(in_row, in_col);
@@ -3484,7 +3477,7 @@ SpMat<eT>::is_colvec() const
 
 
 
-//! returns true if the object has the same number of non-zero rows and columnns
+//! returns true if the object has the same number of non-zero rows and columns
 template<typename eT>
 arma_inline
 bool
@@ -5131,7 +5124,12 @@ SpMat<eT>::init(const SpMat<eT>& x)
   {
   arma_debug_sigprint();
   
-  if(this == &x)  { return; }
+  if(this == &x)
+    {
+    arma_debug_print("SpMat::init(): copy omitted");
+    
+    return;
+    }
   
   bool init_done = false;
   
@@ -5202,7 +5200,7 @@ SpMat<eT>::init(const MapMat<eT>& x)
     const uword x_index = x_entry.first;
     const eT    x_val   = x_entry.second;
     
-    // have we gone past the curent column?
+    // have we gone past the current column?
     if(x_index >= x_col_index_endp1)
       {
       x_col = x_index / x_n_rows;
@@ -5481,7 +5479,7 @@ SpMat<eT>::init_batch_add(const Mat<uword>& locs, const Mat<eT>& vals, const boo
       
       uvec sorted_indices = sort_index(abslocs); // Ascending sort.
       
-      // work out the number of unique elments 
+      // work out the number of unique elements 
       uword n_unique = 1;  // first element is unique
       
       for(uword i=1; i < sorted_indices.n_elem; ++i)
@@ -5536,7 +5534,7 @@ SpMat<eT>::init_batch_add(const Mat<uword>& locs, const Mat<eT>& vals, const boo
   
   if( (sort_locations == false) || (actually_sorted == true) )
     {
-    // work out the number of unique elments 
+    // work out the number of unique elements 
     uword n_unique = 1;  // first element is unique
     
     for(uword i=1; i < locs.n_cols; ++i)
@@ -5918,7 +5916,7 @@ SpMat<eT>::init_xform_mt(const SpBase<eT2,T1>& A, const Functor& func)
       {
       eT& t_values_i = t_values[i];
       
-      t_values_i = func(x_values[i]);   // NOTE: func() must produce a value of type eT (ie. act as a convertor between eT2 and eT)
+      t_values_i = func(x_values[i]);   // NOTE: func() must produce a value of type eT (ie. act as a converter between eT2 and eT)
       
       if(t_values_i == eT(0))  { has_zero = true; } 
       }
@@ -5936,7 +5934,7 @@ SpMat<eT>::init_xform_mt(const SpBase<eT2,T1>& A, const Functor& func)
     
     while(it != it_end)
       {
-      const eT val = func(*it);   // NOTE: func() must produce a value of type eT (ie. act as a convertor between eT2 and eT)
+      const eT val = func(*it);   // NOTE: func() must produce a value of type eT (ie. act as a converter between eT2 and eT)
       
       if(val == eT(0))  { has_zero = true; }
       

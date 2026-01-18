@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -367,109 +367,6 @@ operator+
 
   return SpToDOp<T1, op_sp_plus>(X, k);  // NOTE: swapped order
   }
-
-
-
-// TODO: this is an uncommon use case; remove?
-//! multiple applications of add/subtract scalars can be condensed
-template<typename T1, typename op_type>
-inline
-typename
-enable_if2
-  <
-  (is_arma_sparse_type<T1>::value &&
-      (is_same_type<op_type, op_sp_plus>::value ||
-       is_same_type<op_type, op_sp_minus_post>::value)),
-  const SpToDOp<T1, op_sp_plus>
-  >::result
-operator+
-  (
-  const SpToDOp<T1, op_type>&  x,
-  const typename T1::elem_type k
-  )
-  {
-  arma_debug_sigprint();
-
-  const typename T1::elem_type aux = (is_same_type<op_type, op_sp_plus>::value) ? x.aux : -x.aux;
-
-  return SpToDOp<T1, op_sp_plus>(x.m, aux + k);
-  }
-
-
-
-// TODO: this is an uncommon use case; remove?
-//! multiple applications of add/subtract scalars can be condensed
-template<typename T1, typename op_type>
-inline
-typename
-enable_if2
-  <
-  (is_arma_sparse_type<T1>::value &&
-       is_same_type<op_type, op_sp_minus_pre>::value),
-  const SpToDOp<T1, op_sp_minus_pre>
-  >::result
-operator+
-  (
-  const SpToDOp<T1, op_type>&  x,
-  const typename T1::elem_type k
-  )
-  {
-  arma_debug_sigprint();
-
-  return SpToDOp<T1, op_sp_minus_pre>(x.m, x.aux + k);
-  }
-
-
-
-// TODO: this is an uncommon use case; remove?
-//! multiple applications of add/subtract scalars can be condensed
-template<typename T1, typename op_type>
-inline
-typename
-enable_if2
-  <
-  (is_arma_sparse_type<T1>::value &&
-      (is_same_type<op_type, op_sp_plus>::value ||
-       is_same_type<op_type, op_sp_minus_post>::value)),
-  const SpToDOp<T1, op_sp_plus>
-  >::result
-operator+
-  (
-  const typename T1::elem_type k,
-  const SpToDOp<T1, op_type>&  x
-  )
-  {
-  arma_debug_sigprint();
-
-  const typename T1::elem_type aux = (is_same_type<op_type, op_sp_plus>::value) ? x.aux : -x.aux;
-
-  return SpToDOp<T1, op_sp_plus>(x.m, aux + k);
-  }
-
-
-
-// TODO: this is an uncommon use case; remove?
-//! multiple applications of add/subtract scalars can be condensed
-template<typename T1, typename op_type>
-inline
-typename
-enable_if2
-  <
-  (is_arma_sparse_type<T1>::value &&
-       is_same_type<op_type, op_sp_minus_pre>::value),
-  const SpToDOp<T1, op_sp_minus_pre>
-  >::result
-operator+
-  (
-  const typename T1::elem_type k,
-  const SpToDOp<T1, op_type>&  x
-  )
-  {
-  arma_debug_sigprint();
-
-  return SpToDOp<T1, op_sp_minus_pre>(x.m, x.aux + k);
-  }
-
 
 
 

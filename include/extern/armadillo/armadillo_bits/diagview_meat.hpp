@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -236,13 +236,13 @@ diagview<eT>::operator= (const Base<eT,T1>& o)
     "diagview: given object has incompatible size"
     );
   
-  const bool is_alias = P.is_alias(d_m);
+  const bool have_alias = P.is_alias(d_m);
   
-  if(is_alias)  { arma_debug_print("aliasing detected"); }
+  if(have_alias)  { arma_debug_print("aliasing detected"); }
   
-  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (is_alias) )
+  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (have_alias) )
     {
-    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, is_alias);
+    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, have_alias);
     const Mat<eT>& x = tmp.M;
     
     const eT* x_mem = x.memptr();
@@ -309,13 +309,13 @@ diagview<eT>::operator+=(const Base<eT,T1>& o)
     "diagview: given object has incompatible size"
     );
   
-  const bool is_alias = P.is_alias(d_m);
+  const bool have_alias = P.is_alias(d_m);
   
-  if(is_alias)  { arma_debug_print("aliasing detected"); }
+  if(have_alias)  { arma_debug_print("aliasing detected"); }
   
-  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (is_alias) )
+  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (have_alias) )
     {
-    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, is_alias);
+    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, have_alias);
     const Mat<eT>& x = tmp.M;
     
     const eT* x_mem = x.memptr();
@@ -382,13 +382,13 @@ diagview<eT>::operator-=(const Base<eT,T1>& o)
     "diagview: given object has incompatible size"
     );
   
-  const bool is_alias = P.is_alias(d_m);
+  const bool have_alias = P.is_alias(d_m);
   
-  if(is_alias)  { arma_debug_print("aliasing detected"); }
+  if(have_alias)  { arma_debug_print("aliasing detected"); }
   
-  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (is_alias) )
+  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (have_alias) )
     {
-    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, is_alias);
+    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, have_alias);
     const Mat<eT>& x = tmp.M;
     
     const eT* x_mem = x.memptr();
@@ -455,13 +455,13 @@ diagview<eT>::operator%=(const Base<eT,T1>& o)
     "diagview: given object has incompatible size"
     );
   
-  const bool is_alias = P.is_alias(d_m);
+  const bool have_alias = P.is_alias(d_m);
   
-  if(is_alias)  { arma_debug_print("aliasing detected"); }
+  if(have_alias)  { arma_debug_print("aliasing detected"); }
   
-  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (is_alias) )
+  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (have_alias) )
     {
-    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, is_alias);
+    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, have_alias);
     const Mat<eT>& x = tmp.M;
     
     const eT* x_mem = x.memptr();
@@ -528,13 +528,13 @@ diagview<eT>::operator/=(const Base<eT,T1>& o)
     "diagview: given object has incompatible size"
     );
   
-  const bool is_alias = P.is_alias(d_m);
+  const bool have_alias = P.is_alias(d_m);
   
-  if(is_alias)  { arma_debug_print("aliasing detected"); }
+  if(have_alias)  { arma_debug_print("aliasing detected"); }
   
-  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (is_alias) )
+  if( (is_Mat<typename Proxy<T1>::stored_type>::value) || (Proxy<T1>::use_at) || (have_alias) )
     {
-    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, is_alias);
+    const unwrap_check<typename Proxy<T1>::stored_type> tmp(P.Q, have_alias);
     const Mat<eT>& x = tmp.M;
     
     const eT* x_mem = x.memptr();
@@ -586,7 +586,7 @@ diagview<eT>::extract(Mat<eT>& out, const diagview<eT>& in)
   arma_debug_sigprint();
   
   // NOTE: we're assuming that the matrix has already been set to the correct size and there is no aliasing;
-  // size setting and alias checking is done by either the Mat contructor or operator=()
+  // size setting and alias checking is done by either the Mat constructor or operator=()
   
   const Mat<eT>& in_m = in.m;
   
@@ -995,9 +995,13 @@ diagview<eT>::randu()
   
   const uword local_n_elem = n_elem;
   
+  Col<eT> tmp(local_n_elem, arma_nozeros_indicator());
+  
+  tmp.randu();
+  
   for(uword ii=0; ii < local_n_elem; ++ii)
     {
-    x.at(ii+row_offset, ii+col_offset) = eT(arma_rng::randu<eT>());
+    x.at(ii+row_offset, ii+col_offset) = tmp[ii];
     }
   }
 
@@ -1014,10 +1018,27 @@ diagview<eT>::randn()
   
   const uword local_n_elem = n_elem;
   
+  Col<eT> tmp(local_n_elem, arma_nozeros_indicator());
+  
+  tmp.randn();
+  
   for(uword ii=0; ii < local_n_elem; ++ii)
     {
-    x.at(ii+row_offset, ii+col_offset) = eT(arma_rng::randn<eT>());
+    x.at(ii+row_offset, ii+col_offset) = tmp[ii];
     }
+  }
+
+
+
+template<typename eT>
+template<typename eT2>
+inline
+bool
+diagview<eT>::is_alias(const Mat<eT2>& X) const
+  {
+  arma_debug_sigprint();
+  
+  return m.is_alias(X);
   }
 
 

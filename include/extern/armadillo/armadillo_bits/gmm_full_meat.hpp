@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -937,7 +937,7 @@ gmm_full<eT>::init_constants(const bool calc_chol)
           Mat<eT>& inv_fcov =  inv_fcovs.slice(g);
     
   //const bool inv_ok = auxlib::inv(tmp_inv, fcov);
-    const bool inv_ok = auxlib::inv_sympd(tmp_inv, fcov);
+    const bool inv_ok = auxlib::inv_sympd(tmp_inv, fcov);  // using inv_sympd() instead of inv() to ensure we can do cholesky decomp via op_chol
     
     eT log_det_val  = eT(0);
     eT log_det_sign = eT(0);
@@ -1087,7 +1087,7 @@ gmm_full<eT>::internal_scalar_log_p(const eT* x) const
       {
       const eT log_val = internal_scalar_log_p(x, g) + log_hefts_mem[g];
       
-      log_sum = log_add_exp(log_sum, log_val);
+      log_sum = priv::internal_log_add_exp(log_sum, log_val);
       }
     
     return log_sum;
@@ -2270,7 +2270,7 @@ gmm_full<eT>::km_iterate(const Mat<eT>& X, const uword max_iter, const bool verb
           }
         else
           {
-          // recover by using a randomly seleced sample (last resort)
+          // recover by using a randomly selected sample (last resort)
           proposed_i = as_scalar(randi<uvec>(1, distr_param(0,X_n_cols-1)));
           }
         
@@ -2392,7 +2392,7 @@ gmm_full<eT>::em_iterate(const Mat<eT>& X, const uword max_iter, const eT var_fl
       get_cout_stream().flush();
       }
     
-    if(arma_isfinite(new_avg_log_p) == false)  { return false; }
+    if(arma_isnonfinite(new_avg_log_p))  { return false; }
     
     if(std::abs(old_avg_log_p - new_avg_log_p) <= Datum<eT>::eps)  { break; }
     
@@ -2516,7 +2516,7 @@ gmm_full<eT>::em_update_params
     {
     const eT acc_norm_lhood = (std::max)( final_acc_norm_lhoods[g], std::numeric_limits<eT>::min() );
     
-    if(arma_isfinite(acc_norm_lhood) == false)  { continue; }
+    if(arma_isnonfinite(acc_norm_lhood))  { continue; }
     
     eT* acc_mean_mem = final_acc_means.colptr(g);
     
@@ -2618,7 +2618,7 @@ gmm_full<eT>::em_generate_acc
     
     for(uword g=1; g < N_gaus; ++g)
       {
-      log_lhood_sum = log_add_exp(log_lhood_sum, gaus_log_lhoods_mem[g]);
+      log_lhood_sum = priv::internal_log_add_exp(log_lhood_sum, gaus_log_lhoods_mem[g]);
       }
     
     progress_log_lhood += log_lhood_sum;
