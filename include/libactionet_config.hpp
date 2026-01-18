@@ -6,17 +6,28 @@
 // #undef ARMA_BLAS_CAPITALS
 // #define ARMA_BLAS_UNDERSCORE
 
+// DEFINE
 #ifndef ARMA_DONT_USE_WRAPPER
     #define ARMA_DONT_USE_WRAPPER
 #endif //ARMA_DONT_USE_WRAPPER
 
-#ifndef ARMA_BLAS_CAPITALS
-    #define ARMA_BLAS_CAPITALS
-#endif //ARMA_BLAS_CAPITALS
-
 #ifndef ARMA_BLAS_UNDERSCORE
     #define ARMA_BLAS_UNDERSCORE
 #endif //ARMA_BLAS_UNDERSCORE
+
+#ifndef ARMA_USE_LAPACK
+    #define ARMA_USE_LAPACK
+#endif //ARMA_USE_LAPACK
+
+#ifndef ARMA_USE_BLAS
+    #define ARMA_USE_BLAS
+#endif //ARMA_USE_BLAS
+
+// UNDEFINE
+#ifdef ARMA_BLAS_CAPITALS
+    #undef ARMA_BLAS_CAPITALS
+#endif //ARMA_BLAS_CAPITALS
+
 
 ////////////////////////////////////////////////////////////////
 // idk why this is like this but it was for a reason
@@ -29,13 +40,6 @@
 
 //#define ARMA_BLAS_LONG_LONG
 
-#ifdef ARMA_USE_LAPACK
-    #undef ARMA_USE_LAPACK
-#endif //ARMA_USE_LAPACK
-
-#ifdef ARMA_USE_BLAS
-    #undef ARMA_USE_BLAS
-#endif //ARMA_USE_BLAS
 ////////////////////////////////////////////////////////////////
 
 // StatsLib build configuration
