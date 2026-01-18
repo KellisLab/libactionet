@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -250,7 +250,7 @@ eop_core<eop_type>::apply(outT& out, const eOp<T1, eop_type>& x)
   typedef typename T1::elem_type eT;
   
   // NOTE: we're assuming that the matrix has already been set to the correct size and there is no aliasing;
-  // size setting and alias checking is done by either the Mat contructor or operator=()
+  // size setting and alias checking is done by either the Mat constructor or operator=()
   
   const eT  k       = x.aux;
         eT* out_mem = out.memptr();
@@ -626,7 +626,7 @@ eop_core<eop_type>::apply(Cube<typename T1::elem_type>& out, const eOpCube<T1, e
   typedef typename T1::elem_type eT;
   
   // NOTE: we're assuming that the matrix has already been set to the correct size and there is no aliasing;
-  // size setting and alias checking is done by either the Mat contructor or operator=()
+  // size setting and alias checking is done by either the Mat constructor or operator=()
   
   const eT  k       = x.aux;
         eT* out_mem = out.memptr();
@@ -1103,9 +1103,6 @@ eop_core<eop_atanh            >::process(const eT val, const eT  ) { return eop_
 
 template<> template<typename eT> arma_inline eT
 eop_core<eop_sinc             >::process(const eT val, const eT  ) { return arma_sinc(val);           }
-
-template<> template<typename eT> arma_inline eT
-eop_core<eop_eps              >::process(const eT val, const eT  ) { return eop_aux::direct_eps(val); }
 
 template<> template<typename eT> arma_inline eT
 eop_core<eop_abs              >::process(const eT val, const eT  ) { return eop_aux::arma_abs(val);   }

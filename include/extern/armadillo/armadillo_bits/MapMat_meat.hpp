@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -106,7 +106,12 @@ MapMat<eT>::operator=(const MapMat<eT>& x)
   {
   arma_debug_sigprint();
   
-  if(this == &x)  { return; }
+  if(this == &x)
+    {
+    arma_debug_print("MapMat::operator=(): copy omitted");
+    
+    return;
+    }
   
   access::rw(n_rows) = x.n_rows;
   access::rw(n_cols) = x.n_cols;
@@ -970,18 +975,17 @@ MapMat_val<eT>::operator*=(const eT in_val)
   
   if(it != it_end)
     {
-    if(in_val != eT(0))
-      {
-      eT& val = (*it).second;
-      
-      val *= in_val;
-      
-      if(val == eT(0))  { map_ref.erase(it); }
-      }
-    else
-      {
-      map_ref.erase(it);
-      }
+    eT& val = (*it).second;
+    
+    val *= in_val;
+    
+    if(val == eT(0))  { map_ref.erase(it); }
+    }
+  else
+    {
+    const eT val = eT(0) * in_val;  // in case in_val is inf or nan
+    
+    if(val != eT(0))  { parent.set_val(index, val); }
     }
   }
 
@@ -1009,9 +1013,7 @@ MapMat_val<eT>::operator/=(const eT in_val)
     }
   else
     {
-    // silly operation, but included for completness
-    
-    const eT val = eT(0) / in_val;
+    const eT val = eT(0) / in_val;  // in case in_val is zero or nan
     
     if(val != eT(0))  { parent.set_val(index, val); }
     }
@@ -1481,18 +1483,11 @@ SpMat_MapMat_val<eT>::mul(const eT in_val)
     
     if(it != it_end)
       {
-      if(in_val != eT(0))
-        {
-        eT& val = (*it).second;
-        
-        val *= in_val;
-        
-        if(val == eT(0))  { map_ref.erase(it); }
-        }
-      else
-        {
-        map_ref.erase(it);
-        }
+      eT& val = (*it).second;
+      
+      val *= in_val;
+      
+      if(val == eT(0))  { map_ref.erase(it); }
       
       s_parent.sync_state = 1;
       
@@ -1500,19 +1495,15 @@ SpMat_MapMat_val<eT>::mul(const eT in_val)
       }
     else
       {
-      // element not found, ie. it's zero; zero multiplied by anything is zero, except for nan and inf
-      if(arma_isfinite(in_val) == false)
+      const eT result = eT(0) * in_val;  // in case in_val is inf or nan
+      
+      if(result != eT(0))
         {
-        const eT result = eT(0) * in_val;
+        m_parent.set_val(index, result);
         
-        if(result != eT(0))  // paranoia, in case compiling with -ffast-math
-          {
-          m_parent.set_val(index, result);
-          
-          s_parent.sync_state = 1;
-          
-          access::rw(s_parent.n_nonzero) = m_parent.get_n_nonzero();
-          }
+        s_parent.sync_state = 1;
+        
+        access::rw(s_parent.n_nonzero) = m_parent.get_n_nonzero();
         }
       }
     }
@@ -1554,19 +1545,15 @@ SpMat_MapMat_val<eT>::div(const eT in_val)
       }
     else
       {
-      // element not found, ie. it's zero; zero divided by anything is zero, except for zero and nan
-      if( (in_val == eT(0)) || (arma_isnan(in_val)) )
+      const eT result = eT(0) / in_val;  // in case in_val is zero or nan
+      
+      if(result != eT(0))
         {
-        const eT result = eT(0) / in_val;
+        m_parent.set_val(index, result);
         
-        if(result != eT(0))  // paranoia, in case compiling with -ffast-math
-          {
-          m_parent.set_val(index, result);
-          
-          s_parent.sync_state = 1;
-          
-          access::rw(s_parent.n_nonzero) = m_parent.get_n_nonzero();
-          }
+        s_parent.sync_state = 1;
+        
+        access::rw(s_parent.n_nonzero) = m_parent.get_n_nonzero();
         }
       }
     }

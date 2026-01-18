@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -1706,7 +1706,7 @@ subview_cube<eT>::extract(Cube<eT>& out, const subview_cube<eT>& in)
   arma_debug_sigprint();
 
   // NOTE: we're assuming that the cube has already been set to the correct size and there is no aliasing;
-  // size setting and alias checking is done by either the Cube contructor or operator=()
+  // size setting and alias checking is done by either the Cube constructor or operator=()
   
   const uword n_rows   = in.n_rows;
   const uword n_cols   = in.n_cols;

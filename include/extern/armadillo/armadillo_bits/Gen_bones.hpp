@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,11 +22,9 @@
 
 //! support class for generator functions (zeros, ones, eye)
 template<typename T1, typename gen_type>
-class Gen
+struct Gen
   : public Base< typename T1::elem_type, Gen<T1, gen_type> >
   {
-  public:
-  
   typedef typename T1::elem_type                   elem_type;
   typedef typename get_pod_type<elem_type>::result pod_type;
   
@@ -37,8 +35,8 @@ class Gen
   static constexpr bool is_col  = T1::is_col;
   static constexpr bool is_xvec = T1::is_xvec;
   
-  arma_aligned const uword n_rows;
-  arma_aligned const uword n_cols;
+  const uword n_rows;
+  const uword n_cols;
   
   arma_inline  Gen(const uword in_n_rows, const uword in_n_cols);
   arma_inline ~Gen();
@@ -54,6 +52,9 @@ class Gen
   inline void apply_inplace_div  (Mat<elem_type>& out) const;
   
   inline void apply(subview<elem_type>& out) const;
+  
+  template<typename eT2>
+  constexpr bool is_alias(const Mat<eT2>&) const { return false; }
   };
 
 

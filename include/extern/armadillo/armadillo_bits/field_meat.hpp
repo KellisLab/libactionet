@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // 
-// Copyright 2008-2016 Conrad Sanderson (http://conradsanderson.id.au)
+// Copyright 2008-2016 Conrad Sanderson (https://conradsanderson.id.au)
 // Copyright 2008-2016 National ICT Australia (NICTA)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
+// https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,7 @@ field<oT>::~field()
   
   delete_objects();
   
-  if(n_elem > field_prealloc_n_elem::val)  { delete [] mem; }
+  if(n_elem > 0)  { delete [] mem; }
   
   // try to expose buggy user code that accesses deleted objects
   mem = nullptr;
@@ -94,7 +94,7 @@ field<oT>::field(const subview_field<oT>& X)
   {
   arma_debug_sigprint_this(this);
   
-  this->operator=(X);
+  (*this).operator=(X);
   }
 
 
@@ -274,11 +274,179 @@ field<oT>::set_size(const SizeCube& s)
 
 template<typename oT>
 inline
+field<oT>&
+field<oT>::reshape(const uword n_elem_in)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).reshape(n_elem_in, 1, 1);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::reshape(const uword n_rows_in, const uword n_cols_in)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).reshape(n_rows_in, n_cols_in, 1);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::reshape(const uword n_rows_in, const uword n_cols_in, const uword n_slices_in)
+  {
+  arma_debug_sigprint(arma_str::format("n_rows_in: %u; n_cols_in: %u; n_slices_in: %u") % n_rows_in % n_cols_in % n_slices_in);
+  
+  if((n_rows == n_rows_in) && (n_cols == n_cols_in) && (n_slices == n_slices_in))
+    {
+    // do nothing
+    }
+  else
+  if((n_elem == 0) || ((n_rows == n_cols_in) && (n_cols == n_rows_in) && (n_slices == n_slices_in)))
+    {
+    init(n_rows_in, n_cols_in, n_slices_in);
+    }
+  else
+    {
+    field<oT> tmp(n_rows_in, n_cols_in, n_slices_in);
+    
+    const uword n_elem_to_copy = (std::min)((*this).n_elem, tmp.n_elem);
+    
+    for(uword i=0; i < n_elem_to_copy; ++i)  { tmp.at(i) = std::move((*this).at(i)); }
+    
+    (*this) = std::move(tmp);
+    }
+  
+  return *this;
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::reshape(const SizeMat& s)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).reshape(s.n_rows, s.n_cols, 1);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::reshape(const SizeCube& s)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).reshape(s.n_rows, s.n_cols, s.n_slices);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::resize(const uword n_elem_in)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).resize(n_elem_in, 1, 1);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::resize(const uword n_rows_in, const uword n_cols_in)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).resize(n_rows_in, n_cols_in, 1);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::resize(const uword n_rows_in, const uword n_cols_in, const uword n_slices_in)
+  {
+  arma_debug_sigprint(arma_str::format("n_rows_in: %u; n_cols_in: %u; n_slices_in: %u") % n_rows_in % n_cols_in % n_slices_in);
+  
+  if((n_rows == n_rows_in) && (n_cols == n_cols_in) && (n_slices == n_slices_in))
+    {
+    // do nothing
+    }
+  else
+  if(n_elem == 0)
+    {
+    (*this).set_size(n_rows_in, n_cols_in, n_slices_in);
+    }
+  else
+    {
+    // better-than-nothing implementation
+    
+    field<oT> tmp(n_rows_in, n_cols_in, n_slices_in);
+    
+    if(tmp.n_elem > 0)
+      {
+      const uword end_row   = (std::min)(n_rows_in,   n_rows  ) - 1;
+      const uword end_col   = (std::min)(n_cols_in,   n_cols  ) - 1;
+      const uword end_slice = (std::min)(n_slices_in, n_slices) - 1;
+      
+      tmp.subfield(0, 0, 0, end_row, end_col, end_slice) = (*this).subfield(0, 0, 0, end_row, end_col, end_slice);
+      }
+    
+    (*this) = std::move(tmp);
+    }
+  
+  return *this;
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::resize(const SizeMat& s)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).resize(s.n_rows, s.n_cols, 1);
+  }
+
+
+
+template<typename oT>
+inline
+field<oT>&
+field<oT>::resize(const SizeCube& s)
+  {
+  arma_debug_sigprint();
+  
+  return (*this).resize(s.n_rows, s.n_cols, s.n_slices);
+  }
+
+
+
+template<typename oT>
+inline
 field<oT>::field(const std::vector<oT>& x)
   : n_rows  (0)
   , n_cols  (0)
   , n_slices(0)
   , n_elem  (0)
+  , mem     (nullptr)
   {
   arma_debug_sigprint_this(this);
   
@@ -312,6 +480,7 @@ field<oT>::field(const std::initializer_list<oT>& list)
   , n_cols  (0)
   , n_slices(0)
   , n_elem  (0)
+  , mem     (nullptr)
   {
   arma_debug_sigprint_this(this);
   
@@ -347,6 +516,7 @@ field<oT>::field(const std::initializer_list< std::initializer_list<oT> >& list)
   , n_cols  (0)
   , n_slices(0)
   , n_elem  (0)
+  , mem     (nullptr)
   {
   arma_debug_sigprint_this(this);
   
@@ -412,18 +582,9 @@ field<oT>::field(field<oT>&& X)
   , n_cols  (X.n_cols  )
   , n_slices(X.n_slices)
   , n_elem  (X.n_elem  )
+  , mem     (X.mem     )
   {
   arma_debug_sigprint(arma_str::format("this: %x; X: %x") % this % &X);
-  
-  if(n_elem > field_prealloc_n_elem::val)
-    {
-    mem = X.mem;
-    }
-  else
-    {
-    arrayops::copy(&mem_local[0], &X.mem_local[0], n_elem);
-    mem = mem_local;
-    }
   
   access::rw(X.n_rows  ) = 0;
   access::rw(X.n_cols  ) = 0;
@@ -450,15 +611,7 @@ field<oT>::operator=(field<oT>&& X)
   access::rw(n_slices) = X.n_slices;
   access::rw(n_elem  ) = X.n_elem;
   
-  if(n_elem > field_prealloc_n_elem::val)
-    {
-    mem = X.mem;
-    }
-  else
-    {
-    arrayops::copy(&mem_local[0], &X.mem_local[0], n_elem);
-    mem = mem_local;
-    }
+  mem = X.mem;
   
   access::rw(X.n_rows  ) = 0;
   access::rw(X.n_cols  ) = 0;
@@ -531,7 +684,7 @@ field<oT>::at(const uword i) const
 
 
 
-//! linear element accessor (treats the field as a vector); bounds checking not done when ARMA_NO_DEBUG is defined
+//! linear element accessor (treats the field as a vector); bounds checking not done when ARMA_DONT_CHECK_CONFORMANCE is defined
 template<typename oT>
 arma_inline
 oT&
@@ -544,7 +697,7 @@ field<oT>::operator() (const uword i)
 
 
 
-//! linear element accessor (treats the field as a vector); bounds checking not done when ARMA_NO_DEBUG is defined
+//! linear element accessor (treats the field as a vector); bounds checking not done when ARMA_DONT_CHECK_CONFORMANCE is defined
 template<typename oT>
 arma_inline
 const oT&
@@ -557,7 +710,7 @@ field<oT>::operator() (const uword i) const
 
 
 
-//! element accessor; bounds checking not done when ARMA_NO_DEBUG is defined
+//! element accessor; bounds checking not done when ARMA_DONT_CHECK_CONFORMANCE is defined
 template<typename oT>
 arma_inline
 oT&
@@ -570,7 +723,7 @@ field<oT>::operator() (const uword in_row, const uword in_col)
 
 
 
-//! element accessor; bounds checking not done when ARMA_NO_DEBUG is defined
+//! element accessor; bounds checking not done when ARMA_DONT_CHECK_CONFORMANCE is defined
 template<typename oT>
 arma_inline
 const oT&
@@ -583,7 +736,7 @@ field<oT>::operator() (const uword in_row, const uword in_col) const
 
 
 
-//! element accessor; bounds checking not done when ARMA_NO_DEBUG is defined
+//! element accessor; bounds checking not done when ARMA_DONT_CHECK_CONFORMANCE is defined
 template<typename oT>
 arma_inline
 oT&
@@ -596,7 +749,7 @@ field<oT>::operator() (const uword in_row, const uword in_col, const uword in_sl
 
 
 
-//! element accessor; bounds checking not done when ARMA_NO_DEBUG is defined
+//! element accessor; bounds checking not done when ARMA_DONT_CHECK_CONFORMANCE is defined
 template<typename oT>
 arma_inline
 const oT&
@@ -614,7 +767,7 @@ field<oT>::operator() (const uword in_row, const uword in_col, const uword in_sl
   //! element accessor; no bounds check
   template<typename oT>
   arma_inline
-    oT&
+  oT&
   field<oT>::operator[] (const uword in_row, const uword in_col)
     {
     return (*mem[in_row + in_col*n_rows]);
@@ -625,7 +778,7 @@ field<oT>::operator() (const uword in_row, const uword in_col, const uword in_sl
   //! element accessor; no bounds check
   template<typename oT>
   arma_inline
-    const oT&
+  const oT&
   field<oT>::operator[] (const uword in_row, const uword in_col) const
     {
     return (*mem[in_row + in_col*n_rows]);
@@ -884,7 +1037,7 @@ field<oT>::rows(const uword in_row1, const uword in_row2)
   arma_conform_check_bounds
     (
     ( (in_row1 > in_row2) || (in_row2 >= n_rows) ),
-    "field::rows(): indicies out of bounds or incorrectly used"
+    "field::rows(): indices out of bounds or incorrectly used"
     );
   
   const uword sub_n_rows = in_row2 - in_row1 + 1;
@@ -907,7 +1060,7 @@ field<oT>::rows(const uword in_row1, const uword in_row2) const
   arma_conform_check_bounds
     (
     ( (in_row1 > in_row2) || (in_row2 >= n_rows) ),
-    "field::rows(): indicies out of bounds or incorrectly used"
+    "field::rows(): indices out of bounds or incorrectly used"
     );
   
   const uword sub_n_rows = in_row2 - in_row1 + 1;
@@ -930,7 +1083,7 @@ field<oT>::cols(const uword in_col1, const uword in_col2)
   arma_conform_check_bounds
     (
     ( (in_col1 > in_col2) || (in_col2 >= n_cols) ),
-    "field::cols(): indicies out of bounds or incorrectly used"
+    "field::cols(): indices out of bounds or incorrectly used"
     );
   
   const uword sub_n_cols = in_col2 - in_col1 + 1;
@@ -953,7 +1106,7 @@ field<oT>::cols(const uword in_col1, const uword in_col2) const
   arma_conform_check_bounds
     (
     ( (in_col1 > in_col2) || (in_col2 >= n_cols) ),
-    "field::cols(): indicies out of bounds or incorrectly used"
+    "field::cols(): indices out of bounds or incorrectly used"
     );
   
   const uword sub_n_cols = in_col2 - in_col1 + 1;
@@ -974,7 +1127,7 @@ field<oT>::slices(const uword in_slice1, const uword in_slice2)
   arma_conform_check_bounds
     (
     ( (in_slice1 > in_slice2) || (in_slice2 >= n_slices) ),
-    "field::slices(): indicies out of bounds or incorrectly used"
+    "field::slices(): indices out of bounds or incorrectly used"
     );
   
   const uword sub_n_slices = in_slice2 - in_slice1 + 1;
@@ -995,7 +1148,7 @@ field<oT>::slices(const uword in_slice1, const uword in_slice2) const
   arma_conform_check_bounds
     (
     ( (in_slice1 > in_slice2) || (in_slice2 >= n_slices) ),
-    "field::slices(): indicies out of bounds or incorrectly used"
+    "field::slices(): indices out of bounds or incorrectly used"
     );
   
   const uword sub_n_slices = in_slice2 - in_slice1 + 1;
@@ -1967,34 +2120,20 @@ field<oT>::init(const field<oT>& x)
   {
   arma_debug_sigprint();
   
-  if(this != &x)
+  if(this == &x)
     {
-    const uword x_n_rows   = x.n_rows;
-    const uword x_n_cols   = x.n_cols;
-    const uword x_n_slices = x.n_slices;
+    arma_debug_print("field::init(): copy omitted");
     
-    init(x_n_rows, x_n_cols, x_n_slices);
-    
-    field& t = *this;
-    
-    if(x_n_slices == 1)
-      {
-      for(uword ucol=0; ucol < x_n_cols; ++ucol)
-      for(uword urow=0; urow < x_n_rows; ++urow)
-        {
-        t.at(urow,ucol) = x.at(urow,ucol);
-        }
-      }
-    else
-      {
-      for(uword uslice=0; uslice < x_n_slices; ++uslice)
-      for(uword ucol=0;   ucol   < x_n_cols;   ++ucol  )
-      for(uword urow=0;   urow   < x_n_rows;   ++urow  )
-        {
-        t.at(urow,ucol,uslice) = x.at(urow,ucol,uslice);
-        }
-      }
+    return;
     }
+  
+  field& t = (*this);
+  
+  t.init(x.n_rows, x.n_cols, x.n_slices);
+  
+  const uword t_n_elem = t.n_elem;
+  
+  for(uword i=0; i < t_n_elem; ++i)  { t.at(i) = x.at(i); }
   }
 
 
@@ -2046,13 +2185,11 @@ field<oT>::init(const uword n_rows_in, const uword n_cols_in, const uword n_slic
     {
     delete_objects();
     
-    if(n_elem > field_prealloc_n_elem::val)  { delete [] mem; }
+    if(n_elem > 0)  { delete [] mem; }
     
-    if(n_elem_new <= field_prealloc_n_elem::val)
-      {
-      mem = (n_elem_new == 0) ? nullptr : mem_local;
-      }
-    else
+    mem = nullptr;
+    
+    if(n_elem_new > 0)
       {
       mem = new(std::nothrow) oT* [n_elem_new];
       
@@ -2079,11 +2216,7 @@ field<oT>::delete_objects()
   
   for(uword i=0; i<n_elem; ++i)
     {
-    if(mem[i] != nullptr)
-      {
-      delete mem[i];
-      mem[i] = nullptr;
-      }
+    if(mem[i] != nullptr)  { delete mem[i]; mem[i] = nullptr; }
     }
   }
 

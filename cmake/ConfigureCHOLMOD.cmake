@@ -69,21 +69,38 @@ macro(CONFIGURE_CHOLMOD libtarget)
                 /opt/homebrew/opt/suite-sparse/lib)
             message(VERBOSE "Added both ARM64 and x86_64 Homebrew paths for CHOLMOD")
         endif()
+
+        ## NO_DEFAULT_PATH ensures we do not always pick up arm64 libraries for the wrong architecture under Rosetta
+        # Find cholmod.h header
+        find_path(CHOLMOD_INCLUDE_DIR
+                NAMES cholmod.h
+                PATHS ${CHOLMOD_SEARCH_INCLUDE_PATHS}
+                DOC "CHOLMOD include directory"
+                NO_DEFAULT_PATH ## Prevent finding default arm64 paths on x86
+        )
+
+        # Find libcholmod library
+        find_library(CHOLMOD_LIBRARY
+                NAMES cholmod
+                PATHS ${CHOLMOD_SEARCH_LIB_PATHS}
+                DOC "CHOLMOD library"
+                NO_DEFAULT_PATH ## Prevent finding default arm64 paths on x86
+        )
+    else ()
+        # Find cholmod.h header
+        find_path(CHOLMOD_INCLUDE_DIR
+                NAMES cholmod.h
+                PATHS ${CHOLMOD_SEARCH_INCLUDE_PATHS}
+                DOC "CHOLMOD include directory"
+        )
+
+        # Find libcholmod library
+        find_library(CHOLMOD_LIBRARY
+                NAMES cholmod
+                PATHS ${CHOLMOD_SEARCH_LIB_PATHS}
+                DOC "CHOLMOD library"
+        )
     endif()
-
-    # Find cholmod.h header
-    find_path(CHOLMOD_INCLUDE_DIR
-        NAMES cholmod.h
-        PATHS ${CHOLMOD_SEARCH_INCLUDE_PATHS}
-        DOC "CHOLMOD include directory"
-    )
-
-    # Find libcholmod library
-    find_library(CHOLMOD_LIBRARY
-        NAMES cholmod
-        PATHS ${CHOLMOD_SEARCH_LIB_PATHS}
-        DOC "CHOLMOD library"
-    )
 
     # Check if found
     if (CHOLMOD_INCLUDE_DIR AND CHOLMOD_LIBRARY)
