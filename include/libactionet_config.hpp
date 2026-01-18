@@ -2,10 +2,33 @@
 #define ACTIONET_CONFIG_HPP
 
 // Armadillo build configuration
-#define ARMA_DONT_USE_WRAPPER
-#undef ARMA_BLAS_CAPITALS
-#define ARMA_BLAS_UNDERSCORE
+// #define ARMA_DONT_USE_WRAPPER
+// #undef ARMA_BLAS_CAPITALS
+// #define ARMA_BLAS_UNDERSCORE
 
+#ifndef ARMA_DONT_USE_WRAPPER
+    #define ARMA_DONT_USE_WRAPPER
+#endif //ARMA_DONT_USE_WRAPPER
+
+#ifndef ARMA_BLAS_CAPITALS
+    #define ARMA_BLAS_CAPITALS
+#endif //ARMA_BLAS_CAPITALS
+
+#ifndef ARMA_BLAS_UNDERSCORE
+    #define ARMA_BLAS_UNDERSCORE
+#endif //ARMA_BLAS_UNDERSCORE
+
+#ifndef ARMA_USE_BLAS
+    #define ARMA_USE_BLAS
+#endif //ARMA_USE_BLAS
+
+#ifndef ARMA_USE_LAPACK
+    #define ARMA_USE_LAPACK
+#endif //ARMA_USE_LAPACK
+
+////////////////////////////////////////////////////////////////
+// idk why this is like this but it was for a reason
+////////////////////////////////////////////////////////////////
 #undef ARMA_64BIT_WORD
 #define ARMA_64BIT_WORD
 // #ifndef ARMA_64BIT_WORD
@@ -13,6 +36,7 @@
 // #endif //ARMA_64BIT_WORD
 
 //#define ARMA_BLAS_LONG_LONG
+////////////////////////////////////////////////////////////////
 
 // StatsLib build configuration
 #define STATS_ENABLE_ARMA_WRAPPERS
@@ -36,12 +60,12 @@
 
 #else
 
-// TODO: stdio macros
-#define stdout_printf printf
-#define stderr_printf printf
-#define FLUSH fflush(stdout)
+    // TODO: stdio macros
+    #define stdout_printf printf
+    #define stderr_printf printf
+    #define FLUSH fflush(stdout)
 
-#include "armadillo"
+    #include "armadillo"
 
 #endif
 
