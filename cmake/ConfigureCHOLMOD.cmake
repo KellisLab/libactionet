@@ -71,11 +71,15 @@ macro(CONFIGURE_CHOLMOD libtarget)
         endif()
     endif()
 
+    message(STATUS "BIG COWS ${CHOLMOD_SEARCH_INCLUDE_PATHS}")
+    message(STATUS "BIG COWS ${CHOLMOD_SEARCH_LIB_PATHS}")
+
     # Find cholmod.h header
     find_path(CHOLMOD_INCLUDE_DIR
         NAMES cholmod.h
         PATHS ${CHOLMOD_SEARCH_INCLUDE_PATHS}
         DOC "CHOLMOD include directory"
+        NO_DEFAULT_PATH ## Prevent finding default arm64 paths on x86
     )
 
     # Find libcholmod library
@@ -83,6 +87,7 @@ macro(CONFIGURE_CHOLMOD libtarget)
         NAMES cholmod
         PATHS ${CHOLMOD_SEARCH_LIB_PATHS}
         DOC "CHOLMOD library"
+        NO_DEFAULT_PATH ## Prevent finding default arm64 paths on x86
     )
 
     # Check if found
