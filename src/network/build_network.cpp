@@ -74,16 +74,15 @@ arma::sp_mat
         }
     }
 
+    delete (appr_alg);
+
     stdout_printf("done\n");
     FLUSH;
 
-    delete (appr_alg);
-
+    stdout_printf("\tConstructing adaptive-nearest neighbor graph ... ");
     if (distance_metric == "jsd") {
         dist = arma::clamp(dist, 0.0, 1.0);
     }
-
-    stdout_printf("\tConstructing adaptive-nearest neighbor graph ... ");
 
     arma::mat Delta;
     arma::mat beta = LC * dist;
