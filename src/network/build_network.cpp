@@ -12,9 +12,8 @@ std::set<std::string> nn_approaches = {"k*nn", "knn"};
 
 // k^{*}-Nearest Neighbors: From Global to Local (NIPS 2016)
 arma::sp_mat
-    // TODO:: remove unused arguments
     buildNetwork_KstarNN(arma::mat H, double density = 1.0, int thread_no = 0, double M = 16,
-                         double ef_construction = 200, double ef = 200, bool mutual_edges_only = true,
+                         bool mutual_edges_only = true,
                          const std::string& distance_metric = "jsd") {
     double LC = 1.0 / density;
     // verify that a support distance metric has been specified
@@ -37,6 +36,8 @@ arma::sp_mat
     // start with uniform k=sqrt(N) ["Pattern Classification" book by Duda et al.]
     int kNN = std::min(sample_no - 1, (int)(kappa * round(std::sqrt(sample_no))));
 
+    double ef_construction;
+    double ef;
     ef_construction = ef = kNN;
 
     hnswlib::HierarchicalNSW<float>* appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
@@ -106,25 +107,49 @@ arma::sp_mat
     Delta = lambda - beta;
     Delta.shed_row(0);
 
-    arma::sp_mat G(sample_no, sample_no);
+    // Build triplet lists in parallel to avoid race conditions on sparse matrix
+    std::vector<arma::uword> rows_vec, cols_vec;
+    std::vector<double> vals_vec;
 
-    #pragma omp parallel for num_threads(threads_use)
-    for (size_t v = 0; v < sample_no; v++) {
-        arma::vec delta = Delta.col(v);
+    #pragma omp parallel
+    {
+        std::vector<arma::uword> local_rows, local_cols;
+        std::vector<double> local_vals;
 
-        // uvec rows = find(delta > 0, 1, "last");
-        arma::uvec rows = arma::find(delta < 0, 1, "first");
-        int neighbor_no = rows.n_elem == 0 ? kNN : (rows(0));
+        #pragma omp for nowait
+        for (size_t v = 0; v < sample_no; v++) {
+            arma::vec delta = Delta.col(v);
 
-        int dst = v;
-        arma::rowvec v_dist = dist.row(v);
-        arma::rowvec v_idx = idx.row(v);
+            // uvec rows = find(delta > 0, 1, "last");
+            arma::uvec rows = arma::find(delta < 0, 1, "first");
+            int neighbor_no = rows.n_elem == 0 ? kNN : (rows(0));
 
-        for (int i = 1; i < neighbor_no; i++) {
-            int src = v_idx(i);
-            G(src, dst) = v_dist(i);
+            int dst = v;
+            arma::rowvec v_dist = dist.row(v);
+            arma::rowvec v_idx = idx.row(v);
+
+            for (int i = 1; i < neighbor_no; i++) {
+                int src = v_idx(i);
+                local_rows.push_back(src);
+                local_cols.push_back(dst);
+                local_vals.push_back(v_dist(i));
+            }
+        }
+
+        #pragma omp critical
+        {
+            rows_vec.insert(rows_vec.end(), local_rows.begin(), local_rows.end());
+            cols_vec.insert(cols_vec.end(), local_cols.begin(), local_cols.end());
+            vals_vec.insert(vals_vec.end(), local_vals.begin(), local_vals.end());
         }
     }
+
+    // Construct sparse matrix from triplets
+    arma::umat locations(2, rows_vec.size());
+    locations.row(0) = arma::conv_to<arma::urowvec>::from(rows_vec);
+    locations.row(1) = arma::conv_to<arma::urowvec>::from(cols_vec);
+    arma::vec values = arma::conv_to<arma::vec>::from(vals_vec);
+    arma::sp_mat G(locations, values, sample_no, sample_no);
 
     stdout_printf("done\n");
     FLUSH;
@@ -196,23 +221,47 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
     stdout_printf("done\n");
     FLUSH;
 
-    arma::sp_mat G(sample_no, sample_no);
-
     stdout_printf("\tConstructing k*-NN ... ");
 
+    // Build triplet lists in parallel to avoid race conditions on sparse matrix
+    std::vector<arma::uword> rows_vec, cols_vec;
+    std::vector<double> vals_vec;
+
     threads_use = get_num_threads(sample_no, thread_no);
-    #pragma omp parallel for num_threads(threads_use)
-    for (size_t i = 0; i < sample_no; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-            appr_alg->searchKnn(X.colptr(i), k);
+    #pragma omp parallel
+    {
+        std::vector<arma::uword> local_rows, local_cols;
+        std::vector<double> local_vals;
 
-        for (size_t j = 0; j < result.size(); j++) {
-            auto& result_tuple = result.top();
+        #pragma omp for nowait
+        for (size_t i = 0; i < sample_no; i++) {
+            std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+                appr_alg->searchKnn(X.colptr(i), k);
 
-            G(i, result_tuple.second) = result_tuple.first;
-            result.pop();
+            for (size_t j = 0; j < result.size(); j++) {
+                auto& result_tuple = result.top();
+
+                local_rows.push_back(i);
+                local_cols.push_back(result_tuple.second);
+                local_vals.push_back(result_tuple.first);
+                result.pop();
+            }
+        }
+
+        #pragma omp critical
+        {
+            rows_vec.insert(rows_vec.end(), local_rows.begin(), local_rows.end());
+            cols_vec.insert(cols_vec.end(), local_cols.begin(), local_cols.end());
+            vals_vec.insert(vals_vec.end(), local_vals.begin(), local_vals.end());
         }
     }
+
+    // Construct sparse matrix from triplets
+    arma::umat locations(2, rows_vec.size());
+    locations.row(0) = arma::conv_to<arma::urowvec>::from(rows_vec);
+    locations.row(1) = arma::conv_to<arma::urowvec>::from(cols_vec);
+    arma::vec values = arma::conv_to<arma::vec>::from(vals_vec);
+    arma::sp_mat G(locations, values, sample_no, sample_no);
 
     stdout_printf("done\n");
     FLUSH;
@@ -272,7 +321,7 @@ namespace actionet {
         /// Build ACTIONet with k*nn or fixed k knn, based on passed parameter
         arma::sp_mat G;
         if (algorithm == "k*nn") {
-            G = buildNetwork_KstarNN(H, density, thread_no, M, ef_construction, ef, mutual_edges_only, distance_metric);
+            G = buildNetwork_KstarNN(H, density, thread_no, M, mutual_edges_only, distance_metric);
         }
         else {
             G = buildNetwork_KNN(H, k, thread_no, M, ef_construction, ef, mutual_edges_only, distance_metric);
