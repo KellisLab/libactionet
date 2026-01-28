@@ -45,6 +45,27 @@ macro(CONFIGURE_CHOLMOD libtarget)
         /opt/local/lib
     )
 
+    # Conda / custom prefixes (rootless installs)
+    set(CHOLMOD_PREFIX_CANDIDATES "")
+    if (DEFINED ENV{CONDA_PREFIX})
+        list(APPEND CHOLMOD_PREFIX_CANDIDATES "$ENV{CONDA_PREFIX}")
+    endif()
+    if (DEFINED ENV{CHOLMOD_ROOT})
+        list(APPEND CHOLMOD_PREFIX_CANDIDATES "$ENV{CHOLMOD_ROOT}")
+    endif()
+    if (DEFINED ENV{SUITESPARSE_ROOT})
+        list(APPEND CHOLMOD_PREFIX_CANDIDATES "$ENV{SUITESPARSE_ROOT}")
+    endif()
+    if (DEFINED ENV{SuiteSparse_DIR})
+        list(APPEND CHOLMOD_PREFIX_CANDIDATES "$ENV{SuiteSparse_DIR}")
+    endif()
+
+    foreach(prefix IN LISTS CHOLMOD_PREFIX_CANDIDATES)
+        list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 "${prefix}/include/suitesparse")
+        list(INSERT CHOLMOD_SEARCH_INCLUDE_PATHS 0 "${prefix}/include")
+        list(INSERT CHOLMOD_SEARCH_LIB_PATHS 0 "${prefix}/lib")
+    endforeach()
+
     # Add architecture-specific Homebrew paths if on macOS
     if (APPLE)
         if (DEFINED TARGET_ARCHITECTURE)
@@ -122,4 +143,3 @@ macro(CONFIGURE_CHOLMOD libtarget)
         endif()
     endif()
 endmacro()
-
