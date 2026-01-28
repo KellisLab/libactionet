@@ -108,8 +108,12 @@ arma::sp_mat
     Delta.shed_row(0);
 
     // Build triplet lists in parallel to avoid race conditions on sparse matrix
+    size_t estimated_edges = sample_no * kNN;
     std::vector<arma::uword> rows_vec, cols_vec;
     std::vector<double> vals_vec;
+    rows_vec.reserve(estimated_edges);
+    cols_vec.reserve(estimated_edges);
+    vals_vec.reserve(estimated_edges);
 
     #pragma omp parallel
     {
@@ -155,14 +159,23 @@ arma::sp_mat
     FLUSH;
 
     G.replace(arma::datum::nan, 0); // replace each NaN with 0
-    arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
-    arma::sp_mat::iterator it = G.begin();
-    arma::sp_mat::const_iterator it_end = G.end();
 
     double epsilon = 1e-7;
-    for (; it != it_end; ++it) {
-        double upper_bound = (distance_metric == "jsd") ? 1.0 : max_dist(it.col());
-        *it = std::max(epsilon, upper_bound - (*it));
+    if (distance_metric == "jsd") {
+        // Optimized path for JSD: no need to compute max_dist
+        arma::sp_mat::iterator it = G.begin();
+        arma::sp_mat::const_iterator it_end = G.end();
+        for (; it != it_end; ++it) {
+            *it = std::max(epsilon, 1.0 - (*it));
+        }
+    } else {
+        // For other metrics, compute max_dist per column
+        arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
+        arma::sp_mat::iterator it = G.begin();
+        arma::sp_mat::const_iterator it_end = G.end();
+        for (; it != it_end; ++it) {
+            *it = std::max(epsilon, max_dist(it.col()) - (*it));
+        }
     }
 
     stdout_printf("\tFinalizing network ... ");
@@ -224,8 +237,12 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
     stdout_printf("\tConstructing k*-NN ... ");
 
     // Build triplet lists in parallel to avoid race conditions on sparse matrix
+    size_t estimated_edges = sample_no * k;
     std::vector<arma::uword> rows_vec, cols_vec;
     std::vector<double> vals_vec;
+    rows_vec.reserve(estimated_edges);
+    cols_vec.reserve(estimated_edges);
+    vals_vec.reserve(estimated_edges);
 
     threads_use = get_num_threads(sample_no, thread_no);
     #pragma omp parallel
@@ -269,14 +286,23 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
     delete (appr_alg);
 
     G.replace(arma::datum::nan, 0); // replace each NaN with 0
-    arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
-    arma::sp_mat::iterator it = G.begin();
-    arma::sp_mat::const_iterator it_end = G.end();
 
     double epsilon = 1e-7;
-    for (; it != it_end; ++it) {
-        double upper_bound = (distance_metric == "jsd") ? 1.0 : max_dist(it.col());
-        *it = std::max(epsilon, upper_bound - (*it));
+    if (distance_metric == "jsd") {
+        // Optimized path for JSD: no need to compute max_dist
+        arma::sp_mat::iterator it = G.begin();
+        arma::sp_mat::const_iterator it_end = G.end();
+        for (; it != it_end; ++it) {
+            *it = std::max(epsilon, 1.0 - (*it));
+        }
+    } else {
+        // For other metrics, compute max_dist per column
+        arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
+        arma::sp_mat::iterator it = G.begin();
+        arma::sp_mat::const_iterator it_end = G.end();
+        for (; it != it_end; ++it) {
+            *it = std::max(epsilon, max_dist(it.col()) - (*it));
+        }
     }
 
     stdout_printf("\tFinalizing network ... ");
