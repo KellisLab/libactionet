@@ -170,6 +170,64 @@ macro(CONFIGURE_BLAS_DEPENDS libtarget)
         endif()
     endif ()
 
+    # If headers were not set by MKL/Accelerate or generic detection, try a final
+    # generic cblas.h lookup to avoid missing headers in conda/rootless installs.
+    if (NOT DEFINED BLAS_HEADERS_USE OR NOT BLAS_HEADERS_USE)
+        set(GENERIC_CBLAS_SEARCH_PATHS
+            /usr/include
+            /usr/local/include
+            /usr/include/openblas
+            /usr/local/opt/openblas/include
+            /opt/local/include
+        )
+
+        # Conda / custom prefixes (rootless installs)
+        set(BLAS_PREFIX_CANDIDATES "")
+        if (DEFINED ENV{CONDA_PREFIX})
+            list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{CONDA_PREFIX}")
+        endif()
+        if (DEFINED ENV{OPENBLAS_ROOT})
+            list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{OPENBLAS_ROOT}")
+        endif()
+        if (DEFINED ENV{BLAS_ROOT})
+            list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{BLAS_ROOT}")
+        endif()
+        if (DEFINED ENV{LAPACK_ROOT})
+            list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{LAPACK_ROOT}")
+        endif()
+
+        foreach(prefix IN LISTS BLAS_PREFIX_CANDIDATES)
+            list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 "${prefix}/include/openblas")
+            list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 "${prefix}/include")
+            list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 "${prefix}/include/cblas")
+        endforeach()
+
+        # Add architecture-specific Homebrew paths if on macOS
+        if (DEFINED TARGET_ARCHITECTURE)
+            if ("${TARGET_ARCHITECTURE}" MATCHES "arm64" OR "${TARGET_ARCHITECTURE}" MATCHES "aarch64")
+                list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 /opt/homebrew/opt/openblas/include)
+            elseif ("${TARGET_ARCHITECTURE}" MATCHES "x86_64")
+                list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 /usr/local/opt/openblas/include)
+            endif()
+        else()
+            # Fallback: add both Homebrew paths
+            list(APPEND GENERIC_CBLAS_SEARCH_PATHS
+                /opt/homebrew/opt/openblas/include)
+        endif()
+
+        find_path(GENERIC_CBLAS_INCLUDE_DIR
+            NAMES cblas.h
+            PATHS ${GENERIC_CBLAS_SEARCH_PATHS}
+            PATH_SUFFIXES cblas
+        )
+        if (GENERIC_CBLAS_INCLUDE_DIR)
+            set(BLAS_HEADERS_USE "${GENERIC_CBLAS_INCLUDE_DIR}")
+            message(STATUS "Found cblas.h at: ${BLAS_HEADERS_USE}")
+        else()
+            message(WARNING "Could not find cblas.h header. Build may fail if code uses CBLAS directly.")
+        endif()
+    endif()
+
     ## Include BLAS headers if found
     if (DEFINED BLAS_HEADERS_USE AND BLAS_HEADERS_USE)
         target_include_directories(
