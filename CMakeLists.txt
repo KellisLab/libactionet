@@ -37,6 +37,11 @@ add_library(actionet STATIC ${SOURCES})
 ## Set BLAS vendor default
 set(BLA_VENDOR All)
 
+# Prefer conda OpenBLAS/LAPACK if available (rootless installs).
+if (DEFINED ENV{CONDA_PREFIX})
+    set(BLA_VENDOR OpenBLAS)
+endif()
+
 ## Handle R build configuration FIRST (before CONFIGURE_APPLE) to extract architecture
 if (LIBACTIONET_BUILD_R)
     # Extract R's target architecture before calling CONFIGURE_APPLE

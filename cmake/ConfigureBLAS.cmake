@@ -122,6 +122,27 @@ macro(CONFIGURE_BLAS_DEPENDS libtarget)
                 /opt/local/include
             )
 
+            # Conda / custom prefixes (rootless installs)
+            set(BLAS_PREFIX_CANDIDATES "")
+            if (DEFINED ENV{CONDA_PREFIX})
+                list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{CONDA_PREFIX}")
+            endif()
+            if (DEFINED ENV{OPENBLAS_ROOT})
+                list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{OPENBLAS_ROOT}")
+            endif()
+            if (DEFINED ENV{BLAS_ROOT})
+                list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{BLAS_ROOT}")
+            endif()
+            if (DEFINED ENV{LAPACK_ROOT})
+                list(APPEND BLAS_PREFIX_CANDIDATES "$ENV{LAPACK_ROOT}")
+            endif()
+
+            foreach(prefix IN LISTS BLAS_PREFIX_CANDIDATES)
+                list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 "${prefix}/include/openblas")
+                list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 "${prefix}/include")
+                list(INSERT GENERIC_CBLAS_SEARCH_PATHS 0 "${prefix}/include/cblas")
+            endforeach()
+
             # Add architecture-specific Homebrew paths if on macOS
             if (DEFINED TARGET_ARCHITECTURE)
                 if ("${TARGET_ARCHITECTURE}" MATCHES "arm64" OR "${TARGET_ARCHITECTURE}" MATCHES "aarch64")
