@@ -23,6 +23,20 @@ The following variables control the behaviour of this module:
 
 ]=============================================================================]
 
+## Set BLAS vendor default (allow overrides via -DBLA_VENDOR=...)
+macro(CONFIGURE_BLAS_VENDOR_DEFAULT)
+    if (NOT DEFINED BLA_VENDOR)
+        set(BLA_VENDOR "All" CACHE STRING "BLAS/LAPACK vendor")
+    endif()
+
+    # Prefer MKL when detected (non-R builds), otherwise fall back to system BLAS.
+    if (NOT LIBACTIONET_BUILD_R AND BLA_VENDOR STREQUAL "All")
+        if (DEFINED ENV{MKLROOT} AND EXISTS "$ENV{MKLROOT}/include")
+            set(BLA_VENDOR Intel10_64lp)
+        endif()
+    endif()
+endmacro()
+
 ## Configure Intel MKL
 macro(CONFIGURE_BLAS_MKL libtarget)
     message(STATUS "Using Intel MKL for BLAS and LAPACK")

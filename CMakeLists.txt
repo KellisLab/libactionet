@@ -34,14 +34,6 @@ add_library(actionet STATIC ${SOURCES})
 #TEST_BUILD_R(actionet) ## Uncomment to test R build mode.
 
 ############# FUNCTIONS AND MACROS
-## Set BLAS vendor default
-set(BLA_VENDOR All)
-
-# Prefer conda OpenBLAS/LAPACK if available (rootless installs).
-if (DEFINED ENV{CONDA_PREFIX})
-    set(BLA_VENDOR OpenBLAS)
-endif()
-
 ## Handle R build configuration FIRST (before CONFIGURE_APPLE) to extract architecture
 if (LIBACTIONET_BUILD_R)
     # Extract R's target architecture before calling CONFIGURE_APPLE
@@ -58,6 +50,7 @@ if (LIBACTIONET_BUILD_R) ## OS-agnostic R library configurations
     CONFIGURE_R()
 elseif (UNIX) # Build for Unix-alike configurations (including macOS)
     ## Set BLAS and LAPACK libraries
+    CONFIGURE_BLAS_VENDOR_DEFAULT()
     CONFIGURE_BLAS(actionet)
 
     # Use packaged Armadillo
