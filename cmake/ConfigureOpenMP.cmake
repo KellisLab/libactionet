@@ -8,16 +8,67 @@ macOS Homebrew installations, which are keg-only and not auto-discoverable.
 
 The following variables control the behaviour of this module:
 
+``LIBACTIONET_OPENMP_RUNTIME``
+    Select OpenMP runtime: AUTO, GNU, INTEL, LLVM, OFF.
+
+``LIBACTIONET_OPENMP_CXXFLAGS``
+    OpenMP CXX flags (used for R builds when provided).
+
+``LIBACTIONET_OPENMP_LDFLAGS``
+    OpenMP linker flags (used for R builds when provided).
+
 ``TARGET_ARCHITECTURE``
     Target CPU architecture (arm64, x86_64, aarch64, etc.). Used to determine
     correct Homebrew installation paths.
 
 ]=============================================================================]
 
+set(LIBACTIONET_OPENMP_RUNTIME "AUTO" CACHE STRING "OpenMP runtime: AUTO, GNU, INTEL, LLVM, OFF")
+set_property(CACHE LIBACTIONET_OPENMP_RUNTIME PROPERTY STRINGS AUTO GNU INTEL LLVM OFF)
+set(LIBACTIONET_OPENMP_CXXFLAGS "" CACHE STRING "OpenMP CXX flags (R builds)")
+set(LIBACTIONET_OPENMP_LDFLAGS "" CACHE STRING "OpenMP linker flags (R builds)")
+
 macro(CONFIGURE_OPENMP libtarget)
     message(NOTICE "Configuring OpenMP support")
 
-    if (APPLE)
+    set(_openmp_handled FALSE)
+
+    if (LIBACTIONET_BUILD_R)
+        string(STRIP "${LIBACTIONET_OPENMP_CXXFLAGS}" _r_openmp_cxxflags)
+        string(STRIP "${LIBACTIONET_OPENMP_LDFLAGS}" _r_openmp_ldflags)
+
+        if (NOT _r_openmp_cxxflags STREQUAL "" OR NOT _r_openmp_ldflags STREQUAL "")
+            set(_openmp_handled TRUE)
+            set(OpenMP_FOUND TRUE)
+
+            if (NOT _r_openmp_cxxflags STREQUAL "")
+                if (_r_openmp_cxxflags MATCHES ";")
+                    set(_r_openmp_cxxflags_list ${_r_openmp_cxxflags})
+                else()
+                    separate_arguments(_r_openmp_cxxflags_list NATIVE_COMMAND "${_r_openmp_cxxflags}")
+                endif()
+                target_compile_options(${libtarget} PRIVATE ${_r_openmp_cxxflags_list})
+                set(OpenMP_CXX_FLAGS "${_r_openmp_cxxflags}")
+            endif()
+
+            if (NOT _r_openmp_ldflags STREQUAL "")
+                if (_r_openmp_ldflags MATCHES ";")
+                    set(_r_openmp_ldflags_list ${_r_openmp_ldflags})
+                else()
+                    separate_arguments(_r_openmp_ldflags_list NATIVE_COMMAND "${_r_openmp_ldflags}")
+                endif()
+                target_link_options(${libtarget} PRIVATE ${_r_openmp_ldflags_list})
+            endif()
+
+            message(STATUS "OpenMP configured from R SHLIB_OPENMP flags")
+        else()
+            set(_openmp_handled TRUE)
+            set(OpenMP_FOUND FALSE)
+            message(STATUS "R build: OpenMP disabled (no SHLIB_OPENMP flags)")
+        endif()
+    endif()
+
+    if (NOT _openmp_handled AND APPLE)
         # On macOS, libomp from Homebrew is installed as keg-only, so we need special handling
         message(STATUS "Detecting OpenMP on macOS (target arch: ${TARGET_ARCHITECTURE})")
 
@@ -76,13 +127,120 @@ macro(CONFIGURE_OPENMP libtarget)
     endif()
 
     # Standard find_package for non-Apple systems or if not yet found
-    if (NOT APPLE AND NOT OpenMP_FOUND)
-        find_package(OpenMP QUIET)
+    if (NOT _openmp_handled AND NOT APPLE)
+        string(TOUPPER "${LIBACTIONET_OPENMP_RUNTIME}" _omp_runtime)
+        string(TOUPPER "${CMAKE_CXX_COMPILER_ID}" _omp_compiler_id)
+
+        if (_omp_runtime STREQUAL "OFF")
+            set(OpenMP_FOUND FALSE)
+            set(_openmp_handled TRUE)
+            message(STATUS "OpenMP disabled by LIBACTIONET_OPENMP_RUNTIME=OFF")
+        elseif (_omp_runtime STREQUAL "AUTO")
+            if (_omp_compiler_id MATCHES "INTEL")
+                set(_omp_runtime "INTEL")
+            elseif (_omp_compiler_id MATCHES "CLANG")
+                set(_omp_runtime "LLVM")
+            else()
+                set(_omp_runtime "GNU")
+            endif()
+        endif()
+
+        set(_omp_search_paths "")
+        if (DEFINED ENV{CONDA_PREFIX})
+            list(APPEND _omp_search_paths "$ENV{CONDA_PREFIX}/lib")
+        endif()
+        if (DEFINED ENV{MKLROOT})
+            list(APPEND _omp_search_paths "$ENV{MKLROOT}/lib" "$ENV{MKLROOT}/lib/intel64")
+        endif()
+
+        if (_omp_runtime STREQUAL "GNU")
+            find_library(OPENMP_GOMP_LIBRARY NAMES gomp HINTS ${_omp_search_paths})
+            if (OPENMP_GOMP_LIBRARY)
+                set(OpenMP_C_FLAGS "-fopenmp")
+                set(OpenMP_CXX_FLAGS "-fopenmp")
+                set(OpenMP_C_LIB_NAMES "gomp")
+                set(OpenMP_CXX_LIB_NAMES "gomp")
+                set(OpenMP_gomp_LIBRARY "${OPENMP_GOMP_LIBRARY}")
+                set(OpenMP_FOUND TRUE)
+
+                target_compile_options(${libtarget} PRIVATE -fopenmp)
+                target_link_options(${libtarget} PRIVATE -fopenmp)
+                target_link_libraries(${libtarget} PRIVATE "${OPENMP_GOMP_LIBRARY}")
+            else()
+                message(WARNING "GNU OpenMP (libgomp) not found; falling back to default OpenMP detection.")
+                find_package(OpenMP QUIET)
+            endif()
+        elseif (_omp_runtime STREQUAL "INTEL")
+            find_library(OPENMP_IOMP5_LIBRARY NAMES iomp5 libiomp5 HINTS ${_omp_search_paths})
+            if (OPENMP_IOMP5_LIBRARY)
+                if (_omp_compiler_id MATCHES "INTEL")
+                    set(_omp_compile_flag "-qopenmp")
+                    set(_omp_link_flag "-qopenmp")
+                else()
+                    set(_omp_compile_flag "-fopenmp")
+                    set(_omp_link_flag "")
+                    message(WARNING "Intel OpenMP runtime selected with non-Intel compiler; ensure toolchain compatibility.")
+                endif()
+
+                set(OpenMP_C_FLAGS "${_omp_compile_flag}")
+                set(OpenMP_CXX_FLAGS "${_omp_compile_flag}")
+                set(OpenMP_C_LIB_NAMES "iomp5")
+                set(OpenMP_CXX_LIB_NAMES "iomp5")
+                set(OpenMP_iomp5_LIBRARY "${OPENMP_IOMP5_LIBRARY}")
+                set(OpenMP_FOUND TRUE)
+
+                target_compile_options(${libtarget} PRIVATE ${_omp_compile_flag})
+                if (_omp_link_flag)
+                    target_link_options(${libtarget} PRIVATE ${_omp_link_flag})
+                endif()
+                target_link_libraries(${libtarget} PRIVATE "${OPENMP_IOMP5_LIBRARY}")
+            else()
+                message(WARNING "Intel OpenMP runtime requested but libiomp5 not found; falling back to default OpenMP detection.")
+                find_package(OpenMP QUIET)
+            endif()
+        elseif (_omp_runtime STREQUAL "LLVM")
+            find_library(OPENMP_OMP_LIBRARY NAMES omp HINTS ${_omp_search_paths})
+            if (OPENMP_OMP_LIBRARY)
+                set(OpenMP_C_FLAGS "-fopenmp")
+                set(OpenMP_CXX_FLAGS "-fopenmp")
+                set(OpenMP_C_LIB_NAMES "omp")
+                set(OpenMP_CXX_LIB_NAMES "omp")
+                set(OpenMP_omp_LIBRARY "${OPENMP_OMP_LIBRARY}")
+                set(OpenMP_FOUND TRUE)
+
+                target_compile_options(${libtarget} PRIVATE -fopenmp)
+                target_link_options(${libtarget} PRIVATE -fopenmp)
+                target_link_libraries(${libtarget} PRIVATE "${OPENMP_OMP_LIBRARY}")
+            else()
+                message(WARNING "LLVM OpenMP runtime requested but libomp not found; falling back to default OpenMP detection.")
+                find_package(OpenMP QUIET)
+            endif()
+        endif()
+
+        if (OpenMP_FOUND)
+            set(_mkl_detected FALSE)
+            if (DEFINED BLA_VENDOR AND BLA_VENDOR MATCHES "Intel")
+                set(_mkl_detected TRUE)
+            endif()
+            if (DEFINED ENV{MKLROOT})
+                set(_mkl_detected TRUE)
+            endif()
+            foreach (_blas_lib IN LISTS BLAS_LIBRARIES)
+                if (_blas_lib MATCHES "mkl")
+                    set(_mkl_detected TRUE)
+                    break()
+                endif()
+            endforeach()
+
+            if (_mkl_detected AND NOT _omp_runtime STREQUAL "INTEL")
+                message(WARNING "MKL detected with ${_omp_runtime} OpenMP runtime. Set MKL_THREADING_LAYER=GNU or select LIBACTIONET_OPENMP_RUNTIME=INTEL to avoid mixed runtimes.")
+            endif()
+        endif()
     endif()
 
     if (OpenMP_FOUND)
         # If we didn't already link (Homebrew case), do it here for standard CMake OpenMP targets
-        if (NOT APPLE OR NOT TARGET OpenMP::OpenMP_CXX)
+        if ((NOT APPLE OR NOT TARGET OpenMP::OpenMP_CXX) AND NOT OPENMP_GOMP_LIBRARY AND NOT OPENMP_IOMP5_LIBRARY AND NOT OPENMP_OMP_LIBRARY AND NOT _openmp_handled)
             if (TARGET OpenMP::OpenMP_C)
                 target_link_libraries(${libtarget} PRIVATE OpenMP::OpenMP_C)
             endif()
@@ -99,4 +257,3 @@ macro(CONFIGURE_OPENMP libtarget)
         message(WARNING "OpenMP not found. Building without OpenMP support.")
     endif()
 endmacro()
-
