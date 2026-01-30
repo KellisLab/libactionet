@@ -50,6 +50,10 @@ namespace actionet {
         out(3) = reduction(3); // A
         out(4) = reduction(4); // B
 
+        if (verbose) {
+            stdout_printf("Kernel computed successfully.\n");
+            FLUSH;
+        }
         return out;
     }
 
