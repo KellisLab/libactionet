@@ -62,9 +62,9 @@ macro(CONFIGURE_OPENMP libtarget)
 
             message(STATUS "OpenMP configured from R SHLIB_OPENMP flags")
         else()
-            set(_openmp_handled TRUE)
-            set(OpenMP_FOUND FALSE)
-            message(STATUS "R build: OpenMP disabled (no SHLIB_OPENMP flags)")
+            # R SHLIB_OPENMP flags are empty - fall back to standard OpenMP detection
+            # instead of disabling OpenMP entirely
+            message(STATUS "R build: SHLIB_OPENMP flags empty, attempting standard OpenMP detection")
         endif()
     endif()
 
