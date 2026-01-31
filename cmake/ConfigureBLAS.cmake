@@ -269,6 +269,52 @@ macro(CONFIGURE_BLAS_DEPENDS libtarget)
     endif ()
 endmacro()
 
+macro(CONFIGURE_MKL_THREADING_EXPLICIT)
+    set(_mkl_threading_explicit FALSE)
+    if (DEFINED MKL_THREADING AND NOT LIBACTIONET_BUILD_R)
+        string(TOUPPER "${MKL_THREADING}" _mkl_threading)
+        if (NOT _mkl_threading STREQUAL "")
+            set(_mkl_lib_dirs "")
+            if (DEFINED ENV{MKLROOT})
+                list(APPEND _mkl_lib_dirs "$ENV{MKLROOT}/lib" "$ENV{MKLROOT}/lib/intel64")
+            endif()
+            if (DEFINED ENV{CONDA_PREFIX})
+                list(APPEND _mkl_lib_dirs "$ENV{CONDA_PREFIX}/lib")
+            endif()
+
+            find_library(MKL_INTEL_LP64_LIBRARY mkl_intel_lp64 HINTS ${_mkl_lib_dirs})
+            find_library(MKL_CORE_LIBRARY mkl_core HINTS ${_mkl_lib_dirs})
+
+            if (_mkl_threading STREQUAL "GNU")
+                find_library(MKL_THREAD_LIBRARY mkl_gnu_thread HINTS ${_mkl_lib_dirs})
+            elseif (_mkl_threading STREQUAL "INTEL")
+                find_library(MKL_THREAD_LIBRARY mkl_intel_thread HINTS ${_mkl_lib_dirs})
+            elseif (_mkl_threading STREQUAL "SEQUENTIAL")
+                find_library(MKL_THREAD_LIBRARY mkl_sequential HINTS ${_mkl_lib_dirs})
+            else()
+                set(MKL_THREAD_LIBRARY "")
+            endif()
+
+            if (MKL_INTEL_LP64_LIBRARY AND MKL_CORE_LIBRARY AND MKL_THREAD_LIBRARY)
+                set(_mkl_libs "${MKL_INTEL_LP64_LIBRARY};${MKL_THREAD_LIBRARY};${MKL_CORE_LIBRARY}")
+                if (UNIX AND NOT APPLE)
+                    list(APPEND _mkl_libs "-lpthread" "-lm" "-ldl")
+                endif()
+
+                set(BLAS_LIBRARIES "${_mkl_libs}")
+                set(LAPACK_LIBRARIES "${_mkl_libs}")
+                set(BLAS_FOUND TRUE)
+                set(LAPACK_FOUND TRUE)
+                set(BLA_VENDOR Intel10_64lp)
+                set(_mkl_threading_explicit TRUE)
+                message(STATUS "Using MKL (${_mkl_threading}) via explicit link line: ${_mkl_libs}")
+            else()
+                message(WARNING "MKL_THREADING=${_mkl_threading} set but required MKL libs not found; falling back to FindBLAS.")
+            endif()
+        endif()
+    endif()
+endmacro()
+
 ## Configure BLAS/LAPACK
 macro(CONFIGURE_BLAS libtarget)
     message(NOTICE "Configuring BLAS/LAPACK")
@@ -276,8 +322,12 @@ macro(CONFIGURE_BLAS libtarget)
     # Store the BLA_VENDOR for potential retry
     set(_SAVED_BLA_VENDOR "${BLA_VENDOR}")
 
-    find_package(BLAS QUIET) ## Find BLAS
-    find_package(LAPACK QUIET) ## Find LAPACK
+    CONFIGURE_MKL_THREADING_EXPLICIT()
+
+    if (NOT _mkl_threading_explicit)
+        find_package(BLAS QUIET) ## Find BLAS
+        find_package(LAPACK QUIET) ## Find LAPACK
+    endif()
 
     if (NOT BLAS_FOUND OR NOT LAPACK_FOUND)
         message(WARNING "Initial BLAS/LAPACK detection failed. Attempting with BLA_VENDOR=All")

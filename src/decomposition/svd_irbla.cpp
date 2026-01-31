@@ -189,6 +189,11 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
 
         /* Update k to be the number of converged singular values. */
         convtests(j, dim, tol, svtol, Smax, svratio, res, &k, &converged, S);
+        // Safety: convtests should not return k >= work, but clamp to avoid OOB on V/B buffers
+        if (k >= work)
+            k = work - 1;
+        if (k > dim)
+            k = dim;
         if (converged == 1) {
             break;
         }
@@ -426,6 +431,11 @@ arma::field<arma::mat> svdIRLB(arma::mat& A, int dim, int iters, int seed, bool 
 
         /* Update k to be the number of converged singular values. */
         convtests(j, dim, tol, svtol, Smax, svratio, res, &k, &converged, S);
+        // Safety: convtests should not return k >= work, but clamp to avoid OOB on V/B buffers
+        if (k >= work)
+            k = work - 1;
+        if (k > dim)
+            k = dim;
         if (converged == 1) {
             break;
         }
