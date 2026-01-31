@@ -24,6 +24,7 @@ Key CMake options (with defaults):
 - `LIBACTIONET_OPENMP_CXXFLAGS` / `LIBACTIONET_OPENMP_LDFLAGS` (empty): Used by the R build to pass `SHLIB_OPENMP_*` flags into the static library build.
 - `LIBACTIONET_BUILD_R` (`OFF`): Enable R integration mode (set by the R wrapper).
 - `TARGET_ARCHITECTURE` (macOS/R builds): Set by the R configure script to match R’s target arch; used for Apple-specific paths.
+- `CMAKE_INTERPROCEDURAL_OPTIMIZATION` (`OFF`): Enable LTO/IPO if your toolchain supports it.
 
 OpenMP behavior:
 - Non-R builds: `AUTO` ⇒ GNU (if found) → LLVM/Clang fallback via `find_package(OpenMP)`. `INTEL` searches `libiomp5`; `OFF` disables OpenMP.
@@ -56,6 +57,11 @@ cmake --build . -j$(nproc)
   MKL_THREADING_LAYER=GNU pip install . -C cmake.define.MKL_THREADING=GNU
   # or to switch OpenMP runtime:
   pip install . -C cmake.define.LIBACTIONET_OPENMP_RUNTIME=INTEL
+  # to mirror R’s native-tuned builds (when portability is not required):
+  pip install . -C cmake.define.MKL_THREADING=INTEL \
+                   -C cmake.define.LIBACTIONET_OPENMP_RUNTIME=INTEL \
+                   -C cmake.define.CMAKE_CXX_FLAGS="-march=native -mtune=native -O3 -ffp-contract=fast -funroll-loops -fomit-frame-pointer -fno-strict-aliasing" \
+                   -C cmake.define.CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
   ```
 - Ensure `libcholmod` is available (system or conda).
 
