@@ -17,7 +17,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
     }
 
     cholmod_common chol_c;
-    cholmod_start(&chol_c);
+    cholmod_l_start(&chol_c);
     chol_c.final_ll = 1; /* LL' form of simplicial factorization */
 
     cholmod_sparse* AS = nullptr;
@@ -251,7 +251,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
     delete[] svratio;
 
     cholmod_l_free_sparse(&AS, &chol_c);
-    cholmod_finish(&chol_c);
+    cholmod_l_finish(&chol_c);
 
     if (converged != 1) {
         stderr_printf("IRLB did NOT converge! Try increasing the number of iterations\n");

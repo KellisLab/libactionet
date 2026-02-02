@@ -9,7 +9,7 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, do
     int n = G.n_rows;
 
     cholmod_common chol_c;
-    cholmod_start(&chol_c);
+    cholmod_l_start(&chol_c);
 
     SuiteSparse_long *Ti, *Tj;
     double* Tx;
@@ -56,7 +56,7 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, do
 
     // Free up matrices
     cholmod_l_free_sparse(&AS, &chol_c);
-    cholmod_finish(&chol_c);
+    cholmod_l_finish(&chol_c);
 
     return (X_out);
 }

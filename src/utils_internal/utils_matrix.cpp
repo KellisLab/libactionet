@@ -102,7 +102,7 @@ arma::mat spmat_mat_product(const arma::sp_mat& A, arma::mat& B) {
     }
 
     cholmod_common chol_c;
-    cholmod_start(&chol_c);
+    cholmod_l_start(&chol_c);
 
     cholmod_sparse* chol_A = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
@@ -120,7 +120,7 @@ arma::mat spmat_mat_product(const arma::sp_mat& A, arma::mat& B) {
     cholmod_l_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
 
     cholmod_l_free_sparse(&chol_A, &chol_c);
-    cholmod_finish(&chol_c);
+    cholmod_l_finish(&chol_c);
     return (res);
 }
 
@@ -133,7 +133,7 @@ arma::sp_mat spmat_spmat_product(const arma::sp_mat& A, const arma::sp_mat& B) {
         return (res);
     }
     cholmod_common chol_c;
-    cholmod_start(&chol_c);
+    cholmod_l_start(&chol_c);
 
     cholmod_sparse *chol_A = nullptr, *chol_B = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
@@ -147,7 +147,7 @@ arma::sp_mat spmat_spmat_product(const arma::sp_mat& A, const arma::sp_mat& B) {
 
     cholmod_l_free_sparse(&chol_A, &chol_c);
     cholmod_l_free_sparse(&chol_B, &chol_c);
-    cholmod_finish(&chol_c);
+    cholmod_l_finish(&chol_c);
 
     return (res);
 }
@@ -159,7 +159,7 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, arma::mat& B, int th
     }
 
     cholmod_common chol_c;
-    cholmod_start(&chol_c);
+    cholmod_l_start(&chol_c);
 
     cholmod_sparse* chol_A = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
@@ -200,6 +200,6 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, arma::mat& B, int th
     }
 
     cholmod_l_free_sparse(&chol_A, &chol_c);
-    cholmod_finish(&chol_c);
+    cholmod_l_finish(&chol_c);
     return (res);
 }
