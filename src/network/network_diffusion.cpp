@@ -11,16 +11,16 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, do
     cholmod_common chol_c;
     cholmod_start(&chol_c);
 
-    int *Ti, *Tj;
+    SuiteSparse_long *Ti, *Tj;
     double* Tx;
 
     arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_method);
 
-    cholmod_triplet* T = cholmod_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
-                                                  0, CHOLMOD_REAL, &chol_c);
+    cholmod_triplet* T = cholmod_l_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
+                                                    0, CHOLMOD_REAL, &chol_c);
     T->nnz = P.n_nonzero;
-    Ti = static_cast<int*>(T->i);
-    Tj = static_cast<int*>(T->j);
+    Ti = static_cast<SuiteSparse_long*>(T->i);
+    Tj = static_cast<SuiteSparse_long*>(T->j);
     Tx = static_cast<double*>(T->x);
     int idx = 0;
     for (arma::sp_mat::const_iterator it = P.begin(); it != P.end(); ++it) {
@@ -29,8 +29,8 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, do
         Tx[idx] = (*it);
         idx++;
     }
-    cholmod_sparse* AS = cholmod_triplet_to_sparse(T, P.n_nonzero, &chol_c);
-    cholmod_free_triplet(&T, &chol_c);
+    cholmod_sparse* AS = cholmod_l_triplet_to_sparse(T, P.n_nonzero, &chol_c);
+    cholmod_l_free_triplet(&T, &chol_c);
 
     arma::vec z = arma::ones(n);
     arma::vec cs = arma::vec(arma::trans(arma::sum(G, 0)));
@@ -55,8 +55,7 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, do
     }
 
     // Free up matrices
-    cholmod_free_triplet(&T, &chol_c);
-    cholmod_free_sparse(&AS, &chol_c);
+    cholmod_l_free_sparse(&AS, &chol_c);
     cholmod_finish(&chol_c);
 
     return (X_out);

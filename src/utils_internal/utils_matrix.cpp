@@ -31,18 +31,18 @@ void dsdmult(char transpose, int n_rows, int n_cols, const void* A, const double
 
     double one[] = {1, 0}, zero[] = {0, 0};
 
-    cholmod_sdmult(cha, t, one, zero, &chb, &chc, chol_cp);
+    cholmod_l_sdmult(cha, t, one, zero, &chb, &chc, chol_cp);
 }
 
 cholmod_sparse* as_cholmod_sparse(const arma::sp_mat& A, cholmod_sparse* chol_A, cholmod_common* chol_c) {
     int nrow = A.n_rows, ncol = A.n_cols, nz = A.n_nonzero;
-    cholmod_allocate_work(0, std::max(nrow, ncol), 0, chol_c);
-    chol_A = cholmod_allocate_sparse(nrow, ncol, nz, 1 /*sorted*/, 1 /*packed*/, 0 /*NOT symmetric*/, CHOLMOD_REAL,
-                                     chol_c);
+    cholmod_l_allocate_work(0, std::max(nrow, ncol), 0, chol_c);
+    chol_A = cholmod_l_allocate_sparse(nrow, ncol, nz, 1 /*sorted*/, 1 /*packed*/, 0 /*NOT symmetric*/, CHOLMOD_REAL,
+                                       chol_c);
 
-    int* ptr = (int*)chol_A->p;
+    SuiteSparse_long* ptr = (SuiteSparse_long*)chol_A->p;
     double* x_ptr = (double*)chol_A->x;
-    int* i_ptr = (int*)chol_A->i;
+    SuiteSparse_long* i_ptr = (SuiteSparse_long*)chol_A->i;
 
     A.sync();
     {
@@ -65,17 +65,17 @@ arma::sp_mat& as_arma_sparse(const cholmod_sparse* chol_A, arma::sp_mat& A, chol
 
     A.sync();
     double* in_x_ptr = (double*)chol_A->x;
-    int* in_i_ptr = (int*)chol_A->i;
+    SuiteSparse_long* in_i_ptr = (SuiteSparse_long*)chol_A->i;
     double* out_x_ptr = (double*)arma::access::rwp(A.values);
     arma::uword* out_i_ptr = arma::access::rwp(A.row_indices);
-    for (int k = 0; k < chol_A->nzmax; k++) {
+    for (SuiteSparse_long k = 0; k < chol_A->nzmax; k++) {
         out_x_ptr[k] = in_x_ptr[k];
         out_i_ptr[k] = in_i_ptr[k];
     }
 
-    int* in_p_ptr = (int*)chol_A->p;
+    SuiteSparse_long* in_p_ptr = (SuiteSparse_long*)chol_A->p;
     arma::uword* out_p_ptr = arma::access::rwp(A.col_ptrs);
-    for (int k = 0; k < chol_A->ncol; k++) {
+    for (SuiteSparse_long k = 0; k < chol_A->ncol; k++) {
         out_p_ptr[k] = in_p_ptr[k];
     }
 
@@ -107,19 +107,19 @@ arma::mat spmat_mat_product(const arma::sp_mat& A, arma::mat& B) {
     cholmod_sparse* chol_A = nullptr;
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
 
-    cholmod_dense* chol_B = cholmod_allocate_dense(B.n_rows, B.n_cols, B.n_rows, CHOLMOD_REAL, &chol_c);
+    cholmod_dense* chol_B = cholmod_l_allocate_dense(B.n_rows, B.n_cols, B.n_rows, CHOLMOD_REAL, &chol_c);
     chol_B->x = (void*)B.memptr();
     chol_B->z = (void*)NULL;
 
     arma::mat res = arma::zeros(A.n_rows, B.n_cols);
-    cholmod_dense* out = cholmod_allocate_dense(A.n_rows, B.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
+    cholmod_dense* out = cholmod_l_allocate_dense(A.n_rows, B.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
     out->x = (void*)res.memptr();
     out->z = (void*)NULL;
 
     double one[] = {1, 0}, zero[] = {0, 0};
-    cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
+    cholmod_l_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
 
-    cholmod_free_sparse(&chol_A, &chol_c);
+    cholmod_l_free_sparse(&chol_A, &chol_c);
     cholmod_finish(&chol_c);
     return (res);
 }
@@ -139,13 +139,14 @@ arma::sp_mat spmat_spmat_product(const arma::sp_mat& A, const arma::sp_mat& B) {
     chol_A = as_cholmod_sparse(A, chol_A, &chol_c);
     chol_B = as_cholmod_sparse(B, chol_B, &chol_c);
 
-    cholmod_sparse* chol_res = cholmod_ssmult(chol_A, chol_B, 0, true,
-                                              true, &chol_c);
+    cholmod_sparse* chol_res = cholmod_l_ssmult(chol_A, chol_B, 0, true,
+                                                true, &chol_c);
 
     res = as_arma_sparse(chol_res, res, &chol_c);
+    cholmod_l_free_sparse(&chol_res, &chol_c);
 
-    cholmod_free_sparse(&chol_A, &chol_c);
-    cholmod_free_sparse(&chol_B, &chol_c);
+    cholmod_l_free_sparse(&chol_A, &chol_c);
+    cholmod_l_free_sparse(&chol_B, &chol_c);
     cholmod_finish(&chol_c);
 
     return (res);
@@ -181,24 +182,24 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, arma::mat& B, int th
             arma::mat subB = B.cols(i, j);
 
             // Magic starts here!
-            cholmod_dense* chol_B = cholmod_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
-                                                           &chol_c);
+            cholmod_dense* chol_B = cholmod_l_allocate_dense(subB.n_rows, subB.n_cols, subB.n_rows, CHOLMOD_REAL,
+                                                             &chol_c);
             chol_B->x = (void*)subB.memptr();
             chol_B->z = (void*)NULL;
 
             arma::mat subC = arma::zeros(A.n_rows, subB.n_cols);
-            cholmod_dense* out = cholmod_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
+            cholmod_dense* out = cholmod_l_allocate_dense(A.n_rows, subB.n_cols, A.n_rows, CHOLMOD_REAL, &chol_c);
             out->x = (void*)subC.memptr();
             out->z = (void*)NULL;
 
             double one[] = {1, 0}, zero[] = {0, 0};
-            cholmod_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
+            cholmod_l_sdmult(chol_A, 0, one, zero, chol_B, out, &chol_c);
 
             res.cols(i, j) = subC;
         }
     }
 
-    cholmod_free_sparse(&chol_A, &chol_c);
+    cholmod_l_free_sparse(&chol_A, &chol_c);
     cholmod_finish(&chol_c);
     return (res);
 }

@@ -250,7 +250,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
     delete[] T;
     delete[] svratio;
 
-    cholmod_free_sparse(&AS, &chol_c);
+    cholmod_l_free_sparse(&AS, &chol_c);
     cholmod_finish(&chol_c);
 
     if (converged != 1) {
