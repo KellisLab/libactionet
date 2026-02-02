@@ -27,8 +27,38 @@ endif ()
 
 ############# INITIALIZE LIBRARY
 ## Add all C/C++ code to sources for compilation
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-add_library(actionet STATIC ${SOURCES})
+file(GLOB_RECURSE SOURCES_ACTION CONFIGURE_DEPENDS src/action/*.cpp)
+file(GLOB_RECURSE SOURCES_ANNOTATION CONFIGURE_DEPENDS src/annotation/*.cpp)
+file(GLOB_RECURSE SOURCES_DECOMPOSITION CONFIGURE_DEPENDS src/decomposition/*.cpp)
+file(GLOB_RECURSE SOURCES_NETWORK CONFIGURE_DEPENDS src/network/*.cpp)
+file(GLOB_RECURSE SOURCES_TOOLS CONFIGURE_DEPENDS src/tools/*.cpp)
+file(GLOB_RECURSE SOURCES_UTILS_INT CONFIGURE_DEPENDS src/utils_internal/*.cpp)
+file(GLOB_RECURSE SOURCES_VISUALIZATION CONFIGURE_DEPENDS src/visualization/*.cpp)
+
+#file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+#add_library(actionet STATIC ${SOURCES})
+
+add_library(actionet STATIC
+        ${SOURCES_ACTION}
+        ${SOURCES_ANNOTATION}
+        ${SOURCES_DECOMPOSITION}
+        ${SOURCES_NETWORK}
+        ${SOURCES_TOOLS}
+        ${SOURCES_UTILS_INT}
+        ${SOURCES_VISUALIZATION}
+        src/extern/colorspace.cpp
+)
+
+## Exclude PRIMME wrapper from R builds (R doesn't support >2^31 element matrices)
+if (NOT LIBACTIONET_BUILD_R)
+    message(STATUS "Building with PRIMME_SVDS support")
+    file(GLOB_RECURSE SOURCES_PRIMME CONFIGURE_DEPENDS src/extern/primme/*.cpp)
+    target_sources(actionet PRIVATE ${SOURCES_PRIMME})
+endif()
+#if (LIBACTIONET_BUILD_R)
+#    list(FILTER SOURCES EXCLUDE REGEX ".*svd_primme\\.cpp$")
+#    message(STATUS "Excluding svd_primme.cpp from R build")
+#endif()
 
 ############# TEST MODES ### Must be set before any other macros
 #TEST_BUILD_R(actionet) ## Uncomment to test R build mode.
@@ -108,8 +138,12 @@ target_include_directories(
         PRIVATE "${actionet_SOURCE_DIR}/include/extern/gcem"
         PRIVATE "${actionet_SOURCE_DIR}/include/extern"
         PRIVATE "${actionet_SOURCE_DIR}/include"
-        PRIVATE "${actionet_SOURCE_DIR}/include/extern/primme"
 )
+
+## Add PRIMME headers only for non-R builds
+if (NOT LIBACTIONET_BUILD_R)
+    target_include_directories(actionet PRIVATE "${actionet_SOURCE_DIR}/include/extern/primme")
+endif()
 
 ## Check for OpenMP support
 CONFIGURE_OPENMP(actionet)
