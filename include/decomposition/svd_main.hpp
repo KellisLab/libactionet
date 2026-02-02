@@ -8,6 +8,7 @@
 #define ALG_IRLB 0
 #define ALG_HALKO 1
 #define ALG_FENG 2
+#define ALG_PRIMME 3  // PRIMME_SVDS (recommended for large sparse matrices >2^31 elements)
 
 // Exported
 namespace actionet {

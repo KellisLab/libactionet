@@ -151,7 +151,11 @@ Rcpp::List C_orthogonalizeBasal_full(arma::mat& S, arma::mat& old_S_r, arma::mat
 //' @param k Dimension of SVD decomposition
 //' @param max_it Number of iterations (default=5)
 //' @param seed Random seed (default=0)
-//' @param algorithm SVD algorithm to use. Currently supported methods are blah blah blah
+//' @param algorithm SVD algorithm to use:
+//'   - 0 = IRLB (default, good for small/medium matrices)
+//'   - 1 = Halko (randomized SVD)
+//'   - 2 = Feng (another randomized method)
+//'   - 3 = PRIMME (Required for very large sparse matrices >2^31 elements)
 //'
 //' @return A named list with U, sigma, and V components
 //'

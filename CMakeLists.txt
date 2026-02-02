@@ -93,12 +93,17 @@ endif()
 ## Configure CHOLMOD library
 CONFIGURE_CHOLMOD(actionet)
 
+## Build bundled PRIMME library
+add_subdirectory(src/extern/primme)
+target_link_libraries(actionet PUBLIC primme_bundled)
+
 ## Add included headers
 target_include_directories(
         actionet
         PRIVATE "${actionet_SOURCE_DIR}/include/extern/gcem"
         PRIVATE "${actionet_SOURCE_DIR}/include/extern"
         PRIVATE "${actionet_SOURCE_DIR}/include"
+        PRIVATE "${actionet_SOURCE_DIR}/include/extern/primme"
 )
 
 ## Check for OpenMP support

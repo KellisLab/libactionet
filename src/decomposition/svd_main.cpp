@@ -3,6 +3,7 @@
 #include "decomposition/svd_irbla.hpp"
 #include "decomposition/svd_feng.hpp"
 #include "decomposition/svd_halko.hpp"
+#include "decomposition/svd_primme.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
 namespace actionet {
@@ -15,9 +16,12 @@ namespace actionet {
         if (max_it < 1) {
             switch (algorithm) {
                 // Halko and Feng
-                case 1:
-                case 2:
+                case ALG_HALKO:
+                case ALG_FENG:
                     max_it = 5;
+                    break;
+                case ALG_PRIMME:
+                    max_it = 1000;
                     break;
                 default:
                     // IRLB
@@ -36,6 +40,9 @@ namespace actionet {
                 break;
             case ALG_FENG:
                 out = svdFeng(A, k, max_it, seed, verbose);
+                break;
+            case ALG_PRIMME:
+                out = svdPRIMME(A, k, max_it, seed, verbose);
                 break;
             case ALG_IRLB:
             default:
