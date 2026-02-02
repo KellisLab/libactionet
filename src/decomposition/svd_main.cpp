@@ -3,7 +3,7 @@
 #include "decomposition/svd_irbla.hpp"
 #include "decomposition/svd_feng.hpp"
 #include "decomposition/svd_halko.hpp"
-#ifndef LIBACTIONET_BUILD_R
+#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
 #include "decomposition/svd_primme.hpp"
 #endif
 #include "utils_internal/utils_decomp.hpp"
@@ -22,7 +22,7 @@ namespace actionet {
                 case ALG_FENG:
                     max_it = 5;
                     break;
-#ifndef LIBACTIONET_BUILD_R
+#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
                 case ALG_PRIMME:
                     max_it = 1000;
                     break;
@@ -45,7 +45,7 @@ namespace actionet {
             case ALG_FENG:
                 out = svdFeng(A, k, max_it, seed, verbose);
                 break;
-#ifndef LIBACTIONET_BUILD_R
+#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
             case ALG_PRIMME:
                 out = svdPRIMME(A, k, max_it, seed, verbose);
                 break;

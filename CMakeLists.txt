@@ -8,6 +8,7 @@ include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
 include(ConfigureCHOLMOD)
+include(ConfigurePRIMME)
 include(BuildTest)
 
 ############# COMPILER OPTIONS
@@ -35,8 +36,11 @@ file(GLOB_RECURSE SOURCES_TOOLS CONFIGURE_DEPENDS src/tools/*.cpp)
 file(GLOB_RECURSE SOURCES_UTILS_INT CONFIGURE_DEPENDS src/utils_internal/*.cpp)
 file(GLOB_RECURSE SOURCES_VISUALIZATION CONFIGURE_DEPENDS src/visualization/*.cpp)
 
-#file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-#add_library(actionet STATIC ${SOURCES})
+## Exclude PRIMME wrapper from R builds (R doesn't support >2^31 element matrices)
+if (LIBACTIONET_BUILD_R)
+    list(FILTER SOURCES_DECOMPOSITION EXCLUDE REGEX ".*svd_primme\\.cpp$")
+    message(STATUS "Excluding svd_primme.cpp from R build")
+endif()
 
 add_library(actionet STATIC
         ${SOURCES_ACTION}
@@ -49,16 +53,6 @@ add_library(actionet STATIC
         src/extern/colorspace.cpp
 )
 
-## Exclude PRIMME wrapper from R builds (R doesn't support >2^31 element matrices)
-if (NOT LIBACTIONET_BUILD_R)
-    message(STATUS "Building with PRIMME_SVDS support")
-    file(GLOB_RECURSE SOURCES_PRIMME CONFIGURE_DEPENDS src/extern/primme/*.cpp)
-    target_sources(actionet PRIVATE ${SOURCES_PRIMME})
-endif()
-#if (LIBACTIONET_BUILD_R)
-#    list(FILTER SOURCES EXCLUDE REGEX ".*svd_primme\\.cpp$")
-#    message(STATUS "Excluding svd_primme.cpp from R build")
-#endif()
 
 ############# TEST MODES ### Must be set before any other macros
 #TEST_BUILD_R(actionet) ## Uncomment to test R build mode.
@@ -123,14 +117,8 @@ endif()
 ## Configure CHOLMOD library
 CONFIGURE_CHOLMOD(actionet)
 
-## Build bundled PRIMME library (skip for R builds - R doesn't support >2^31 element matrices)
-if (NOT LIBACTIONET_BUILD_R)
-    add_subdirectory(src/extern/primme)
-    target_link_libraries(actionet PUBLIC primme_bundled)
-    message(STATUS "PRIMME_SVDS enabled for large matrix support")
-else()
-    message(STATUS "PRIMME_SVDS disabled for R build (R limited to 32-bit matrix indices)")
-endif()
+## Configure PRIMME library (large sparse matrix SVD support)
+CONFIGURE_PRIMME(actionet)
 
 ## Add included headers
 target_include_directories(
@@ -140,10 +128,6 @@ target_include_directories(
         PRIVATE "${actionet_SOURCE_DIR}/include"
 )
 
-## Add PRIMME headers only for non-R builds
-if (NOT LIBACTIONET_BUILD_R)
-    target_include_directories(actionet PRIVATE "${actionet_SOURCE_DIR}/include/extern/primme")
-endif()
 
 ## Check for OpenMP support
 CONFIGURE_OPENMP(actionet)
