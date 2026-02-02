@@ -135,8 +135,8 @@ macro(CONFIGURE_CHOLMOD libtarget)
         # Link library
         target_link_libraries(${libtarget} PUBLIC ${CHOLMOD_LIBRARY})
 
-        # Enable 64-bit indices for large sparse matrices
-        target_compile_definitions(${libtarget} PUBLIC CHOLMOD_LONG)
+        # Enable 64-bit indices for large sparse matrices (match SuiteSparse default int64)
+        target_compile_definitions(${libtarget} PUBLIC CHOLMOD_LONG=2)
     else()
         if (NOT CHOLMOD_INCLUDE_DIR)
             message(FATAL_ERROR "Could not find cholmod.h. Please install SuiteSparse (brew install suite-sparse or apt-get install libsuitesparse-dev)")
