@@ -155,9 +155,12 @@ Rcpp::List C_orthogonalizeBasal_full(arma::mat& S, arma::mat& old_S_r, arma::mat
 //'   - 0 = IRLB (default, good for small/medium matrices)
 //'   - 1 = Halko (randomized SVD)
 //'   - 2 = Feng (another randomized method)
-//'   - 3 = PRIMME (Required for very large sparse matrices >2^31 elements)
+//'   - 3 = PRIMME (NOT AVAILABLE in R - use Python for large matrices)
 //'
 //' @return A named list with U, sigma, and V components
+//'
+//' @note PRIMME algorithm is not available in R builds due to R's 32-bit matrix limitations.
+//'   For very large sparse matrices (>2^31 elements), use the Python package.
 //'
 //' @examples
 //' A = randn(100, 20)
@@ -166,6 +169,13 @@ Rcpp::List C_orthogonalizeBasal_full(arma::mat& S, arma::mat& old_S_r, arma::mat
 // [[Rcpp::export]]
 Rcpp::List C_runSVDSparse(arma::sp_mat& A, int k = 30, int max_it = 0, int seed = 0, int algorithm = 0,
                           bool verbose = true) {
+#ifdef LIBACTIONET_BUILD_R
+    // Guard against PRIMME usage in R builds
+    if (algorithm == 3) {
+        Rcpp::stop("PRIMME algorithm (3) is not available in R builds. R is limited to 32-bit matrix indices.\nFor large matrices, use the Python package with PRIMME support.");
+    }
+#endif
+
     arma::field<arma::mat> SVD_out = actionet::runSVD(A, k, max_it, seed, algorithm, verbose);
 
     Rcpp::List res;
@@ -179,6 +189,13 @@ Rcpp::List C_runSVDSparse(arma::sp_mat& A, int k = 30, int max_it = 0, int seed 
 // [[Rcpp::export]]
 Rcpp::List C_runSVDDense(arma::mat& A, int k = 30, int max_it = 0, int seed = 0, int algorithm = 0,
                          bool verbose = true) {
+#ifdef LIBACTIONET_BUILD_R
+    // Guard against PRIMME usage in R builds
+    if (algorithm == 3) {
+        Rcpp::stop("PRIMME algorithm (3) is not available in R builds. R is limited to 32-bit matrix indices.\nFor large matrices, use the Python package with PRIMME support.");
+    }
+#endif
+
     arma::field<arma::mat> SVD_out = actionet::runSVD(A, k, max_it, seed, algorithm, verbose);
 
     Rcpp::List res;

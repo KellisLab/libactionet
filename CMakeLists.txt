@@ -93,9 +93,14 @@ endif()
 ## Configure CHOLMOD library
 CONFIGURE_CHOLMOD(actionet)
 
-## Build bundled PRIMME library
-add_subdirectory(src/extern/primme)
-target_link_libraries(actionet PUBLIC primme_bundled)
+## Build bundled PRIMME library (skip for R builds - R doesn't support >2^31 element matrices)
+if (NOT LIBACTIONET_BUILD_R)
+    add_subdirectory(src/extern/primme)
+    target_link_libraries(actionet PUBLIC primme_bundled)
+    message(STATUS "PRIMME_SVDS enabled for large matrix support")
+else()
+    message(STATUS "PRIMME_SVDS disabled for R build (R limited to 32-bit matrix indices)")
+endif()
 
 ## Add included headers
 target_include_directories(
