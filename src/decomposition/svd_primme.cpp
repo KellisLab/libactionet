@@ -163,10 +163,10 @@ arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it, int seed, b
     // Return results in field
     arma::field<arma::mat> out(3);
     out(0) = U;
-    out(1) = arma::diagmat(S);  // Return diagonal matrix for compatibility
+    out(1) = S;  // Return singular values as column vector
     out(2) = V;
 
-    return out;
+    return orient_SVD(out);
 }
 
 arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it, int seed, bool verbose) {
@@ -274,8 +274,8 @@ arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it, int seed, bool
     // Return results
     arma::field<arma::mat> out(3);
     out(0) = U;
-    out(1) = arma::diagmat(S);
+    out(1) = S;  // Return singular values as column vector
     out(2) = V;
 
-    return out;
+    return orient_SVD(out);
 }
