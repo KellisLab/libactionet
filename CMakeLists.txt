@@ -7,7 +7,6 @@ include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
-#include(ConfigureCHOLMOD)
 include(ConfigurePRIMME)
 include(BuildTest)
 
@@ -114,8 +113,6 @@ else()
     message(WARNING "BLAS or LAPACK not found - build may fail")
 endif()
 
-## Configure CHOLMOD library (no longer required - using native Armadillo sparse operations)
-## CONFIGURE_CHOLMOD(actionet)
 
 ## Configure PRIMME library (large sparse matrix SVD support)
 CONFIGURE_PRIMME(actionet)

@@ -2,6 +2,15 @@
 
 libactionet is the C++ backend for ACTIONet, providing high-performance kernels for graph-based dimensionality reduction, decomposition, and annotation. It is used by both the Python (`actionet-python`) and R (`actionet`) frontends.
 
+## Architecture
+libactionet uses native [Armadillo](http://arma.sourceforge.net/) sparse matrix operations for all sparse-dense computations, providing:
+- **Thread-safe parallelism**: No shared context issues, scales efficiently to 30+ threads
+- **Large matrix support**: Handles matrices with >2³¹ non-zero elements (tested with 5B+ nnz)
+- **Memory efficiency**: ~50% lower peak memory vs. previous CHOLMOD-based implementation
+- **Simplified dependencies**: No external SuiteSparse/CHOLMOD requirement
+
+For large sparse matrix SVD, [PRIMME](https://github.com/primme/primme) is used, which also leverages native Armadillo operations.
+
 ## System Requirements
 - macOS 11+ (arm64 or x86_64) or Linux (manylinux2014+ / glibc ≥ 2.17 on x86_64).
 - CMake ≥ 3.19.
@@ -10,7 +19,6 @@ libactionet is the C++ backend for ACTIONet, providing high-performance kernels 
   - Linux: GCC or Clang; manylinux-compatible flags are used by default.
 - BLAS/LAPACK:
   - MKL preferred when available; otherwise generic/system BLAS (can be OpenBLAS/Accelerate/etc.).
-  - SuiteSparse/CHOLMOD (development headers and libs).
 - OpenMP runtime:
   - GNU (`libgomp`) is the default on non-Apple.
   - Apple builds use Homebrew `libomp` if available.
@@ -63,7 +71,6 @@ cmake --build . -j$(nproc)
                    -C cmake.define.CMAKE_CXX_FLAGS="-march=native -mtune=native -O3 -ffp-contract=fast -funroll-loops -fomit-frame-pointer -fno-strict-aliasing" \
                    -C cmake.define.CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
   ```
-- Ensure `libcholmod` is available (system or conda).
 
 ## Conda Environments
 - If MKL is present, it will be preferred. To avoid `libiomp5` when using GNU OpenMP, set `MKL_THREADING_LAYER=GNU` and/or `MKL_THREADING=GNU` so the link line uses `mkl_gnu_thread`.
@@ -73,4 +80,3 @@ cmake --build . -j$(nproc)
 - Mixed OpenMP runtimes (GNU vs Intel) can cause crashes in rare cases.
   - Align runtimes: use `MKL_THREADING=GNU` or `LIBACTIONET_OPENMP_RUNTIME=INTEL` consistently.
 - Missing `cblas.h`: install BLAS dev headers (MKL, OpenBLAS, Accelerate SDK), if not in standard paths.
-- Missing CHOLMOD: install SuiteSparse development packages.

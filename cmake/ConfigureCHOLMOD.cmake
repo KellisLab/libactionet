@@ -1,6 +1,18 @@
 #[=============================================================================[
 ConfigureCHOLMOD.cmake
 ================================================================================
+DEPRECATED: This module is kept for reference but is no longer used.
+
+As of the 2026 refactoring, libactionet uses native Armadillo sparse operations
+instead of CHOLMOD for sparse-dense matrix multiplications. This provides:
+- Better thread-safety (no shared CHOLMOD context)
+- Support for matrices with >2^31 non-zero elements
+- ~50% memory reduction (no matrix duplication)
+- Simpler codebase without external SuiteSparse dependency
+
+This file is retained for potential future use or reference.
+================================================================================
+
 Configure CHOLMOD (SuiteSparse) library for libactionet.
 
 This module handles detection of the CHOLMOD library from SuiteSparse with
