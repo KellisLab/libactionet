@@ -108,12 +108,24 @@ arma::sp_mat
     Delta.shed_row(0);
 
     // Build triplet lists in parallel to avoid race conditions on sparse matrix
-    size_t estimated_edges = sample_no * kNN;
+    // Conservative reservation strategy to avoid vector::reserve failures on large datasets
+    size_t estimated_edges = static_cast<size_t>(sample_no) * static_cast<size_t>(kNN);
+    const size_t MAX_RESERVE = 500000000;  // Cap at 500M elements (~12GB memory)
+    size_t reserve_size = std::min(estimated_edges, MAX_RESERVE);
+
     std::vector<arma::uword> rows_vec, cols_vec;
     std::vector<double> vals_vec;
-    rows_vec.reserve(estimated_edges);
-    cols_vec.reserve(estimated_edges);
-    vals_vec.reserve(estimated_edges);
+
+    // Try to pre-reserve memory; if it fails, continue with dynamic allocation
+    if (estimated_edges < MAX_RESERVE) {
+        try {
+            rows_vec.reserve(reserve_size);
+            cols_vec.reserve(reserve_size);
+            vals_vec.reserve(reserve_size);
+        } catch (const std::exception& e) {
+            // If reservation fails, vectors will grow dynamically
+        }
+    }
 
     #pragma omp parallel
     {
@@ -237,12 +249,24 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
     stdout_printf("\tConstructing k*-NN ... ");
 
     // Build triplet lists in parallel to avoid race conditions on sparse matrix
-    size_t estimated_edges = sample_no * k;
+    // Conservative reservation strategy to avoid vector::reserve failures on large datasets
+    size_t estimated_edges = static_cast<size_t>(sample_no) * static_cast<size_t>(k);
+    const size_t MAX_RESERVE = 500000000;  // Cap at 500M elements (~12GB memory)
+    size_t reserve_size = std::min(estimated_edges, MAX_RESERVE);
+
     std::vector<arma::uword> rows_vec, cols_vec;
     std::vector<double> vals_vec;
-    rows_vec.reserve(estimated_edges);
-    cols_vec.reserve(estimated_edges);
-    vals_vec.reserve(estimated_edges);
+
+    // Try to pre-reserve memory; if it fails, continue with dynamic allocation
+    if (estimated_edges < MAX_RESERVE) {
+        try {
+            rows_vec.reserve(reserve_size);
+            cols_vec.reserve(reserve_size);
+            vals_vec.reserve(reserve_size);
+        } catch (const std::exception& e) {
+            // If reservation fails, vectors will grow dynamically
+        }
+    }
 
     threads_use = get_num_threads(sample_no, thread_no);
     #pragma omp parallel
