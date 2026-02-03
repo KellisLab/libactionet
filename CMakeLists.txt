@@ -7,7 +7,7 @@ include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
-include(ConfigureCHOLMOD)
+#include(ConfigureCHOLMOD)
 include(ConfigurePRIMME)
 include(BuildTest)
 

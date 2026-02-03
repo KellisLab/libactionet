@@ -1,28 +1,12 @@
+// Sparse-dense matrix operations using native Armadillo
+// Provides thread-safety and support for large matrices (>2^31 nnz)
+
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
-// Sparse matrix-dense vector product: y = A*x or y = A'*x
+// Sparse matrix-dense vector product: y = A*x
 arma::vec spmat_vec_product(const arma::sp_mat& A, const arma::vec& x) {
     return A * x;
-}
-
-// Sparse matrix-dense vector product with transpose option
-arma::vec spmat_vec_product_t(const arma::sp_mat& A, const arma::vec& x, bool transpose) {
-    if (transpose) {
-        return A.t() * x;
-    } else {
-        return A * x;
-    }
-}
-
-// Sparse matrix-dense matrix product: C = A*B
-arma::mat spmat_mat_product(const arma::sp_mat& A, const arma::mat& B) {
-    if (A.n_cols != B.n_rows) {
-        stderr_printf("spmat_mat_product:: Inner dimension of matrices should match\n");
-        return arma::mat();
-    }
-
-    return A * B;
 }
 
 // Thread-safe parallel sparse-dense matrix product
@@ -33,9 +17,8 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, 
         return arma::mat();
     }
 
-    size_t M = A.n_rows;
     size_t N = B.n_cols;
-    arma::mat res(M, N);
+    arma::mat res(A.n_rows, N);
 
     int threads_use = get_num_threads(N, thread_no);
 
@@ -45,14 +28,4 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, 
     }
 
     return res;
-}
-
-// Sparse-sparse matrix product: C = A*B
-arma::sp_mat spmat_spmat_product(const arma::sp_mat& A, const arma::sp_mat& B) {
-    if (A.n_cols != B.n_rows) {
-        stderr_printf("spmat_spmat_product:: Inner dimension of matrices should match\n");
-        return arma::sp_mat();
-    }
-
-    return A * B;
 }

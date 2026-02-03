@@ -1,7 +1,6 @@
 #include "annotation/marker_stats.hpp"
 #include "action/aa.hpp"
 #include "network/network_diffusion.hpp"
-#include "utils_internal/utils_matrix.hpp"
 
 double tol_approx = 1E-8;
 
@@ -64,7 +63,7 @@ namespace actionet {
         }
 
         arma::sp_mat St = arma::trans(S);
-        arma::mat stats = arma::mat(spmat_spmat_product(St, X));
+        arma::mat stats = arma::mat(St * X);  // Sparse-sparse multiply
 
         // Compute cell-specific stats to adjust for depth, etc.
         arma::vec mu = arma::zeros(S.n_cols);
