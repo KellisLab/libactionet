@@ -1,36 +1,15 @@
 // Network imputation using PageRank
+// Updated to use native Armadillo sparse operations
 #include "network/network_diffusion.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include <tools/matrix_transform.hpp>
-#include <cholmod.h>
 
+// PageRank diffusion using native Armadillo sparse operations
 arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, double alpha, int max_it, int thread_no) {
-    int n = G.n_rows;
-
-    cholmod_common chol_c;
-    cholmod_l_start(&chol_c);
-
-    SuiteSparse_long *Ti, *Tj;
-    double* Tx;
+    size_t n = G.n_rows;
 
     arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_method);
-
-    cholmod_triplet* T = cholmod_l_allocate_triplet(P.n_rows, P.n_cols, P.n_nonzero,
-                                                    0, CHOLMOD_REAL, &chol_c);
-    T->nnz = P.n_nonzero;
-    Ti = static_cast<SuiteSparse_long*>(T->i);
-    Tj = static_cast<SuiteSparse_long*>(T->j);
-    Tx = static_cast<double*>(T->x);
-    int idx = 0;
-    for (arma::sp_mat::const_iterator it = P.begin(); it != P.end(); ++it) {
-        Ti[idx] = it.row();
-        Tj[idx] = it.col();
-        Tx[idx] = (*it);
-        idx++;
-    }
-    cholmod_sparse* AS = cholmod_l_triplet_to_sparse(T, P.n_nonzero, &chol_c);
-    cholmod_l_free_triplet(&T, &chol_c);
 
     arma::vec z = arma::ones(n);
     arma::vec cs = arma::vec(arma::trans(arma::sum(G, 0)));
@@ -44,21 +23,19 @@ arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, do
     arma::rowvec zt = arma::trans(z);
 
     int threads_use = get_num_threads(X_out.n_cols, thread_no);
+
     for (int it = 0; it < max_it; it++) {
         arma::mat Y = X_out;
 
         #pragma omp parallel for num_threads(threads_use)
         for (size_t i = 0; i < X_out.n_cols; i++) {
-            dsdmult('n', n, n, AS, X_out.colptr(i), Y.colptr(i), &chol_c);
+            // Use native Armadillo sparse-dense multiply
+            Y.col(i) = P * X_out.col(i);
             X_out.col(i) = Y.col(i) + X0.col(i) * (zt * X_out.col(i));
         }
     }
 
-    // Free up matrices
-    cholmod_l_free_sparse(&AS, &chol_c);
-    cholmod_l_finish(&chol_c);
-
-    return (X_out);
+    return X_out;
 }
 
 // norm_method: 0 (pagerank), 2 (sym_pagerank)
@@ -119,7 +96,7 @@ namespace actionet {
         if (approx) { // Fast approximate PageRank
             X_out = computeDiffusionChebyshev(G, arma::mat(X0), norm_method, alpha, max_it, tol, thread_no);
         }
-        else { // PageRank (using cholmod)
+        else { // PageRank (iterative)
             X_out = computeDiffusion(G, arma::sp_mat(X0), norm_method, alpha, max_it, thread_no);
         }
 

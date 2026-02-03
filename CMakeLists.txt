@@ -114,8 +114,8 @@ else()
     message(WARNING "BLAS or LAPACK not found - build may fail")
 endif()
 
-## Configure CHOLMOD library
-CONFIGURE_CHOLMOD(actionet)
+## Configure CHOLMOD library (no longer required - using native Armadillo sparse operations)
+## CONFIGURE_CHOLMOD(actionet)
 
 ## Configure PRIMME library (large sparse matrix SVD support)
 CONFIGURE_PRIMME(actionet)

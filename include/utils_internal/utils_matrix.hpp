@@ -1,24 +1,24 @@
-// Internal helpers for core matrix operations
+// Internal helpers for sparse-dense matrix operations
+// Uses native Armadillo operations for thread-safety and large matrix support
 #ifndef ACTIONET_UTILS_MATRIX_HPP
 #define ACTIONET_UTILS_MATRIX_HPP
 
 #include "libactionet_config.hpp"
-#include <cholmod.h>
 
-void
-dsdmult(char transpose, int n_rows, int n_cols, const void *A, const double *x, double *out, cholmod_common *chol_cp);
+// Sparse matrix-dense vector product: y = A*x
+arma::vec spmat_vec_product(const arma::sp_mat& A, const arma::vec& x);
 
-cholmod_sparse *as_cholmod_sparse(const arma::sp_mat &A, cholmod_sparse *chol_A, cholmod_common *chol_c);
+// Sparse matrix-dense vector product with transpose option: y = A*x or y = A'*x
+arma::vec spmat_vec_product_t(const arma::sp_mat& A, const arma::vec& x, bool transpose);
 
-arma::sp_mat &as_arma_sparse(const cholmod_sparse *chol_A, arma::sp_mat &A, cholmod_common *chol_c);
+// Sparse matrix-dense matrix product: C = A*B
+arma::mat spmat_mat_product(const arma::sp_mat& A, const arma::mat& B);
 
-arma::vec spmat_vec_product(const arma::sp_mat &A, arma::vec &x);
+// Thread-safe parallel sparse-dense matrix product
+arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, int thread_no);
 
-arma::mat spmat_mat_product(const arma::sp_mat &A, arma::mat &B);
+// Sparse-sparse matrix product: C = A*B
+arma::sp_mat spmat_spmat_product(const arma::sp_mat& A, const arma::sp_mat& B);
 
-// TODO: REMOVE?
-arma::sp_mat spmat_spmat_product(const arma::sp_mat &A, const arma::sp_mat &B);
-
-arma::mat spmat_mat_product_parallel(const arma::sp_mat &A, arma::mat &B, int thread_no);
 
 #endif //ACTIONET_UTILS_MATRIX_HPP

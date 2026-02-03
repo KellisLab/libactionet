@@ -1,9 +1,23 @@
 // Singular value decomposition (SVD) algorithms
+// IRLB implementation - Note: PRIMME is preferred for large sparse matrices
 #include "decomposition/svd_irbla.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
 #include "blas_deps.hpp"
-#include <cholmod.h>
+
+// Helper function for sparse matrix-vector multiplication
+// Replaces CHOLMOD dsdmult with native Armadillo
+static void sparse_matvec(char transpose, const arma::sp_mat& A, const double* x, double* out) {
+    if (transpose == 'n') {
+        arma::vec x_vec(const_cast<double*>(x), A.n_cols, false, true);
+        arma::vec result = A * x_vec;
+        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+    } else {
+        arma::vec x_vec(const_cast<double*>(x), A.n_rows, false, true);
+        arma::vec result = A.t() * x_vec;
+        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+    }
+}
 
 arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {
     int m = A.n_rows;
@@ -16,12 +30,6 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
         FLUSH;
     }
 
-    cholmod_common chol_c;
-    cholmod_l_start(&chol_c);
-    chol_c.final_ll = 1; /* LL' form of simplicial factorization */
-
-    cholmod_sparse* AS = nullptr;
-    AS = as_cholmod_sparse(A, AS, &chol_c);
 
     double eps = 3e-13;
     double tol = 1e-05, svtol = 1e-5;
@@ -92,7 +100,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
         // Compute Ax
         x = V + j * n;
 
-        dsdmult('n', m, n, AS, x, W + j * m, &chol_c);
+        sparse_matvec('n', A, x, W + j * m);
 
         if (iter > 0)
             orthog(W, W + j * m, T, m, j, 1);
@@ -103,7 +111,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
 
         /* The Lanczos process */
         while (j < work) {
-            dsdmult('t', m, n, AS, W + j * m, F, &chol_c);
+            sparse_matvec('t', A, W + j * m, F);
 
             SS = -S;
             cblas_daxpy(n, SS, V + j * n, inc, F, inc);
@@ -134,7 +142,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
 
                 x = V + (j + 1) * n;
 
-                dsdmult('n', m, n, AS, x, W + (j + 1) * m, &chol_c);
+                sparse_matvec('n', A, x, W + (j + 1) * m);
 
                 /* One step of classical Gram-Schmidt */
                 R = -R_F;
@@ -250,8 +258,6 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bo
     delete[] T;
     delete[] svratio;
 
-    cholmod_l_free_sparse(&AS, &chol_c);
-    cholmod_l_finish(&chol_c);
 
     if (converged != 1) {
         stderr_printf("IRLB did NOT converge! Try increasing the number of iterations\n");
