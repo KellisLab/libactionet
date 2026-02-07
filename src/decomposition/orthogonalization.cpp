@@ -1,5 +1,6 @@
 #include "decomposition/orthogonalization.hpp"
 #include "decomposition/svd_main.hpp"
+#include "utils_internal/utils_decomp.hpp"
 
 arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& SVD_results, arma::mat& A, arma::mat& B) {
     stdout_printf("\tDeflating reduction ... ");
@@ -24,14 +25,10 @@ namespace actionet {
         FLUSH;
 
         arma::mat Z = arma::mat(S * design);
+        gram_schmidt(Z);
 
-        // Use QR decomposition for orthogonalization (more stable and efficient than Gram-Schmidt)
-        arma::mat Q, R;
-        arma::qr(Q, R, Z);
-
-        arma::mat A = Q;
-        // Eliminate double transpose: compute S.t() * Q directly instead of trans(trans(Q) * S)
-        arma::mat B = -arma::mat(S.t() * Q);
+        arma::mat A = Z;
+        arma::mat B = -arma::mat(arma::trans(arma::trans(Z) * S));
 
         arma::field<arma::mat> perturbed_SVD = deflateReduction(SVD_results, A, B);
         FLUSH;
@@ -51,14 +48,10 @@ namespace actionet {
         FLUSH;
 
         arma::mat Z = basal_state;
+        gram_schmidt(Z);
 
-        // Use QR decomposition for orthogonalization (more stable and efficient than Gram-Schmidt)
-        arma::mat Q, R;
-        arma::qr(Q, R, Z);
-
-        arma::mat A = Q;
-        // Eliminate double transpose: compute S.t() * Q directly instead of trans(trans(Q) * S)
-        arma::mat B = -arma::mat(S.t() * Q);
+        arma::mat A = Z;
+        arma::mat B = -arma::mat(arma::trans(arma::trans(Z) * S));
 
         arma::field<arma::mat> perturbed_SVD = deflateReduction(SVD_results, A, B);
         FLUSH;
