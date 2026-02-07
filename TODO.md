@@ -1,10 +1,10 @@
 ## Primary
-* pybind 11 wrappers
+* Backed SVD
+* Backed network construction (??)
 * Document C++ interface
 * network_measures: Parallelize
 * * network_measures: argument and return types (uvec/vec)
 * Redo orthogonalization
-* sum(sum()) to accu where needed
 * buildNetwork() template accept dense and sparse `H`
 * Prohibit UMAP negative values
 
@@ -70,3 +70,4 @@
 * Detect Rosetta build (x86) outside R "CMAKE_OSX_ARCHITECTURES
 * Modular cmake
 * Standardize 'norm_type' vs. 'norm_method'
+* pybind 11 wrappers
