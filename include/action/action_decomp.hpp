@@ -7,36 +7,27 @@
 // Exported
 namespace actionet {
     // Structs
-    /// @brief Stores the output of <code>runACTION()</code>
+    /// @brief Stores the output of <code>decompACTION()</code>.
     ///
     /// Contains the following members:
-    /// - <b>selected_cols</b>: Field of containing vectors of <b>selected_cols</b> from <code>runSPA()</code>
-    /// for each <code>k</code> in [<code>k_min</code>, <code>k_max</code>].
-    /// - <b>C</b>, <b>H</b>: Fields of <b>C</b> and <b>H</b> matrices from <code>runAA()</code>
-    /// for each <code>k</code> in [<code>k_min</code>, <code>k_max</code>].
-    ///
-    /// @remark See <code>runSPA()</code>, <code>ResSPA</code>, and <code>runAA()</code>.
+    /// - <b>selected_cols</b>: Selected columns from <code>runSPA()</code> for each k.
+    /// - <b>C</b>, <b>H</b>: C/H matrices from <code>runAA()</code> for each k.
     struct ResACTION {
         arma::field<arma::uvec> selected_cols;
         arma::field<arma::mat> C;
         arma::field<arma::mat> H;
     };
 
-    // Functions
-    /// @brief Run ACTION decomposition algorithm
+    /// @brief Run ACTION decomposition across a k-range without post-processing.
     ///
-    /// @param S_r Input matrix (<em>m</em> x <em>n</em>; <em>vars</em> x <em>obs</em>).
-    /// Usually a reduced representation of the raw data.
-    /// @param k_min Minimum depth of decomposition (>= 2), and the beginning of the search range.
-    /// @param k_max Maximum depth of decomposition (<= <code>S_r.n_cols</code>), and the end of the search range.
-    /// @param max_it Maximum number of iterations. Passed to <code>runAA()</code>.
-    /// @param tol Convergence tolerance. Passed to <code>runAA()</code>.
-    /// @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
+    /// @param S_r Reduced input matrix (<em>vars</em> x <em>obs</em>).
+    /// @param k_min Minimum number of archetypes (>= 2).
+    /// @param k_max Maximum number of archetypes (<= <code>S_r.n_cols</code>).
+    /// @param max_it Maximum number of iterations for AA.
+    /// @param tol Convergence tolerance for AA.
+    /// @param thread_no Number of CPU threads (0 = auto).
     ///
-    /// @return <code>struct</code> of type <code>ResACTION</code>.
-    ///
-    /// @remark <code>k</code> in [<code>k_min</code>, <code>k_max</code>] passed to <code>runSPA(k=k)</code>.
-    /// @remark See <code>ResACTION</code>, <code>runSPA()</code>, <code>runAA()</code>.
+    /// @return <code>ResACTION</code> with SPA selections and C/H traces.
     ResACTION
         decompACTION(arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-6,
                   int thread_no = 0);

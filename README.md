@@ -1,6 +1,6 @@
 # libactionet
 
-libactionet is the C++ backend for ACTIONet, providing high-performance kernels for graph-based dimensionality reduction, decomposition, and annotation. It is used by both the Python (`actionet-python`) and R (`actionet`) frontends.
+libactionet is the C++ backend for ACTIONet, providing high-performance kernels for graph-based dimensionality reduction, decomposition, and annotation. It is used by both the Python (`actionet-python`) and R (`actionet-r`) frontends.
 
 ## Architecture
 libactionet uses native [Armadillo](http://arma.sourceforge.net/) sparse matrix operations for all sparse-dense computations, providing:
@@ -80,3 +80,14 @@ cmake --build . -j$(nproc)
 - Mixed OpenMP runtimes (GNU vs Intel) can cause crashes in rare cases.
   - Align runtimes: use `MKL_THREADING=GNU` or `LIBACTIONET_OPENMP_RUNTIME=INTEL` consistently.
 - Missing `cblas.h`: install BLAS dev headers (MKL, OpenBLAS, Accelerate SDK), if not in standard paths.
+
+## Public API (C++)
+All public symbols are exposed under the `actionet` namespace via `include/libactionet.hpp`.
+
+- **Reduction / SVD**: `reduceKernel`, `runSVD`, `perturbedSVD`, `svdIRLB`, `svdHalko`, `svdFeng`, `svdPRIMME`
+- **ACTION decomposition**: `runACTION`, `decompACTION`, `collectArchetypes`, `mergeArchetypes`, `runAA`, `runSPA`, `runSimplexRegression`
+- **Network**: `buildNetwork`, `computeNetworkDiffusion`, `runLPA`, `computeCoreness`, `computeArchetypeCentrality`
+- **Annotation / specificity**: `computeFeatureSpecificity`, `computeFeatureStats`, `computeFeatureStatsVision`
+- **Visualization**: `layoutNetwork`, `optimize_layout_uwot`, `computeNodeColors`
+- **Tools**: `normalizeMatrix`, `scaleMatrix`, `normalizeGraph`, `computeGroupedSums/Means/Vars`, `autocorrelation_Moran/Geary`, `assess_enrichment`, `MWM_hungarian`, `MWM_rank1`, `xicor`, `XICOR`
+

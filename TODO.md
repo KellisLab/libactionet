@@ -9,7 +9,8 @@
 * Prohibit UMAP negative values
 
 ## Secondary
-* Fix compile warnings for svd.cpp
+* Template svdIRLB()??
+* uwot SGD opt probably doesn't work.
 * Compile to Windows x86
 * zscore is multithreaded???
 

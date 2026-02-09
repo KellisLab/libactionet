@@ -6,27 +6,22 @@
 
 // Exported
 namespace actionet {
-    // Structs
-    /// @brief Stores the output of <code>runSPA()</code>
+    /// @brief Stores the output of <code>runSPA()</code>.
     ///
-    /// Contains the following members:
-    /// - <b>selected_cols</b>: Indices of columns of <b>A</b> representing candidate vertices.
-    /// - <b>column_norms</b>: Norms of candidate column vectors.
+    /// Members:
+    /// - <b>selected_cols</b>: Indices of selected columns (candidate vertices).
+    /// - <b>column_norms</b>: Norms of candidate columns.
     struct ResSPA {
         arma::uvec selected_cols;
         arma::vec column_norms;
     };
 
-    // Functions
-    // Solves separable NMF problem
-    /// @brief Run successive projections algorithm (SPA) to solve separable NMF
+    /// @brief Run successive projections algorithm (SPA) for separable NMF.
     ///
     /// @param A Input matrix.
-    /// @param k Number of candidate vertices to solve for.
+    /// @param k Number of candidate vertices to select.
     ///
-    /// @return <code>struct</code> of type <code>ResSPA</code>.
-    ///
-    /// @remark See <code>ResSPA</code>.
+    /// @return <code>ResSPA</code> with selected indices and norms.
     ResSPA runSPA(arma::mat& A, int k);
 } // namespace actionet
 

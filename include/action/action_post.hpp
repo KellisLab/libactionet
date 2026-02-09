@@ -7,15 +7,12 @@
 // Exported
 namespace actionet {
     // Structs
-    /// @brief Stores the output of <code>collectArchetypes()</code>
+    /// @brief Stores the output of <code>collectArchetypes()</code>.
     ///
-    /// Contains the following members:
-    /// - <b>selected_archs</b>: Vector containing indices of retained multi-level archetypes.
-    /// in [<code>k_min</code>, <code>k_max</code>].
-    /// - <b>C_stacked</b>: Matrix constructed by row-wise concatenation of (filtered) <code>C</code> matrices.
-    /// - <b>H_stacked</b>: Matrix constructed by column-wise concatenation (filtered) <code>H</code> matrices.
-    ///
-    /// @remark See <code>runACTION()</code>, <code>ResACTION</code>, and <code>runAA()</code>.
+    /// Members:
+    /// - <b>selected_archs</b>: Indices of retained archetypes.
+    /// - <b>C_stacked</b>: Row-wise concatenation of filtered C matrices.
+    /// - <b>H_stacked</b>: Column-wise concatenation of filtered H matrices.
     struct ResCollectArch {
         arma::uvec selected_archs; // If hub removal requested, this will hold the indices
         // of retained archetypes
@@ -25,17 +22,13 @@ namespace actionet {
         // archetypes
     };
 
-    // To store the output of mergeArchetypes()
-    /// @brief Stores the output of <code>mergeArchetypes()</code>
+    /// @brief Stores the output of <code>mergeArchetypes()</code>.
     ///
-    /// Contains the following members:
-    /// - <b>selected_archetypes</b>: Vector containing selected representative archetypes determined by SPA.
-    /// - <b>C_merged</b>: Reduced representative <b>C</b> matrix.
-    /// - <b>H_merged</b>: Reduced representative <b>H</b> matrix.
-    /// - <b>assigned_archetypes</b>: Vector of assignments of each data point (rows of <b>C</b>/<b>H</b>) to the
-    /// closest representative archetype (<b>selected_archetypes</b>).
-    ///
-    /// @remark See <code>ResSPA</code>.
+    /// Members:
+    /// - <b>selected_archetypes</b>: Indices of representative archetypes.
+    /// - <b>C_merged</b>: Reduced representative C matrix.
+    /// - <b>H_merged</b>: Reduced representative H matrix.
+    /// - <b>assigned_archetypes</b>: Assignment per observation.
     struct ResMergeArch {
         arma::uvec selected_archetypes;
         arma::mat C_merged;
@@ -43,34 +36,26 @@ namespace actionet {
         arma::uvec assigned_archetypes;
     };
 
-    // Functions
-    /// @brief Filter and aggregate multi-level archetypes
+    /// @brief Filter and aggregate multi-level archetypes.
     ///
-    /// @param C_trace Field containing C matrices. Output of <code>runACTION()</code> in <code>ResACTION["C"]</code>.
-    /// @param H_trace Field containing H matrices. Output of <code>runACTION()</code> in <code>ResACTION["H"]</code>.
-    /// @param spec_th Minimum threshold (as z-score) to filter archetypes by specificity.
-    /// @param min_obs Minimum number of observations assigned to an archetype to retain that archetype.
+    /// @param C_trace Field of C matrices from <code>runACTION()</code>.
+    /// @param H_trace Field of H matrices from <code>runACTION()</code>.
+    /// @param spec_th Specificity threshold (z-score).
+    /// @param min_obs Minimum observations per archetype.
     ///
-    /// @return <code>struct</code> of type <code>ResCollectArch</code>.
-    ///
-    /// @remark See <code>ResCollectArch</code>.
+    /// @return <code>ResCollectArch</code> with stacked C/H and selected indices.
     ResCollectArch
         collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace, double spec_th = -3,
                           int min_obs = 3);
 
-    /// @brief Identify and merge redundant archetypes into a representative subset
+    /// @brief Identify and merge redundant archetypes into a representative subset.
     ///
-    /// @param S_r Reduced data matrix (<em>m</em> x <em>n</em>; <em>vars</em> x <em>obs</em>)
-    /// from which archetypes were found.
-    /// @param C_stacked Concatenated (and filtered) <code>C</code> (<code>S_r.n_rows</code> x <em>n</em>) matrix.
-    /// Output of <code>collectArchetypes()</code> in <code>ResCollectArch["C_stacked"]</code>.
-    /// @param H_stacked Concatenated (and filtered) <code>H</code> (<code>S_r.n_rows</code> x <em>n</em>) matrix.
-    /// Output of <code>collectArchetypes()</code> in <code>ResCollectArch["H_stacked"]</code>.
-    /// @param thread_no Number of CPU threads to use. If 0, number is automatically determined.
+    /// @param S_r Reduced data matrix (<em>vars</em> x <em>obs</em>).
+    /// @param C_stacked Filtered C matrix from <code>collectArchetypes()</code>.
+    /// @param H_stacked Filtered H matrix from <code>collectArchetypes()</code>.
+    /// @param thread_no Number of CPU threads (0 = auto).
     ///
-    /// @return <code>struct</code> of type <code>ResMergeArch</code>.
-    ///
-    /// @remark See <code>ResMergeArch</code> and <code>collectArchetypes()</code>.
+    /// @return <code>ResMergeArch</code> with merged results and assignments.
     ResMergeArch
         mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int thread_no = 0);
 } // namespace actionet

@@ -5,6 +5,17 @@
 #include "libactionet_config.hpp"
 
 namespace actionet {
+    /// @brief Run label propagation on a graph.
+    ///
+    /// @param G Graph adjacency matrix.
+    /// @param labels Initial labels (numeric; -1 for unknown if used).
+    /// @param lambda Propagation strength.
+    /// @param iters Number of iterations.
+    /// @param sig_threshold Significance threshold.
+    /// @param fixed_labels Optional indices to keep fixed.
+    /// @param thread_no Number of threads (0 = auto).
+    ///
+    /// @return Updated label vector.
     arma::vec runLPA(arma::sp_mat& G, arma::vec& labels, double lambda = 0, int iters = 3, double sig_threshold = 3,
                      arma::uvec fixed_labels = arma::uvec(), int thread_no = 0);
 }

@@ -7,14 +7,14 @@
 
 // Exported
 namespace actionet {
-    /// @brief Run simplex regression
-    /// @details Solves min_{X} (|| AX - B ||) s.t. simplex constraint using ACTIVE Set Method
+    /// @brief Run simplex regression with an active-set method.
+    /// @details Solves min_X ||AX - B|| subject to simplex constraints.
     ///
-    /// @param A Input matrix <em>A</em> in <em>AX - B</em>.
-    /// @param B Inout matrix <em>B</em> in <em>AX - B</em>.
-    /// @param computeXtX Return <em>Xt(X)</em>
+    /// @param A Input matrix A in AX - B.
+    /// @param B Input matrix B in AX - B.
+    /// @param computeXtX If true, return X^T X (implementation-dependent).
     ///
-    /// @return Matrix X that solves the simplex constraint.
+    /// @return Solution matrix X.
     arma::mat runSimplexRegression(arma::mat& A, arma::mat& B, bool computeXtX = false);
 } // namespace actionet
 
