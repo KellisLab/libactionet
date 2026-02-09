@@ -2,6 +2,8 @@
 #include "action/spa.hpp"
 #include "action/aa.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include <cstdio>
+#include <atomic>
 
 namespace actionet {
     ResACTION
@@ -22,14 +24,10 @@ namespace actionet {
         int threads_use = get_num_threads(k_tot, thread_no);
 
         stdout_printf("Running ACTION (%d threads):\n", threads_use);
+        stdout_printf("\tIterating from k = %d ... %d: ", k_min, k_max);
         FLUSH;
 
-        int k_curr = 0;
-        char status_msg[50];
-
-        snprintf(status_msg, sizeof(status_msg), "Iterating from k = %d ... %d:", k_min, k_max);
-        stderr_printf("\t%s %d/%d finished", status_msg, k_curr, k_tot);
-        FLUSH;
+        std::atomic<int> k_curr(0);
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
@@ -41,13 +39,13 @@ namespace actionet {
             arma::field<arma::mat> AA_res = runAA(S_r, W, max_it, tol);
             trace.C[k] = AA_res(0);
             trace.H[k] = AA_res(1);
-            k_curr++;
 
-            stderr_printf("\r\t%s %d/%d finished", status_msg, k_curr, k_tot);
-            FLUSH;
+            int completed = ++k_curr;
+            printf("%d/%d ", completed, k_tot);
+            fflush(stdout);
         }
 
-        stdout_printf("\r\t%s %d/%d finished\n", status_msg, k_curr, k_tot);
+        stdout_printf("\n\tCompleted %d iterations\n", k_tot);
         FLUSH;
 
         return trace;
