@@ -2,8 +2,6 @@
 #include "action/spa.hpp"
 #include "action/aa.hpp"
 #include "utils_internal/utils_parallel.hpp"
-#include <cstdio>
-#include <atomic>
 
 namespace actionet {
     ResACTION
@@ -24,10 +22,11 @@ namespace actionet {
         int threads_use = get_num_threads(k_tot, thread_no);
 
         stdout_printf("Running ACTION (%d threads):\n", threads_use);
-        stdout_printf("\tIterating from k = %d ... %d: ", k_min, k_max);
+        stdout_printf("\tIterating from k = %d ... %d\n", k_min, k_max);
         FLUSH;
 
-        std::atomic<int> k_curr(0);
+        // Start progress monitoring
+        ProgressMonitor progress(k_tot);
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
@@ -40,12 +39,11 @@ namespace actionet {
             trace.C[k] = AA_res(0);
             trace.H[k] = AA_res(1);
 
-            int completed = ++k_curr;
-            printf("%d/%d ", completed, k_tot);
-            fflush(stdout);
+            progress.increment();
         }
 
-        stdout_printf("\n\tCompleted %d iterations\n", k_tot);
+        progress.stop();
+        stdout_printf("\r\tCompleted: %d/%d (100.0%%)  \n", k_tot, k_tot);
         FLUSH;
 
         return trace;
