@@ -84,10 +84,11 @@ cmake --build . -j$(nproc)
 ## Public API (C++)
 All public symbols are exposed under the `actionet` namespace via `include/libactionet.hpp`.
 
-- **Reduction / SVD**: `reduceKernel`, `runSVD`, `perturbedSVD`, `svdIRLB`, `svdHalko`, `svdFeng`, `svdPRIMME`
+- **Reduction / SVD**: `reduceKernel`, `runSVD`, `perturbedSVD`, `svdIRLB`, `svdHalko`, `svdFeng`, `svdPRIMME`,
+  `runSVD_PRIMME_Operator`, `reduceKernel_Operator`, `reduceKernelFromSVD_Operator`,
+  `reduceKernelFromSVD`, plus typed result structs (`SVDResult`, `KernelReductionResult`) and operator interface (`MatrixOperator`)
 - **ACTION decomposition**: `runACTION`, `decompACTION`, `collectArchetypes`, `mergeArchetypes`, `runAA`, `runSPA`, `runSimplexRegression`
 - **Network**: `buildNetwork`, `computeNetworkDiffusion`, `runLPA`, `computeCoreness`, `computeArchetypeCentrality`
 - **Annotation / specificity**: `computeFeatureSpecificity`, `computeFeatureStats`, `computeFeatureStatsVision`
 - **Visualization**: `layoutNetwork`, `optimize_layout_uwot`, `computeNodeColors`
 - **Tools**: `normalizeMatrix`, `scaleMatrix`, `normalizeGraph`, `computeGroupedSums/Means/Vars`, `autocorrelation_Moran/Geary`, `assess_enrichment`, `MWM_hungarian`, `MWM_rank1`, `xicor`, `XICOR`
-
