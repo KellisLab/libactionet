@@ -8,6 +8,7 @@
 // the `action` namespace and visible to interfaces.
 
 // decomposition: Algorithms for matrix decomposition
+#include "decomposition/matrix_operator.hpp"
 #include "decomposition/svd_main.hpp"
 #include "decomposition/orthogonalization.hpp"
 
