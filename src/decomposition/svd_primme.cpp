@@ -1,4 +1,9 @@
 // Singular value decomposition (SVD) using PRIMME_SVDS
+//
+// Provides three matvec flavours (sparse, dense, operator) unified through a
+// common PRIMME core routine.  The operator path is the primary entry point for
+// out-of-memory (OOM) SVD used by PythonMatrixOperator.
+
 #include "decomposition/svd_primme.hpp"
 #include "decomposition/svd_main.hpp"
 #include "utils_internal/utils_decomp.hpp"
@@ -12,97 +17,84 @@
 #include <vector>
 
 namespace {
+
+    // ---- Context wrapper for operator-backed matvec --------------------------------------
     struct PrimmeOperatorCtx {
         const actionet::MatrixOperator* op;
     };
 
-    static void sparseMatvec(void* x, PRIMME_INT* ldx, void* y, PRIMME_INT* ldy, int* blockSize,
+    // ---- Unified PRIMME matvec callback --------------------------------------------------
+    //
+    // All three matrix flavours (sparse, dense, operator) share the same loop structure.
+    // The actual dispatch is performed by a std::function-like approach using a thin
+    // callback pair (forward / transpose) extracted at the call site.
+
+    using MatvecDispatch = void (*)(void* ctx, const arma::vec& x, arma::vec& y, bool transpose);
+
+    static void sparseDispatch(void* ctx, const arma::vec& x, arma::vec& y, bool transpose) {
+        auto* A = static_cast<arma::sp_mat*>(ctx);
+        if (!transpose) {
+            y = (*A) * x;
+        } else {
+            y = A->t() * x;
+        }
+    }
+
+    static void denseDispatch(void* ctx, const arma::vec& x, arma::vec& y, bool transpose) {
+        auto* A = static_cast<arma::mat*>(ctx);
+        if (!transpose) {
+            y = (*A) * x;
+        } else {
+            y = A->t() * x;
+        }
+    }
+
+    static void operatorDispatch(void* ctx, const arma::vec& x, arma::vec& y, bool transpose) {
+        auto* op_ctx = static_cast<PrimmeOperatorCtx*>(ctx);
+        const actionet::MatrixOperator& op = *(op_ctx->op);
+        if (!transpose) {
+            op.matvec(x, y);
+        } else {
+            op.rmatvec(x, y);
+        }
+    }
+
+    // ---- Generic PRIMME callback ---------------------------------------------------------
+    //
+    // Stored as a static function pointer pair via the matrix pointer field.  The actual
+    // context pointer and dispatch function are packed into a small struct below.
+
+    struct PrimmeCallbackCtx {
+        void* user_ctx;
+        MatvecDispatch dispatch;
+        arma::uword m;
+        arma::uword n;
+    };
+
+    static void primmeMatvec(void* x, PRIMME_INT* ldx, void* y, PRIMME_INT* ldy, int* blockSize,
                              int* trans, primme_svds_params* primme_svds, int* err) {
-        arma::sp_mat* A = static_cast<arma::sp_mat*>(primme_svds->matrix);
+        auto* ctx = static_cast<PrimmeCallbackCtx*>(primme_svds->matrix);
+
         double* xvec = static_cast<double*>(x);
         double* yvec = static_cast<double*>(y);
 
-        arma::uword m = A->n_rows;
-        arma::uword n = A->n_cols;
-
         for (int i = 0; i < *blockSize; i++) {
-            arma::uword x_len = (*trans == 0) ? n : m;
-            arma::uword y_len = (*trans == 0) ? m : n;
+            arma::uword x_len = (*trans == 0) ? ctx->n : ctx->m;
+            arma::uword y_len = (*trans == 0) ? ctx->m : ctx->n;
 
             arma::vec x_col(xvec + (*ldx) * i, x_len, false, true);
             arma::vec y_col(yvec + (*ldy) * i, y_len, false, true);
 
-            if (*trans == 0) {
-                y_col = (*A) * x_col;
-            }
-            else {
-                y_col = A->t() * x_col;
-            }
+            ctx->dispatch(ctx->user_ctx, x_col, y_col, *trans != 0);
         }
 
         *err = 0;
     }
 
-    static void denseMatvec(void* x, PRIMME_INT* ldx, void* y, PRIMME_INT* ldy, int* blockSize,
-                            int* trans, primme_svds_params* primme_svds, int* err) {
-        arma::mat* A = static_cast<arma::mat*>(primme_svds->matrix);
-        double* xvec = static_cast<double*>(x);
-        double* yvec = static_cast<double*>(y);
-
-        arma::uword m = A->n_rows;
-        arma::uword n = A->n_cols;
-
-        for (int i = 0; i < *blockSize; i++) {
-            arma::uword x_len = (*trans == 0) ? n : m;
-            arma::uword y_len = (*trans == 0) ? m : n;
-
-            arma::vec x_col(xvec + (*ldx) * i, x_len, false, true);
-            arma::vec y_col(yvec + (*ldy) * i, y_len, false, true);
-
-            if (*trans == 0) {
-                y_col = (*A) * x_col;
-            }
-            else {
-                y_col = A->t() * x_col;
-            }
-        }
-
-        *err = 0;
-    }
-
-    static void operatorMatvec(void* x, PRIMME_INT* ldx, void* y, PRIMME_INT* ldy, int* blockSize,
-                               int* trans, primme_svds_params* primme_svds, int* err) {
-        PrimmeOperatorCtx* ctx = static_cast<PrimmeOperatorCtx*>(primme_svds->matrix);
-        const actionet::MatrixOperator& op = *(ctx->op);
-
-        double* xvec = static_cast<double*>(x);
-        double* yvec = static_cast<double*>(y);
-
-        arma::uword m = op.rows();
-        arma::uword n = op.cols();
-
-        for (int i = 0; i < *blockSize; i++) {
-            arma::uword x_len = (*trans == 0) ? n : m;
-            arma::uword y_len = (*trans == 0) ? m : n;
-
-            arma::vec x_col(xvec + (*ldx) * i, x_len, false, true);
-            arma::vec y_col(yvec + (*ldy) * i, y_len, false, true);
-
-            if (*trans == 0) {
-                op.matvec(x_col, y_col);
-            }
-            else {
-                op.rmatvec(x_col, y_col);
-            }
-        }
-
-        *err = 0;
-    }
+    // ---- Shared PRIMME core routine ------------------------------------------------------
 
     actionet::SVDResult runPrimmeCore(PRIMME_INT m, PRIMME_INT n, int k, int max_it, int seed, bool verbose,
-                                      void* matrix_ptr,
-                                      void (*matvec_fn)(void*, PRIMME_INT*, void*, PRIMME_INT*, int*, int*,
-                                                        primme_svds_params*, int*),
+                                      PrimmeCallbackCtx* cb_ctx,
                                       const char* label, unsigned long long nnz = 0) {
         actionet::SVDResult empty_out;
 
@@ -138,8 +130,8 @@ namespace {
         primme_svds.m = m;
         primme_svds.n = n;
         primme_svds.numSvals = k_eff;
-        primme_svds.matrixMatvec = matvec_fn;
-        primme_svds.matrix = matrix_ptr;
+        primme_svds.matrixMatvec = primmeMatvec;
+        primme_svds.matrix = cb_ctx;
 
         primme_svds_set_method(primme_svds_default, PRIMME_DEFAULT_METHOD,
                                PRIMME_DEFAULT_METHOD, &primme_svds);
@@ -149,11 +141,16 @@ namespace {
             primme_svds.maxMatvecs = static_cast<PRIMME_INT>(max_it) * k_eff;
         }
 
+        // PRIMME requires iseed values in [0, 4095] with iseed[3] odd.
+        // We derive them from the user seed via modular arithmetic.
         if (seed != 0) {
-            primme_svds.iseed[0] = seed;
-            primme_svds.iseed[1] = seed + 1;
-            primme_svds.iseed[2] = seed + 2;
-            primme_svds.iseed[3] = seed + 3;
+            unsigned int s = static_cast<unsigned int>(seed < 0 ? -seed : seed);
+            primme_svds.iseed[0] = static_cast<PRIMME_INT>((s + 0) % 4096);
+            primme_svds.iseed[1] = static_cast<PRIMME_INT>((s + 1) % 4096);
+            primme_svds.iseed[2] = static_cast<PRIMME_INT>((s + 2) % 4096);
+            // iseed[3] must be odd.
+            PRIMME_INT s3 = static_cast<PRIMME_INT>((s + 3) % 4096);
+            primme_svds.iseed[3] = (s3 % 2 == 0) ? (s3 + 1) % 4096 : s3;
         }
 
         primme_svds.printLevel = verbose ? 1 : 0;
@@ -194,22 +191,25 @@ namespace {
 } // namespace
 
 arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it, int seed, bool verbose) {
+    PrimmeCallbackCtx ctx{&A, sparseDispatch, A.n_rows, A.n_cols};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
-                                            k, max_it, seed, verbose, &A, sparseMatvec, "sparse",
+                                            k, max_it, seed, verbose, &ctx, "sparse",
                                             static_cast<unsigned long long>(A.n_nonzero));
     return actionet::svdFieldFromResult(svd);
 }
 
 arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it, int seed, bool verbose) {
+    PrimmeCallbackCtx ctx{&A, denseDispatch, A.n_rows, A.n_cols};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
-                                            k, max_it, seed, verbose, &A, denseMatvec, "dense");
+                                            k, max_it, seed, verbose, &ctx, "dense");
     return actionet::svdFieldFromResult(svd);
 }
 
 namespace actionet {
     SVDResult runSVD_PRIMME_Operator(const MatrixOperator& op, int k, int max_it, int seed, bool verbose) {
-        PrimmeOperatorCtx ctx{&op};
+        PrimmeOperatorCtx op_ctx{&op};
+        PrimmeCallbackCtx ctx{&op_ctx, operatorDispatch, op.rows(), op.cols()};
         return runPrimmeCore(static_cast<PRIMME_INT>(op.rows()), static_cast<PRIMME_INT>(op.cols()),
-                             k, max_it, seed, verbose, &ctx, operatorMatvec, "operator");
+                             k, max_it, seed, verbose, &ctx, "operator");
     }
 } // namespace actionet

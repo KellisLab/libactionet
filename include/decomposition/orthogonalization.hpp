@@ -7,12 +7,12 @@
 // Functions: internal
 /// @brief Deflate a reduced representation using perturbation matrices.
 ///
-/// @param SVD_results SVD field output.
+/// @param SVD_results SVD field output (modified in place by perturbedSVD).
 /// @param A Perturbation matrix A.
 /// @param B Perturbation matrix B.
 ///
 /// @return Updated SVD field.
-arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& SVD_results, arma::mat& A, arma::mat& B);
+arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& SVD_results, const arma::mat& A, const arma::mat& B);
 
 namespace actionet {
     /// @brief Orthogonalize a reduced representation against a batch design matrix.

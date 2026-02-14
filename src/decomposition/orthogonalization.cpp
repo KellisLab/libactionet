@@ -2,19 +2,19 @@
 #include "decomposition/svd_main.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
-arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& SVD_results, arma::mat& A, arma::mat& B) {
+arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& SVD_results, const arma::mat& A, const arma::mat& B) {
     stdout_printf("\tDeflating reduction ... ");
     FLUSH;
 
     arma::vec mu_A = arma::vec(arma::trans(arma::mean(A, 0)));
     arma::vec mu = B * mu_A;
 
-    A = arma::join_rows(arma::ones(A.n_rows), A);
-    B = arma::join_rows(-mu, B);
+    arma::mat A_aug = arma::join_rows(arma::ones(A.n_rows), A);
+    arma::mat B_aug = arma::join_rows(-mu, B);
     stdout_printf("done\n");
     FLUSH;
 
-    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A, B);
+    arma::field<arma::mat> perturbed_SVD = actionet::perturbedSVD(SVD_results, A_aug, B_aug);
     return (perturbed_SVD);
 }
 

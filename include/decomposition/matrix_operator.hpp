@@ -1,29 +1,54 @@
-// Matrix operator abstraction for out-of-memory SVD and kernel reduction
+// Matrix operator abstraction for out-of-memory (OOM) SVD and kernel reduction.
+//
+// This header defines a lightweight abstract interface for matrix-vector products
+// without requiring the full matrix to be materialised in memory.  The primary
+// consumer is the PRIMME SVD solver (svd_primme.cpp), which calls matvec/rmatvec
+// repeatedly during iterative eigenvalue computation.
+//
+// Design notes:
+//   - Implementations MUST be safe to call from a single thread only.  PRIMME is
+//     configured in single-threaded mode for the operator path.  Multi-threaded
+//     matvec would require careful coordination with the GIL (Python) or R runtime.
+//   - The PythonMatrixOperator subclass (actionet-python) acquires the GIL on
+//     each call; see wp_utils.h for details.
+//   - Dense and sparse adapters are provided for convenience when the matrix *is*
+//     in memory but a uniform operator interface is desired (e.g. testing).
+
 #ifndef ACTIONET_MATRIX_OPERATOR_HPP
 #define ACTIONET_MATRIX_OPERATOR_HPP
 
 #include "libactionet_config.hpp"
 
 namespace actionet {
+
     /// @brief Abstract matrix operator with forward and transpose products.
+    ///
+    /// Represents a logical m × n matrix via its action on vectors.
+    /// Subclasses must implement matvec (y = A*x) and rmatvec (y = A'*x).
     class MatrixOperator {
     public:
         virtual ~MatrixOperator() = default;
 
-        /// @return Number of rows in the logical matrix.
+        /// @return Number of rows (m) in the logical matrix.
         virtual arma::uword rows() const = 0;
 
-        /// @return Number of columns in the logical matrix.
+        /// @return Number of columns (n) in the logical matrix.
         virtual arma::uword cols() const = 0;
 
         /// @brief Compute y = A * x.
+        /// @param x Input vector of length n (cols).
+        /// @param y Output vector of length m (rows); will be resized if necessary.
         virtual void matvec(const arma::vec& x, arma::vec& y) const = 0;
 
-        /// @brief Compute y = A' * x.
+        /// @brief Compute y = A' * x  (transpose product).
+        /// @param x Input vector of length m (rows).
+        /// @param y Output vector of length n (cols); will be resized if necessary.
         virtual void rmatvec(const arma::vec& x, arma::vec& y) const = 0;
     };
 
     /// @brief MatrixOperator adapter for dense Armadillo matrices.
+    ///
+    /// Holds a non-owning pointer; the underlying matrix must outlive this object.
     class DenseMatrixOperator final : public MatrixOperator {
     public:
         explicit DenseMatrixOperator(const arma::mat& matrix) : matrix_(&matrix) {}
@@ -39,6 +64,8 @@ namespace actionet {
     };
 
     /// @brief MatrixOperator adapter for sparse Armadillo matrices.
+    ///
+    /// Holds a non-owning pointer; the underlying matrix must outlive this object.
     class SparseMatrixOperator final : public MatrixOperator {
     public:
         explicit SparseMatrixOperator(const arma::sp_mat& matrix) : matrix_(&matrix) {}
@@ -52,6 +79,7 @@ namespace actionet {
     private:
         const arma::sp_mat* matrix_;
     };
+
 } // namespace actionet
 
 #endif // ACTIONET_MATRIX_OPERATOR_HPP
