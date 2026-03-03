@@ -10,6 +10,8 @@ include(ConfigureOpenMP)
 include(ConfigurePRIMME)
 include(BuildTest)
 
+find_package(HDF5 REQUIRED COMPONENTS C)
+
 ############# COMPILER OPTIONS
 # Library uses C++17 features
 set(CMAKE_CXX_STANDARD 17)
@@ -31,6 +33,7 @@ file(GLOB_RECURSE SOURCES_ACTION CONFIGURE_DEPENDS src/action/*.cpp)
 file(GLOB_RECURSE SOURCES_ANNOTATION CONFIGURE_DEPENDS src/annotation/*.cpp)
 file(GLOB_RECURSE SOURCES_DECOMPOSITION CONFIGURE_DEPENDS src/decomposition/*.cpp)
 file(GLOB_RECURSE SOURCES_NETWORK CONFIGURE_DEPENDS src/network/*.cpp)
+file(GLOB_RECURSE SOURCES_IO CONFIGURE_DEPENDS src/io/*.cpp)
 file(GLOB_RECURSE SOURCES_TOOLS CONFIGURE_DEPENDS src/tools/*.cpp)
 file(GLOB_RECURSE SOURCES_UTILS_INT CONFIGURE_DEPENDS src/utils_internal/*.cpp)
 file(GLOB_RECURSE SOURCES_VISUALIZATION CONFIGURE_DEPENDS src/visualization/*.cpp)
@@ -46,6 +49,7 @@ add_library(actionet STATIC
         ${SOURCES_ANNOTATION}
         ${SOURCES_DECOMPOSITION}
         ${SOURCES_NETWORK}
+        ${SOURCES_IO}
         ${SOURCES_TOOLS}
         ${SOURCES_UTILS_INT}
         ${SOURCES_VISUALIZATION}
@@ -116,6 +120,9 @@ endif()
 
 ## Configure PRIMME library (large sparse matrix SVD support)
 CONFIGURE_PRIMME(actionet)
+
+target_include_directories(actionet PUBLIC ${HDF5_INCLUDE_DIRS})
+target_link_libraries(actionet PUBLIC ${HDF5_LIBRARIES})
 
 ## Add included headers
 target_include_directories(

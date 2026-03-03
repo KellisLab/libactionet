@@ -150,7 +150,8 @@ namespace actionet {
         return out;
     }
 
-    KernelReductionResult reduceKernel_Operator(const MatrixOperator& S, int k, int max_it, int seed, bool verbose) {
+    KernelReductionResult reduceKernel_Operator(const MatrixOperator& S, int k, int svd_alg, int max_it,
+                                                int seed, bool verbose) {
         // NOTE: The operator / PRIMME path is unavailable in R builds because the R build
         // system does not link PRIMME.  If R support for operator-backed SVD is needed in
         // the future, the recommended approach is to:
@@ -159,6 +160,7 @@ namespace actionet {
 #if defined(LIBACTIONET_BUILD_R) && LIBACTIONET_BUILD_R == 1
         (void)S;
         (void)k;
+        (void)svd_alg;
         (void)max_it;
         (void)seed;
         (void)verbose;
@@ -166,11 +168,11 @@ namespace actionet {
                                  "(PRIMME is not linked). Use the in-memory reduceKernel() path.");
 #else
         if (verbose) {
-            stdout_printf("Computing reduced ACTION kernel (operator/PRIMME):\n");
+            stdout_printf("Computing reduced ACTION kernel (operator):\n");
             FLUSH;
         }
 
-        SVDResult svd = runSVD_PRIMME_Operator(S, k, max_it, seed, verbose);
+        SVDResult svd = runSVD_Operator(S, k, max_it, seed, svd_alg, verbose);
         return reduceKernelFromSVD_Operator(S, svd, verbose);
 #endif
     }

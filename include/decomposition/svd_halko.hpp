@@ -6,6 +6,7 @@
 #define ACTIONET_SVD_HALKO_HPP
 
 #include "libactionet_config.hpp"
+#include "decomposition/matrix_operator.hpp"
 
 /**
  * @brief Randomized SVD using the Halko method.
@@ -21,5 +22,9 @@
  */
 template <typename T>
 arma::field<arma::mat> svdHalko(T& A, int dim, int iters = 5, int seed = 0, bool verbose = true);
+
+/// @brief Randomized SVD using Halko with a matrix operator backend.
+arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int iters = 5,
+                                int seed = 0, bool verbose = true);
 
 #endif //ACTIONET_SVD_HALKO_HPP

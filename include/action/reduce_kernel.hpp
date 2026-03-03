@@ -86,11 +86,11 @@ namespace actionet {
     KernelReductionResult reduceKernelFromSVD_Operator(const MatrixOperator& S, const SVDResult& svd,
                                                        bool verbose = true);
 
-    /// @brief Compute reduced ACTION kernel from operator-backed matrix using PRIMME SVD.
+    /// @brief Compute reduced ACTION kernel from operator-backed matrix using selected SVD.
     ///
     /// @note Unavailable in R builds (PRIMME is Python-only in v1).
-    KernelReductionResult reduceKernel_Operator(const MatrixOperator& S, int k, int max_it = 0,
-                                                int seed = 0, bool verbose = true);
+    KernelReductionResult reduceKernel_Operator(const MatrixOperator& S, int k, int svd_alg = ALG_HALKO,
+                                                int max_it = 0, int seed = 0, bool verbose = true);
 
     // ---- In-memory precomputed SVD entry points -------------------------------------------
 

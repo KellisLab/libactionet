@@ -82,6 +82,18 @@ namespace actionet {
     SVDResult runSVD_PRIMME_Operator(const MatrixOperator& op, int k, int max_it = 0,
                                      int seed = 0, bool verbose = true);
 
+    /// @brief Compute truncated SVD with a matrix operator and explicit algorithm.
+    SVDResult runSVD_Operator(const MatrixOperator& op, int k, int max_it = 0, int seed = 0,
+                              int algorithm = ALG_HALKO, bool verbose = true);
+
+    /// @brief Compute truncated SVD using Halko with matrix operator callbacks.
+    SVDResult runSVD_Halko_Operator(const MatrixOperator& op, int k, int iters = 5,
+                                    int seed = 0, bool verbose = true);
+
+    /// @brief Compute truncated SVD using Feng with matrix operator callbacks.
+    SVDResult runSVD_Feng_Operator(const MatrixOperator& op, int k, int max_it = 5,
+                                   int seed = 0, bool verbose = true);
+
     /// @brief Apply perturbation correction to an SVD decomposition (struct API).
     ///
     /// Implements the Brand (2006) perturbation update:  given A ≈ U Σ V' and low-rank

@@ -91,6 +91,104 @@ arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose
     return (orient_SVD(out));
 }
 
+arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int iters,
+                                int seed, bool verbose) {
+    arma::field<arma::mat> out(3); // out: U, sigma, V
+
+    const int m = static_cast<int>(A.rows());
+    const int n = static_cast<int>(A.cols());
+    if (m < 2 || n < 2) {
+        return out;
+    }
+
+    dim = std::min(dim, std::min(m, n) - 2);
+    if (dim < 1) {
+        dim = 1;
+    }
+    const int l = dim + 2;
+
+    arma::vec sigma;
+    arma::mat R, Q;
+    arma::mat U, V, X;
+
+    if (verbose) {
+        stdout_printf("Halko (operator) -- A: %d x %d\n", m, n);
+        FLUSH;
+    }
+
+    if (m < n) {
+        R = randNorm(l, m, seed);       // l x m
+        A.rmatmat(R.t(), Q);            // n x l
+    }
+    else {
+        R = randNorm(n, l, seed);       // n x l
+        A.matmat(R, Q);                 // m x l
+    }
+
+    gram_schmidt(Q);
+
+    if (m < n) {
+        for (int it = 1; it <= iters; it++) {
+            if (verbose) {
+                stderr_printf("\r\tIteration %d/%d", it, iters);
+                FLUSH;
+            }
+
+            arma::mat tmp_m;
+            A.matmat(Q, tmp_m);         // m x l
+            Q = std::move(tmp_m);
+            gram_schmidt(Q);
+
+            arma::mat tmp_n;
+            A.rmatmat(Q, tmp_n);        // n x l
+            Q = std::move(tmp_n);
+            gram_schmidt(Q);
+        }
+
+        A.matmat(Q, X);                 // m x l
+        arma::svd_econ(U, sigma, V, X);
+        V = Q * V;
+    }
+    else {
+        for (int it = 1; it <= iters; it++) {
+            if (verbose) {
+                stderr_printf("\r\tIteration %d/%d", it, iters);
+                FLUSH;
+            }
+
+            arma::mat tmp_n;
+            A.rmatmat(Q, tmp_n);        // n x l
+            Q = std::move(tmp_n);
+            gram_schmidt(Q);
+
+            arma::mat tmp_m;
+            A.matmat(Q, tmp_m);         // m x l
+            Q = std::move(tmp_m);
+            gram_schmidt(Q);
+        }
+
+        arma::mat Xt;
+        A.rmatmat(Q, Xt);               // n x l  == A'Q
+        X = Xt.t();                     // l x n  == Q'A
+        arma::svd_econ(U, sigma, V, X);
+        U = Q * U;
+    }
+
+    if (verbose) {
+        stdout_printf("\r\tIteration %d/%d\n", iters, iters);
+        FLUSH;
+    }
+
+    U.shed_cols(dim, dim + 1);
+    sigma = sigma(arma::span(0, dim - 1));
+    V.shed_cols(dim, dim + 1);
+
+    out(0) = U;
+    out(1) = sigma;
+    out(2) = V;
+    return orient_SVD(out);
+}
+
 template arma::field<arma::mat> svdHalko<arma::mat>(arma::mat& A, int dim, int iters, int seed, bool verbose);
 
 template arma::field<arma::mat> svdHalko<arma::sp_mat>(arma::sp_mat& A, int dim, int iters, int seed, bool verbose);

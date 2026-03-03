@@ -69,6 +69,7 @@ namespace {
         MatvecDispatch dispatch;
         arma::uword m;
         arma::uword n;
+        const actionet::MatrixOperator* op_block;
     };
 
     static void primmeMatvec(void* x, PRIMME_INT* ldx, void* y, PRIMME_INT* ldy, int* blockSize,
@@ -78,10 +79,51 @@ namespace {
         double* xvec = static_cast<double*>(x);
         double* yvec = static_cast<double*>(y);
 
-        for (int i = 0; i < *blockSize; i++) {
-            arma::uword x_len = (*trans == 0) ? ctx->n : ctx->m;
-            arma::uword y_len = (*trans == 0) ? ctx->m : ctx->n;
+        const arma::uword x_len = (*trans == 0) ? ctx->n : ctx->m;
+        const arma::uword y_len = (*trans == 0) ? ctx->m : ctx->n;
 
+        if (*blockSize > 1 && ctx->op_block != nullptr) {
+            const bool packed = (*ldx == static_cast<PRIMME_INT>(x_len) &&
+                                 *ldy == static_cast<PRIMME_INT>(y_len));
+
+            if (packed) {
+                arma::mat X(xvec, x_len, static_cast<arma::uword>(*blockSize), false, true);
+                arma::mat Y(yvec, y_len, static_cast<arma::uword>(*blockSize), false, true);
+                if (*trans == 0) {
+                    ctx->op_block->matmat(X, Y);
+                }
+                else {
+                    ctx->op_block->rmatmat(X, Y);
+                }
+                *err = 0;
+                return;
+            }
+
+            arma::mat X(x_len, static_cast<arma::uword>(*blockSize));
+            for (int i = 0; i < *blockSize; ++i) {
+                std::memcpy(X.colptr(static_cast<arma::uword>(i)),
+                            xvec + (*ldx) * i,
+                            x_len * sizeof(double));
+            }
+
+            arma::mat Y;
+            if (*trans == 0) {
+                ctx->op_block->matmat(X, Y);
+            }
+            else {
+                ctx->op_block->rmatmat(X, Y);
+            }
+
+            for (int i = 0; i < *blockSize; ++i) {
+                std::memcpy(yvec + (*ldy) * i,
+                            Y.colptr(static_cast<arma::uword>(i)),
+                            y_len * sizeof(double));
+            }
+            *err = 0;
+            return;
+        }
+
+        for (int i = 0; i < *blockSize; i++) {
             arma::vec x_col(xvec + (*ldx) * i, x_len, false, true);
             arma::vec y_col(yvec + (*ldy) * i, y_len, false, true);
 
@@ -139,6 +181,8 @@ namespace {
 
         if (max_it > 0) {
             primme_svds.maxMatvecs = static_cast<PRIMME_INT>(max_it) * k_eff;
+        } else {
+            primme_svds.maxMatvecs = static_cast<PRIMME_INT>(1000) * k_eff;
         }
 
         // PRIMME requires iseed values in [0, 4095] with iseed[3] odd.
@@ -191,7 +235,7 @@ namespace {
 } // namespace
 
 arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it, int seed, bool verbose) {
-    PrimmeCallbackCtx ctx{&A, sparseDispatch, A.n_rows, A.n_cols};
+    PrimmeCallbackCtx ctx{&A, sparseDispatch, A.n_rows, A.n_cols, nullptr};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
                                             k, max_it, seed, verbose, &ctx, "sparse",
                                             static_cast<unsigned long long>(A.n_nonzero));
@@ -199,7 +243,7 @@ arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it, int seed, b
 }
 
 arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it, int seed, bool verbose) {
-    PrimmeCallbackCtx ctx{&A, denseDispatch, A.n_rows, A.n_cols};
+    PrimmeCallbackCtx ctx{&A, denseDispatch, A.n_rows, A.n_cols, nullptr};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
                                             k, max_it, seed, verbose, &ctx, "dense");
     return actionet::svdFieldFromResult(svd);
@@ -208,7 +252,7 @@ arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it, int seed, bool
 namespace actionet {
     SVDResult runSVD_PRIMME_Operator(const MatrixOperator& op, int k, int max_it, int seed, bool verbose) {
         PrimmeOperatorCtx op_ctx{&op};
-        PrimmeCallbackCtx ctx{&op_ctx, operatorDispatch, op.rows(), op.cols()};
+        PrimmeCallbackCtx ctx{&op_ctx, operatorDispatch, op.rows(), op.cols(), &op};
         return runPrimmeCore(static_cast<PRIMME_INT>(op.rows()), static_cast<PRIMME_INT>(op.cols()),
                              k, max_it, seed, verbose, &ctx, "operator");
     }

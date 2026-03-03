@@ -18,6 +18,7 @@
 #define ACTIONET_MATRIX_OPERATOR_HPP
 
 #include "libactionet_config.hpp"
+#include <stdexcept>
 
 namespace actionet {
 
@@ -44,6 +45,38 @@ namespace actionet {
         /// @param x Input vector of length m (rows).
         /// @param y Output vector of length n (cols); will be resized if necessary.
         virtual void rmatvec(const arma::vec& x, arma::vec& y) const = 0;
+
+        /// @brief Compute Y = A * X for a dense block of vectors.
+        ///
+        /// Default implementation loops over columns and dispatches to matvec.
+        virtual void matmat(const arma::mat& X, arma::mat& Y) const {
+            if (X.n_rows != cols()) {
+                throw std::runtime_error("MatrixOperator::matmat dimension mismatch");
+            }
+
+            Y.set_size(rows(), X.n_cols);
+            arma::vec col_out;
+            for (arma::uword j = 0; j < X.n_cols; ++j) {
+                matvec(X.col(j), col_out);
+                Y.col(j) = col_out;
+            }
+        }
+
+        /// @brief Compute Y = A' * X for a dense block of vectors.
+        ///
+        /// Default implementation loops over columns and dispatches to rmatvec.
+        virtual void rmatmat(const arma::mat& X, arma::mat& Y) const {
+            if (X.n_rows != rows()) {
+                throw std::runtime_error("MatrixOperator::rmatmat dimension mismatch");
+            }
+
+            Y.set_size(cols(), X.n_cols);
+            arma::vec col_out;
+            for (arma::uword j = 0; j < X.n_cols; ++j) {
+                rmatvec(X.col(j), col_out);
+                Y.col(j) = col_out;
+            }
+        }
     };
 
     /// @brief MatrixOperator adapter for dense Armadillo matrices.
@@ -58,6 +91,8 @@ namespace actionet {
 
         void matvec(const arma::vec& x, arma::vec& y) const override { y = (*matrix_) * x; }
         void rmatvec(const arma::vec& x, arma::vec& y) const override { y = matrix_->t() * x; }
+        void matmat(const arma::mat& X, arma::mat& Y) const override { Y = (*matrix_) * X; }
+        void rmatmat(const arma::mat& X, arma::mat& Y) const override { Y = matrix_->t() * X; }
 
     private:
         const arma::mat* matrix_;
@@ -75,6 +110,8 @@ namespace actionet {
 
         void matvec(const arma::vec& x, arma::vec& y) const override { y = (*matrix_) * x; }
         void rmatvec(const arma::vec& x, arma::vec& y) const override { y = matrix_->t() * x; }
+        void matmat(const arma::mat& X, arma::mat& Y) const override { Y = (*matrix_) * X; }
+        void rmatmat(const arma::mat& X, arma::mat& Y) const override { Y = matrix_->t() * X; }
 
     private:
         const arma::sp_mat* matrix_;

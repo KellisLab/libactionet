@@ -6,6 +6,7 @@
 #define ACTIONET_SVD_FENG_HPP
 
 #include "libactionet_config.hpp"
+#include "decomposition/matrix_operator.hpp"
 
 /// @brief Randomized SVD using the Feng method.
 ///
@@ -19,5 +20,9 @@
 /// @return Field containing {U, S, V}.
 template <typename T>
 arma::field<arma::mat> svdFeng(T& A, int dim, int max_it = 5, int seed = 0, bool verbose = true);
+
+/// @brief Randomized SVD using Feng with a matrix operator backend.
+arma::field<arma::mat> svdFeng(const actionet::MatrixOperator& A, int dim, int max_it = 5,
+                               int seed = 0, bool verbose = true);
 
 #endif //ACTIONET_SVD_FENG_HPP
