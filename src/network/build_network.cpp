@@ -276,16 +276,27 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
 
         #pragma omp for nowait
         for (size_t i = 0; i < sample_no; i++) {
+            const size_t query_k = std::min(static_cast<size_t>(sample_no), static_cast<size_t>(k) + 1);
             std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-                appr_alg->searchKnn(X.colptr(i), k);
+                appr_alg->searchKnn(X.colptr(i), query_k);
 
-            for (size_t j = 0; j < result.size(); j++) {
-                auto& result_tuple = result.top();
+            std::vector<std::pair<float, hnswlib::labeltype>> neighbors;
+            neighbors.reserve(result.size());
+            while (!result.empty()) {
+                neighbors.push_back(result.top());
+                result.pop();
+            }
 
+            int added = 0;
+            for (auto it = neighbors.rbegin(); it != neighbors.rend() && added < k; ++it) {
+                const auto& result_tuple = *it;
+                if (static_cast<size_t>(result_tuple.second) == i) {
+                    continue;
+                }
                 local_rows.push_back(i);
                 local_cols.push_back(result_tuple.second);
                 local_vals.push_back(result_tuple.first);
-                result.pop();
+                added++;
             }
         }
 
