@@ -5,21 +5,9 @@
 #include "libactionet_config.hpp"
 #include "hnswlib/hnswlib.h"
 #include "hnsw_jensen_shannon.hpp"
+#include <type_traits>
 
-// Structs: private
-struct AddWorker {
-    hnswlib::HierarchicalNSW<float>* hnsw;
-    const arma::fmat& data;
-
-    AddWorker(hnswlib::HierarchicalNSW<float>* hnsw,
-              const arma::fmat& data) : hnsw(hnsw), data(data) {}
-
-    void operator()(size_t begin, size_t end) {
-        for (size_t i = begin; i < end; i++) {
-            hnsw->addPoint(data.colptr(i), i);
-        }
-    }
-};
+static_assert(std::is_integral_v<hnswlib::labeltype>, "HNSW labels must remain integral");
 
 // Exceptions
 // Throw if invalid distance metric has been specified
@@ -37,27 +25,60 @@ inline class invalidNNApproach : public std::exception {
 } nnApproachException;
 
 // Functions: Must be header only. hnsw is allergic to implementation. Will break linking.
-// Obtain approximation algorithm
+
+// RAII owner for a (SpaceInterface, HierarchicalNSW) pair.
+// HierarchicalNSW stores a raw SpaceInterface* internally but does not delete it on
+// destruction, so we track both and delete them together.
+struct HnswIndex {
+    hnswlib::SpaceInterface<float>*  space = nullptr;
+    hnswlib::HierarchicalNSW<float>* hnsw  = nullptr;
+
+    ~HnswIndex() { delete hnsw; delete space; }
+
+    HnswIndex() = default;
+    HnswIndex(const HnswIndex&) = delete;
+    HnswIndex& operator=(const HnswIndex&) = delete;
+    HnswIndex(HnswIndex&& o) noexcept : space(o.space), hnsw(o.hnsw)
+        { o.space = nullptr; o.hnsw = nullptr; }
+};
+
+// Allocate a SpaceInterface for the given metric and dimensionality.
+inline hnswlib::SpaceInterface<float>*
+makeHnswSpace(const std::string& distance_metric, int dim) {
+    if (distance_metric == "jsd")
+        return new hnswlib::JSDSpace(dim);
+    if (distance_metric == "l2")
+        return new hnswlib::L2Space(dim);
+    return new hnswlib::InnerProductSpace(dim);
+}
+
+// Build an HNSW index from raw dimensions.  Returns an HnswIndex that owns
+// both the space and the HierarchicalNSW objects.
+inline HnswIndex
+makeHnswIndex(const std::string& distance_metric,
+              std::size_t        max_elements,
+              int                dim,
+              double             M,
+              double             ef_construction) {
+    HnswIndex idx;
+    idx.space = makeHnswSpace(distance_metric, dim);
+    idx.hnsw  = new hnswlib::HierarchicalNSW<float>(idx.space, max_elements, M, ef_construction);
+    return idx;
+}
+
+// Legacy overload: obtain approximation algorithm from an arma::mat.
+// Retained for the shim path; use makeHnswIndex for new code.
 inline hnswlib::HierarchicalNSW<float>*
 getApproximationAlgo(const std::string& distance_metric, const arma::mat& H, const double M,
                      const double ef_construction) {
-    int max_elements = H.n_cols;
-    int dim = H.n_rows;
-    // space to use determined by distance metric
-    hnswlib::SpaceInterface<float>* space;
-    if (distance_metric == "jsd") {
-        space = new hnswlib::JSDSpace(dim); // JSD
-    }
-    else if (distance_metric == "l2") // l2
-    {
-        space = new hnswlib::L2Space(dim);
-    }
-    else {
-        space = new hnswlib::InnerProductSpace(dim); // inner product
-    }
-    hnswlib::HierarchicalNSW<float>* appr_alg =
-        new hnswlib::HierarchicalNSW<float>(space, max_elements, M, ef_construction);
-    return (appr_alg);
+    // Note: caller is responsible for deleting the returned pointer AND the
+    // underlying space (created internally by makeHnswSpace).  Prefer makeHnswIndex
+    // in new code to avoid this manual ownership burden.
+    hnswlib::SpaceInterface<float>* space = makeHnswSpace(distance_metric,
+                                                           static_cast<int>(H.n_rows));
+    return new hnswlib::HierarchicalNSW<float>(space,
+                                               static_cast<std::size_t>(H.n_cols),
+                                               M, ef_construction);
 }
 
 #endif //ACTIONET_HNSW_IMP_HPP

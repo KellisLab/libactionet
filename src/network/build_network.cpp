@@ -1,284 +1,520 @@
 #include "network/build_network.hpp"
+#include "network/build_network_core.hpp"
 #include "network/hnsw_imp.hpp"
 #include "utils_internal/utils_parallel.hpp"
-#include <set> // CLion says you don't need this, but it's lying.
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <numeric>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
-// Argument options
-// valid distance metrics for hnsw
-std::set<std::string> distance_metrics = {"jsd", "l2", "ip"};
+// ---------------------------------------------------------------------------
+// Validation sets (file-scope)
+// ---------------------------------------------------------------------------
+static const std::set<std::string> distance_metrics = {"jsd", "l2", "ip"};
+static const std::set<std::string> nn_approaches    = {"k*nn", "knn"};
 
-// valid nearest-neighbor methods
-std::set<std::string> nn_approaches = {"k*nn", "knn"};
+namespace {
 
-// k^{*}-Nearest Neighbors: From Global to Local (NIPS 2016)
-arma::sp_mat
-    buildNetwork_KstarNN(arma::mat H, double density = 1.0, int thread_no = 0, double M = 16,
-                         bool mutual_edges_only = true,
-                         const std::string& distance_metric = "jsd") {
-    double LC = 1.0 / density;
-    // verify that a support distance metric has been specified
-    //  the following distance metrics are supported in hnswlib: https://github.com/hnswlib/hnswlib#supported-distances
-    if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
-        // invalid distance metric was provided; exit
-        throw distMetException;
+using VertexIndex = actionet::CSRVertexIndex;
+using CSROffset = actionet::CSROffset;
+
+struct DirectedEdge {
+    VertexIndex src;
+    VertexIndex dst;
+    float value;
+};
+
+inline VertexIndex checked_vertex_index(std::size_t value, const char* name) {
+    if (value > static_cast<std::size_t>(std::numeric_limits<VertexIndex>::max())) {
+        throw std::runtime_error(std::string(name) + " exceeds the supported HNSW vertex range");
+    }
+    return static_cast<VertexIndex>(value);
+}
+
+inline arma::uword checked_arma_uword(std::uint64_t value, const char* name) {
+    if (value > static_cast<std::uint64_t>(std::numeric_limits<arma::uword>::max())) {
+        throw std::runtime_error(
+            std::string("Graph exceeds arma::sp_mat output range for ") + name
+        );
+    }
+    return static_cast<arma::uword>(value);
+}
+
+inline int checked_hnsw_dim(std::size_t dim) {
+    if (dim > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        throw std::runtime_error("Feature dimensionality exceeds supported HNSW range");
+    }
+    return static_cast<int>(dim);
+}
+
+inline int checked_hnsw_threads(std::size_t n_points, int thread_no) {
+    const auto capped = static_cast<unsigned int>(
+        std::min<std::size_t>(n_points, static_cast<std::size_t>(std::numeric_limits<unsigned int>::max()))
+    );
+    return static_cast<int>(get_num_threads(capped, static_cast<unsigned int>(thread_no)));
+}
+
+inline std::size_t checked_product(std::size_t lhs, std::size_t rhs, const char* name) {
+    if (lhs == 0 || rhs == 0) {
+        return 0;
+    }
+    if (lhs > (std::numeric_limits<std::size_t>::max() / rhs)) {
+        throw std::runtime_error(std::string(name) + " exceeds addressable memory on this platform");
+    }
+    return lhs * rhs;
+}
+
+inline actionet::CSRGraph make_empty_graph(std::size_t n) {
+    actionet::CSRGraph g;
+    g.n = static_cast<CSROffset>(n);
+    g.indptr.assign(n + 1, CSROffset{0});
+    return g;
+}
+
+inline std::size_t compute_kstar_knn(std::size_t n) {
+    if (n < 2) {
+        return 0;
+    }
+    const auto heuristic = static_cast<std::size_t>(5.0 * std::round(std::sqrt(static_cast<double>(n))));
+    return std::min(n - 1, heuristic);
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers: build symmetric CSR from directed kNN edge lists
+// ---------------------------------------------------------------------------
+
+// Given directed edge triplets (src, dst, dist), apply distance-to-similarity
+// transform, symmetrize with the legacy semantics, zero the diagonal, and
+// return a CSRGraph.
+static actionet::CSRGraph
+symmetrize_to_csr(std::vector<VertexIndex>  srcs,
+                  std::vector<VertexIndex>  dsts,
+                  std::vector<float>        dists,
+                  std::size_t               n,
+                  const std::string&        distance_metric,
+                  bool                      mutual_edges_only)
+{
+    const float epsilon = 1e-7f;
+    const std::size_t nnz_dir = srcs.size();
+
+    if (dsts.size() != nnz_dir || dists.size() != nnz_dir) {
+        throw std::runtime_error("Directed edge buffers must be the same length");
     }
 
-    stdout_printf("Building adaptive network (density = %.2f)\n", density);
+    if (nnz_dir == 0) {
+        return make_empty_graph(n);
+    }
+
+    // --- distance -> similarity ---------------------------------------------
+    if (distance_metric == "jsd") {
+        for (std::size_t e = 0; e < nnz_dir; ++e) {
+            dists[e] = std::max(epsilon, 1.0f - dists[e]);
+        }
+    }
+    else {
+        std::vector<float> max_d(n, 0.0f);
+        for (std::size_t e = 0; e < nnz_dir; ++e) {
+            const auto dst = static_cast<std::size_t>(dsts[e]);
+            if (dists[e] > max_d[dst]) {
+                max_d[dst] = dists[e];
+            }
+        }
+        for (std::size_t e = 0; e < nnz_dir; ++e) {
+            const auto dst = static_cast<std::size_t>(dsts[e]);
+            dists[e] = std::max(epsilon, max_d[dst] - dists[e]);
+        }
+    }
+
+    // Sort directed edges so duplicates can be merged and reverse pairs can be
+    // reduced exactly once per unordered node pair.
+    std::vector<std::size_t> order(nnz_dir);
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+        if (srcs[a] != srcs[b]) {
+            return srcs[a] < srcs[b];
+        }
+        return dsts[a] < dsts[b];
+    });
+
+    std::vector<DirectedEdge> edges;
+    edges.reserve(nnz_dir);
+    for (const auto idx : order) {
+        const DirectedEdge edge{srcs[idx], dsts[idx], dists[idx]};
+        if (!edges.empty() && edges.back().src == edge.src && edges.back().dst == edge.dst) {
+            edges.back().value += edge.value;
+        }
+        else {
+            edges.push_back(edge);
+        }
+    }
+
+    std::vector<std::vector<std::pair<VertexIndex, float>>> rows(n);
+
+    for (std::size_t i = 0; i < edges.size();) {
+        const auto u0 = edges[i].src;
+        const auto v0 = edges[i].dst;
+        if (u0 == v0) {
+            ++i;
+            continue;
+        }
+
+        const auto lo = std::min(u0, v0);
+        const auto hi = std::max(u0, v0);
+
+        double w_lo_hi = 0.0;
+        double w_hi_lo = 0.0;
+
+        while (i < edges.size()) {
+            const auto& edge = edges[i];
+            if (std::min(edge.src, edge.dst) != lo || std::max(edge.src, edge.dst) != hi) {
+                break;
+            }
+
+            if (edge.src == lo && edge.dst == hi) {
+                w_lo_hi += edge.value;
+            }
+            else if (edge.src == hi && edge.dst == lo) {
+                w_hi_lo += edge.value;
+            }
+            ++i;
+        }
+
+        float w_sym = 0.0f;
+        if (mutual_edges_only) {
+            if (w_lo_hi <= 0.0 || w_hi_lo <= 0.0) {
+                continue;
+            }
+            w_sym = std::sqrt(static_cast<float>(w_lo_hi * w_hi_lo));
+        }
+        else {
+            const double combined = w_lo_hi + w_hi_lo;
+            if (combined <= 0.0) {
+                continue;
+            }
+            // Match the legacy (G + G.t()) / 2 behaviour exactly.
+            w_sym = static_cast<float>(0.5 * combined);
+        }
+
+        rows[static_cast<std::size_t>(lo)].emplace_back(hi, w_sym);
+        rows[static_cast<std::size_t>(hi)].emplace_back(lo, w_sym);
+    }
+
+    actionet::CSRGraph g;
+    g.n = static_cast<CSROffset>(n);
+    g.indptr.resize(n + 1, CSROffset{0});
+
+    for (std::size_t row = 0; row < n; ++row) {
+        g.indptr[row + 1] = static_cast<CSROffset>(rows[row].size());
+    }
+    for (std::size_t row = 0; row < n; ++row) {
+        g.indptr[row + 1] += g.indptr[row];
+    }
+
+    const auto total_nnz = static_cast<std::size_t>(g.indptr[n]);
+    g.indices.resize(total_nnz);
+    g.data.resize(total_nnz);
+
+    for (std::size_t row = 0; row < n; ++row) {
+        auto& row_entries = rows[row];
+        std::sort(row_entries.begin(), row_entries.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.first < rhs.first;
+        });
+
+        const auto offset = static_cast<std::size_t>(g.indptr[row]);
+        for (std::size_t j = 0; j < row_entries.size(); ++j) {
+            g.indices[offset + j] = row_entries[j].first;
+            g.data[offset + j] = row_entries[j].second;
+        }
+    }
+
+    return g;
+}
+
+// ---------------------------------------------------------------------------
+// Core builder: k*-Nearest Neighbors (adaptive k, NIPS 2016)
+// ---------------------------------------------------------------------------
+static actionet::CSRGraph
+buildNetworkCore_KstarNN(const float*                     X,
+                         std::size_t                      n,
+                         std::size_t                      dim,
+                         const actionet::BuildNetworkParams& p)
+{
+    stdout_printf("Building adaptive network (density = %.2f)\n", p.density);
     FLUSH;
 
-    if (distance_metric == "jsd") {
-        H = arma::clamp(H, 0, 1);
-        H = arma::normalise(H, 1, 0);
+    if (p.density <= 0.0) {
+        throw std::runtime_error("density must be positive for k*nn");
+    }
+    if (n > static_cast<std::size_t>(std::numeric_limits<VertexIndex>::max())) {
+        throw std::runtime_error("Point count exceeds the supported HNSW vertex range");
+    }
+    if (n < 2) {
+        return make_empty_graph(n);
     }
 
-    double kappa = 5.0;
-    int sample_no = H.n_cols;
-    // start with uniform k=sqrt(N) ["Pattern Classification" book by Duda et al.]
-    int kNN = std::min(sample_no - 1, (int)(kappa * round(std::sqrt(sample_no))));
+    const double LC = 1.0 / p.density;
 
-    double ef_construction;
-    double ef;
-    ef_construction = ef = kNN;
+    std::vector<float> X_norm_buf;
+    const float* Xq = X;
 
-    hnswlib::HierarchicalNSW<float>* appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
-    appr_alg->setEf(ef);
+    if (p.distance_metric == "jsd") {
+        X_norm_buf.assign(X, X + checked_product(n, dim, "Normalized k*nn input"));
+        for (std::size_t i = 0; i < n; ++i) {
+            float* row = X_norm_buf.data() + i * dim;
+            float sum = 0.0f;
+            for (std::size_t d = 0; d < dim; ++d) {
+                row[d] = std::max(0.0f, std::min(1.0f, row[d]));
+                sum += row[d];
+            }
+            if (sum > 0.0f) {
+                for (std::size_t d = 0; d < dim; ++d) {
+                    row[d] /= sum;
+                }
+            }
+        }
+        Xq = X_norm_buf.data();
+    }
 
-    int max_elements = H.n_cols;
+    const auto kNN = compute_kstar_knn(n);
+    const double ef_val = static_cast<double>(kNN);
+
     stdout_printf("\tBuilding index ... ");
-    arma::fmat X = arma::conv_to<arma::fmat>::from(H);
+    FLUSH;
 
-    int threads_use = get_num_threads(max_elements, thread_no);
+    auto idx_kstar = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(dim), p.M, ef_val);
+    idx_kstar.hnsw->setEf(ef_val);
+
+    const int threads_use = checked_hnsw_threads(n, p.thread_no);
+    const auto n_ll = static_cast<long long>(n);
     #pragma omp parallel for num_threads(threads_use)
-    for (size_t j = 0; j < max_elements; j++) {
-        appr_alg->addPoint(X.colptr(j), j);
+    for (long long j = 0; j < n_ll; ++j) {
+        const auto idx = static_cast<std::size_t>(j);
+        idx_kstar.hnsw->addPoint(Xq + idx * dim, idx);
     }
 
     stdout_printf("done\n");
     FLUSH;
-
     stdout_printf("\tIdentifying nearest neighbors ... ");
+    FLUSH;
 
-    arma::mat idx = arma::zeros(sample_no, kNN + 1);
-    arma::mat dist = arma::zeros(sample_no, kNN + 1);
+    const auto knn_buffer_size = checked_product(n, kNN + 1, "k*nn neighbor buffers");
+    std::vector<hnswlib::labeltype> idx_flat(knn_buffer_size);
+    std::vector<float> dist_flat(knn_buffer_size);
 
-    threads_use = get_num_threads(sample_no, thread_no);
     #pragma omp parallel for num_threads(threads_use)
-    for (size_t i = 0; i < sample_no; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result = appr_alg->searchKnn(X.colptr(i), kNN + 1);
+    for (long long i = 0; i < n_ll; ++i) {
+        const auto idx = static_cast<std::size_t>(i);
+        auto result = idx_kstar.hnsw->searchKnn(Xq + idx * dim, kNN + 1);
 
-        for (size_t j = 0; j <= kNN; j++) {
-            auto& result_tuple = result.top();
-            dist(i, kNN - j) = result_tuple.first;
-            idx(i, kNN - j) = result_tuple.second;
+        auto* idx_row = idx_flat.data() + idx * (kNN + 1);
+        auto* dist_row = dist_flat.data() + idx * (kNN + 1);
 
+        for (std::size_t j = kNN + 1; j-- > 0;) {
+            const auto& top = result.top();
+            dist_row[j] = top.first;
+            idx_row[j] = top.second;
             result.pop();
         }
     }
-
-    delete (appr_alg);
+    // idx_kstar goes out of scope here — HierarchicalNSW and SpaceInterface are deleted.
 
     stdout_printf("done\n");
     FLUSH;
-
     stdout_printf("\tConstructing adaptive-nearest neighbor graph ... ");
-    if (distance_metric == "jsd") {
-        dist = arma::clamp(dist, 0.0, 1.0);
-    }
+    FLUSH;
 
-    arma::mat Delta;
-    arma::mat beta = LC * dist;
-    arma::vec beta_sum = arma::zeros(sample_no);
-    arma::vec beta_sq_sum = arma::zeros(sample_no);
-    arma::mat lambda = arma::zeros(arma::size(beta));
-
-    int k;
-    for (k = 1; k <= kNN; k++) {
-        beta_sum += beta.col(k);
-        beta_sq_sum += arma::square(beta.col(k));
-
-        lambda.col(k) = (1.0 / (double)k) * (beta_sum + arma::sqrt(k + arma::square(beta_sum) - k * beta_sq_sum));
-    }
-    lambda.replace(arma::datum::nan, 0);
-
-    lambda = arma::trans(lambda);
-    arma::vec node_lambda = arma::zeros(sample_no);
-    beta = arma::trans(beta);
-
-    Delta = lambda - beta;
-    Delta.shed_row(0);
-
-    // Build triplet lists in parallel to avoid race conditions on sparse matrix
-    // Conservative reservation strategy to avoid vector::reserve failures on large datasets
-    size_t estimated_edges = static_cast<size_t>(sample_no) * static_cast<size_t>(kNN);
-    const size_t MAX_RESERVE = 500000000;  // Cap at 500M elements (~12GB memory)
-    size_t reserve_size = std::min(estimated_edges, MAX_RESERVE);
-
-    std::vector<arma::uword> rows_vec, cols_vec;
-    std::vector<double> vals_vec;
-
-    // Try to pre-reserve memory; if it fails, continue with dynamic allocation
-    if (estimated_edges < MAX_RESERVE) {
-        try {
-            rows_vec.reserve(reserve_size);
-            cols_vec.reserve(reserve_size);
-            vals_vec.reserve(reserve_size);
-        } catch (const std::exception& e) {
-            // If reservation fails, vectors will grow dynamically
+    if (p.distance_metric == "jsd") {
+        for (auto& d : dist_flat) {
+            d = std::max(0.0f, std::min(1.0f, d));
         }
     }
 
-    #pragma omp parallel
+    std::vector<float> lambda_flat(knn_buffer_size, 0.0f);
+    for (std::size_t i = 0; i < n; ++i) {
+        const float* dist_row = dist_flat.data() + i * (kNN + 1);
+        float* lambda_row = lambda_flat.data() + i * (kNN + 1);
+        double beta_sum = 0.0;
+        double beta_sq_sum = 0.0;
+        for (std::size_t k = 1; k <= kNN; ++k) {
+            const double beta = LC * static_cast<double>(dist_row[k]);
+            beta_sum += beta;
+            beta_sq_sum += beta * beta;
+            const double inner = static_cast<double>(k) + beta_sum * beta_sum
+                - static_cast<double>(k) * beta_sq_sum;
+            const double lambda = (1.0 / static_cast<double>(k))
+                * (beta_sum + std::sqrt(std::max(0.0, inner)));
+            lambda_row[k] = static_cast<float>(lambda);
+        }
+    }
+
+    constexpr std::size_t MAX_RESERVE = 500000000ULL;
+    const auto estimated = checked_product(n, kNN, "k*nn edge estimate");
+    const auto reserve = std::min(estimated, MAX_RESERVE);
+
+    std::vector<VertexIndex> all_srcs;
+    std::vector<VertexIndex> all_dsts;
+    std::vector<float> all_dists;
+    if (estimated < MAX_RESERVE) {
+        try {
+            all_srcs.reserve(reserve);
+            all_dsts.reserve(reserve);
+            all_dists.reserve(reserve);
+        } catch (...) {
+        }
+    }
+
+    #pragma omp parallel num_threads(threads_use)
     {
-        std::vector<arma::uword> local_rows, local_cols;
-        std::vector<double> local_vals;
+        std::vector<VertexIndex> local_srcs;
+        std::vector<VertexIndex> local_dsts;
+        std::vector<float> local_dists;
 
         #pragma omp for nowait
-        for (size_t v = 0; v < sample_no; v++) {
-            arma::vec delta = Delta.col(v);
+        for (long long v = 0; v < n_ll; ++v) {
+            const auto dst = static_cast<std::size_t>(v);
+            const float* dist_row = dist_flat.data() + dst * (kNN + 1);
+            const auto* idx_row = idx_flat.data() + dst * (kNN + 1);
+            const float* lambda_row = lambda_flat.data() + dst * (kNN + 1);
 
-            // uvec rows = find(delta > 0, 1, "last");
-            arma::uvec rows = arma::find(delta < 0, 1, "first");
-            int neighbor_no = rows.n_elem == 0 ? kNN : (rows(0));
+            std::size_t neighbor_no = kNN;
+            for (std::size_t k = 1; k <= kNN; ++k) {
+                const double beta = LC * static_cast<double>(dist_row[k]);
+                const double delta = static_cast<double>(lambda_row[k]) - beta;
+                if (delta < 0.0) {
+                    neighbor_no = k;
+                    break;
+                }
+            }
 
-            int dst = v;
-            arma::rowvec v_dist = dist.row(v);
-            arma::rowvec v_idx = idx.row(v);
-
-            for (int i = 1; i < neighbor_no; i++) {
-                int src = v_idx(i);
-                local_rows.push_back(src);
-                local_cols.push_back(dst);
-                local_vals.push_back(v_dist(i));
+            for (std::size_t i = 1; i < neighbor_no; ++i) {
+                local_srcs.push_back(
+                    checked_vertex_index(static_cast<std::size_t>(idx_row[i]), "k*nn neighbor label")
+                );
+                local_dsts.push_back(static_cast<VertexIndex>(dst));
+                local_dists.push_back(dist_row[i]);
             }
         }
 
         #pragma omp critical
         {
-            rows_vec.insert(rows_vec.end(), local_rows.begin(), local_rows.end());
-            cols_vec.insert(cols_vec.end(), local_cols.begin(), local_cols.end());
-            vals_vec.insert(vals_vec.end(), local_vals.begin(), local_vals.end());
+            all_srcs.insert(all_srcs.end(), local_srcs.begin(), local_srcs.end());
+            all_dsts.insert(all_dsts.end(), local_dsts.begin(), local_dsts.end());
+            all_dists.insert(all_dists.end(), local_dists.begin(), local_dists.end());
         }
     }
-
-    // Construct sparse matrix from triplets
-    arma::umat locations(2, rows_vec.size());
-    locations.row(0) = arma::conv_to<arma::urowvec>::from(rows_vec);
-    locations.row(1) = arma::conv_to<arma::urowvec>::from(cols_vec);
-    arma::vec values = arma::conv_to<arma::vec>::from(vals_vec);
-    arma::sp_mat G(locations, values, sample_no, sample_no);
 
     stdout_printf("done\n");
     FLUSH;
-
-    G.replace(arma::datum::nan, 0); // replace each NaN with 0
-
-    double epsilon = 1e-7;
-    if (distance_metric == "jsd") {
-        // Optimized path for JSD: no need to compute max_dist
-        arma::sp_mat::iterator it = G.begin();
-        arma::sp_mat::const_iterator it_end = G.end();
-        for (; it != it_end; ++it) {
-            *it = std::max(epsilon, 1.0 - (*it));
-        }
-    } else {
-        // For other metrics, compute max_dist per column
-        arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
-        arma::sp_mat::iterator it = G.begin();
-        arma::sp_mat::const_iterator it_end = G.end();
-        for (; it != it_end; ++it) {
-            *it = std::max(epsilon, max_dist(it.col()) - (*it));
-        }
-    }
-
     stdout_printf("\tFinalizing network ... ");
-    arma::sp_mat Gt = arma::trans(G);
-
-    arma::sp_mat G_sym;
-    if (mutual_edges_only == false) {
-        G_sym = (G + Gt);
-        G_sym.for_each([](arma::sp_mat::elem_type& val) { val /= 2.0; });
-    }
-    else {
-        // Default to MNN
-        G_sym = arma::sqrt(G % Gt);
-    }
-    stdout_printf("done\n");
     FLUSH;
 
-    G_sym.diag().zeros();
-
-    return (G_sym);
+    auto g = symmetrize_to_csr(
+        std::move(all_srcs),
+        std::move(all_dsts),
+        std::move(all_dists),
+        n,
+        p.distance_metric,
+        p.mutual_edges_only
+    );
+    stdout_printf("done\n");
+    FLUSH;
+    return g;
 }
 
-arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 16, double ef_construction = 200,
-                              double ef = 200, bool mutual_edges_only = true,
-                              const std::string& distance_metric = "jsd") {
-    // verify that a support distance metric has been specified
-    //  the following distance metrics are supported in hnswlib: https://github.com/hnswlib/hnswlib#supported-distances
-    if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
-        // invalid distance metric was provided; exit
-        throw distMetException;
-    }
-
-    stdout_printf("Building fixed-degree network (k = %d)\n", (int)k);
+// ---------------------------------------------------------------------------
+// Core builder: fixed-k KNN
+// ---------------------------------------------------------------------------
+static actionet::CSRGraph
+buildNetworkCore_KNN(const float*                     X,
+                     std::size_t                      n,
+                     std::size_t                      dim,
+                     const actionet::BuildNetworkParams& p)
+{
+    stdout_printf("Building fixed-degree network (k = %d)\n", p.k);
     FLUSH;
 
-    if (distance_metric == "jsd") {
-        H = arma::clamp(H, 0, 1);
-        H = arma::normalise(H, 1, 0);
+    if (p.k < 0) {
+        throw std::runtime_error("k must be non-negative");
+    }
+    if (n > static_cast<std::size_t>(std::numeric_limits<VertexIndex>::max())) {
+        throw std::runtime_error("Point count exceeds the supported HNSW vertex range");
+    }
+    if (n < 2 || p.k == 0) {
+        return make_empty_graph(n);
     }
 
-    int sample_no = H.n_cols;
+    std::vector<float> X_norm_buf;
+    const float* Xq = X;
 
-    hnswlib::HierarchicalNSW<float>* appr_alg = getApproximationAlgo(distance_metric, H, M, ef_construction);
-    appr_alg->setEf(ef);
+    if (p.distance_metric == "jsd") {
+        X_norm_buf.assign(X, X + checked_product(n, dim, "Normalized knn input"));
+        for (std::size_t i = 0; i < n; ++i) {
+            float* row = X_norm_buf.data() + i * dim;
+            float sum = 0.0f;
+            for (std::size_t d = 0; d < dim; ++d) {
+                row[d] = std::max(0.0f, std::min(1.0f, row[d]));
+                sum += row[d];
+            }
+            if (sum > 0.0f) {
+                for (std::size_t d = 0; d < dim; ++d) {
+                    row[d] /= sum;
+                }
+            }
+        }
+        Xq = X_norm_buf.data();
+    }
 
     stdout_printf("\tBuilding index ... ");
-    int max_elements = H.n_cols;
-    arma::fmat X = arma::conv_to<arma::fmat>::from(H);
+    FLUSH;
 
-    int threads_use = get_num_threads(max_elements, thread_no);
+    auto idx_knn = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(dim), p.M, p.ef_construction);
+    idx_knn.hnsw->setEf(p.ef);
+
+    const int threads_use = checked_hnsw_threads(n, p.thread_no);
+    const auto n_ll = static_cast<long long>(n);
     #pragma omp parallel for num_threads(threads_use)
-    for (size_t j = 0; j < max_elements; j++) {
-        appr_alg->addPoint(X.colptr(j), j);
+    for (long long j = 0; j < n_ll; ++j) {
+        const auto idx = static_cast<std::size_t>(j);
+        idx_knn.hnsw->addPoint(Xq + idx * dim, idx);
     }
 
     stdout_printf("done\n");
     FLUSH;
+    stdout_printf("\tConstructing kNN edges ... ");
+    FLUSH;
 
-    stdout_printf("\tConstructing k*-NN ... ");
+    constexpr std::size_t MAX_RESERVE = 500000000ULL;
+    const auto estimated = checked_product(n, static_cast<std::size_t>(p.k), "knn edge estimate");
+    const auto reserve = std::min(estimated, MAX_RESERVE);
 
-    // Build triplet lists in parallel to avoid race conditions on sparse matrix
-    // Conservative reservation strategy to avoid vector::reserve failures on large datasets
-    size_t estimated_edges = static_cast<size_t>(sample_no) * static_cast<size_t>(k);
-    const size_t MAX_RESERVE = 500000000;  // Cap at 500M elements (~12GB memory)
-    size_t reserve_size = std::min(estimated_edges, MAX_RESERVE);
-
-    std::vector<arma::uword> rows_vec, cols_vec;
-    std::vector<double> vals_vec;
-
-    // Try to pre-reserve memory; if it fails, continue with dynamic allocation
-    if (estimated_edges < MAX_RESERVE) {
+    std::vector<VertexIndex> all_srcs;
+    std::vector<VertexIndex> all_dsts;
+    std::vector<float> all_dists;
+    if (estimated < MAX_RESERVE) {
         try {
-            rows_vec.reserve(reserve_size);
-            cols_vec.reserve(reserve_size);
-            vals_vec.reserve(reserve_size);
-        } catch (const std::exception& e) {
-            // If reservation fails, vectors will grow dynamically
+            all_srcs.reserve(reserve);
+            all_dsts.reserve(reserve);
+            all_dists.reserve(reserve);
+        } catch (...) {
         }
     }
 
-    threads_use = get_num_threads(sample_no, thread_no);
-    #pragma omp parallel
+    #pragma omp parallel num_threads(threads_use)
     {
-        std::vector<arma::uword> local_rows, local_cols;
-        std::vector<double> local_vals;
+        std::vector<VertexIndex> local_srcs;
+        std::vector<VertexIndex> local_dsts;
+        std::vector<float> local_dists;
 
         #pragma omp for nowait
-        for (size_t i = 0; i < sample_no; i++) {
-            const size_t query_k = std::min(static_cast<size_t>(sample_no), static_cast<size_t>(k) + 1);
-            std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-                appr_alg->searchKnn(X.colptr(i), query_k);
+        for (long long i = 0; i < n_ll; ++i) {
+            const auto src = static_cast<std::size_t>(i);
+            const auto query_k = std::min(n, static_cast<std::size_t>(p.k) + 1);
+            auto result = idx_knn.hnsw->searchKnn(Xq + src * dim, query_k);
 
             std::vector<std::pair<float, hnswlib::labeltype>> neighbors;
             neighbors.reserve(result.size());
@@ -288,105 +524,153 @@ arma::sp_mat buildNetwork_KNN(arma::mat H, int k, int thread_no = 0, double M = 
             }
 
             int added = 0;
-            for (auto it = neighbors.rbegin(); it != neighbors.rend() && added < k; ++it) {
-                const auto& result_tuple = *it;
-                if (static_cast<size_t>(result_tuple.second) == i) {
+            for (auto it = neighbors.rbegin(); it != neighbors.rend() && added < p.k; ++it) {
+                if (static_cast<std::size_t>(it->second) == src) {
                     continue;
                 }
-                local_rows.push_back(i);
-                local_cols.push_back(result_tuple.second);
-                local_vals.push_back(result_tuple.first);
-                added++;
+                local_srcs.push_back(static_cast<VertexIndex>(src));
+                local_dsts.push_back(
+                    checked_vertex_index(static_cast<std::size_t>(it->second), "knn neighbor label")
+                );
+                local_dists.push_back(it->first);
+                ++added;
             }
         }
 
         #pragma omp critical
         {
-            rows_vec.insert(rows_vec.end(), local_rows.begin(), local_rows.end());
-            cols_vec.insert(cols_vec.end(), local_cols.begin(), local_cols.end());
-            vals_vec.insert(vals_vec.end(), local_vals.begin(), local_vals.end());
+            all_srcs.insert(all_srcs.end(), local_srcs.begin(), local_srcs.end());
+            all_dsts.insert(all_dsts.end(), local_dsts.begin(), local_dsts.end());
+            all_dists.insert(all_dists.end(), local_dists.begin(), local_dists.end());
         }
     }
-
-    // Construct sparse matrix from triplets
-    arma::umat locations(2, rows_vec.size());
-    locations.row(0) = arma::conv_to<arma::urowvec>::from(rows_vec);
-    locations.row(1) = arma::conv_to<arma::urowvec>::from(cols_vec);
-    arma::vec values = arma::conv_to<arma::vec>::from(vals_vec);
-    arma::sp_mat G(locations, values, sample_no, sample_no);
+    // idx_knn goes out of scope here — HierarchicalNSW and SpaceInterface are deleted.
 
     stdout_printf("done\n");
     FLUSH;
-
-    delete (appr_alg);
-
-    G.replace(arma::datum::nan, 0); // replace each NaN with 0
-
-    double epsilon = 1e-7;
-    if (distance_metric == "jsd") {
-        // Optimized path for JSD: no need to compute max_dist
-        arma::sp_mat::iterator it = G.begin();
-        arma::sp_mat::const_iterator it_end = G.end();
-        for (; it != it_end; ++it) {
-            *it = std::max(epsilon, 1.0 - (*it));
-        }
-    } else {
-        // For other metrics, compute max_dist per column
-        arma::vec max_dist = arma::vec(arma::trans(arma::max(G)));
-        arma::sp_mat::iterator it = G.begin();
-        arma::sp_mat::const_iterator it_end = G.end();
-        for (; it != it_end; ++it) {
-            *it = std::max(epsilon, max_dist(it.col()) - (*it));
-        }
-    }
-
     stdout_printf("\tFinalizing network ... ");
-
-    arma::sp_mat Gt = arma::trans(G);
-
-    arma::sp_mat G_sym;
-    if (mutual_edges_only == false) {
-        G_sym = (G + Gt);
-        G_sym.for_each([](arma::sp_mat::elem_type& val) { val /= 2.0; });
-    }
-    else {
-        // Default to MNN
-        stdout_printf("\n\t\tKeeping mutual nearest-neighbors only ... ");
-        G_sym = arma::sqrt(G % Gt);
-    }
-    stdout_printf("done\n");
     FLUSH;
 
-    G_sym.diag().zeros();
-
-    return (G_sym);
+    auto g = symmetrize_to_csr(
+        std::move(all_srcs),
+        std::move(all_dsts),
+        std::move(all_dists),
+        n,
+        p.distance_metric,
+        p.mutual_edges_only
+    );
+    stdout_printf("done\n");
+    FLUSH;
+    return g;
 }
 
+} // namespace
+
+// ---------------------------------------------------------------------------
+// namespace actionet: public API
+// ---------------------------------------------------------------------------
+
 namespace actionet {
-    arma::sp_mat
-        buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_metric, double density,
-                     int thread_no,
-                     double M, double ef_construction, double ef, bool mutual_edges_only, int k) {
-        // Verify that valid distance metric has been specified
-        if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
-            // Invalid distance metric was provided; exit
-            throw distMetException;
-        }
 
-        // Verify that valid nn approach has been specified
-        if (nn_approaches.find(algorithm) == nn_approaches.end()) {
-            // Invalid nn approach was provided; exit
-            throw nnApproachException;
-        }
-
-        /// Build ACTIONet with k*nn or fixed k knn, based on passed parameter
-        arma::sp_mat G;
-        if (algorithm == "k*nn") {
-            G = buildNetwork_KstarNN(H, density, thread_no, M, mutual_edges_only, distance_metric);
-        }
-        else {
-            G = buildNetwork_KNN(H, k, thread_no, M, ef_construction, ef, mutual_edges_only, distance_metric);
-        }
-        return (G);
+CSRGraph buildNetworkCore(const float*              X,
+                          std::size_t               n_points,
+                          std::size_t               dim,
+                          const BuildNetworkParams& params)
+{
+    if (distance_metrics.find(params.distance_metric) == distance_metrics.end()) {
+        throw distMetException;
     }
+    if (nn_approaches.find(params.algorithm) == nn_approaches.end()) {
+        throw nnApproachException;
+    }
+    if (params.k < 0) {
+        throw std::runtime_error("k must be non-negative");
+    }
+    if (dim == 0 && n_points > 0) {
+        throw std::runtime_error("buildNetworkCore requires a positive feature dimension");
+    }
+    if (X == nullptr && n_points > 0) {
+        throw std::runtime_error("buildNetworkCore received a null data pointer");
+    }
+
+    if (params.algorithm == "k*nn") {
+        return buildNetworkCore_KstarNN(X, n_points, dim, params);
+    }
+    return buildNetworkCore_KNN(X, n_points, dim, params);
+}
+
+arma::sp_mat armaSpMatFromCSR(const CSRGraph& g)
+{
+    if (g.indptr.size() != static_cast<std::size_t>(g.n) + 1) {
+        throw std::runtime_error("CSR indptr length does not match row count");
+    }
+    if (g.indices.size() != g.data.size()) {
+        throw std::runtime_error("CSR indices/data lengths do not match");
+    }
+
+    const arma::uword n = checked_arma_uword(g.n, "row count");
+    const arma::uword nnz = checked_arma_uword(g.nnz(), "nnz");
+
+    arma::umat locations(2, nnz);
+    arma::vec values(nnz);
+
+    arma::uword idx = 0;
+    for (std::size_t row = 0; row < static_cast<std::size_t>(g.n); ++row) {
+        if (g.indptr[row + 1] < g.indptr[row]) {
+            throw std::runtime_error("CSR indptr must be non-decreasing");
+        }
+        for (auto j = g.indptr[row]; j < g.indptr[row + 1]; ++j) {
+            const auto edge_idx = static_cast<std::size_t>(j);
+            if (edge_idx >= g.indices.size()) {
+                throw std::runtime_error("CSR indptr points past the edge buffer");
+            }
+            locations(0, idx) = checked_arma_uword(row, "row index");
+            locations(1, idx) = checked_arma_uword(g.indices[edge_idx], "column index");
+            values(idx) = static_cast<double>(g.data[edge_idx]);
+            ++idx;
+        }
+    }
+
+    return arma::sp_mat(locations, values, n, n);
+}
+
+arma::sp_mat
+buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_metric,
+             double density, int thread_no, double M, double ef_construction,
+             double ef, bool mutual_edges_only, int k)
+{
+    if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
+        throw distMetException;
+    }
+    if (nn_approaches.find(algorithm) == nn_approaches.end()) {
+        throw nnApproachException;
+    }
+
+    const std::size_t dim = H.n_rows;
+    const std::size_t n_points = H.n_cols;
+
+    std::vector<float> X(checked_product(n_points, dim, "Legacy buildNetwork input"));
+    for (std::size_t col = 0; col < n_points; ++col) {
+        const double* src = H.colptr(col);
+        float* dst = X.data() + col * dim;
+        for (std::size_t d = 0; d < dim; ++d) {
+            dst[d] = static_cast<float>(src[d]);
+        }
+    }
+
+    BuildNetworkParams params;
+    params.algorithm = std::move(algorithm);
+    params.distance_metric = std::move(distance_metric);
+    params.density = density;
+    params.thread_no = thread_no;
+    params.M = M;
+    params.ef_construction = ef_construction;
+    params.ef = ef;
+    params.mutual_edges_only = mutual_edges_only;
+    params.k = k;
+
+    const auto g = buildNetworkCore(X.data(), n_points, dim, params);
+    return armaSpMatFromCSR(g);
+}
+
 } // namespace actionet
