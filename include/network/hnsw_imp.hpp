@@ -66,19 +66,5 @@ makeHnswIndex(const std::string& distance_metric,
     return idx;
 }
 
-// Legacy overload: obtain approximation algorithm from an arma::mat.
-// Retained for the shim path; use makeHnswIndex for new code.
-inline hnswlib::HierarchicalNSW<float>*
-getApproximationAlgo(const std::string& distance_metric, const arma::mat& H, const double M,
-                     const double ef_construction) {
-    // Note: caller is responsible for deleting the returned pointer AND the
-    // underlying space (created internally by makeHnswSpace).  Prefer makeHnswIndex
-    // in new code to avoid this manual ownership burden.
-    hnswlib::SpaceInterface<float>* space = makeHnswSpace(distance_metric,
-                                                           static_cast<int>(H.n_rows));
-    return new hnswlib::HierarchicalNSW<float>(space,
-                                               static_cast<std::size_t>(H.n_cols),
-                                               M, ef_construction);
-}
 
 #endif //ACTIONET_HNSW_IMP_HPP

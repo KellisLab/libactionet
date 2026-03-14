@@ -43,10 +43,15 @@ namespace actionet {
         double      density          = 1.0;
         int         thread_no        = 0;
         double      M                = 16;
+        /// For algorithm="k*nn": effective ef_construction is max(ef_construction, kNN)
+        /// because the adaptive search radius grows to O(sqrt(N)) and a lower value
+        /// would degrade recall at the required query sizes.  User-supplied values
+        /// larger than kNN are respected.
         double      ef_construction  = 200;
+        /// For algorithm="k*nn": effective ef is max(ef, kNN) for the same reason.
         double      ef               = 200;
         bool        mutual_edges_only = true;
-        int         k                = 10;
+        int         k                = 10;     ///< Used only for algorithm="knn"
     };
 
     /// @brief Core kNN graph builder.  Layout-neutral hot path.
