@@ -130,14 +130,23 @@ symmetrize_to_csr(std::vector<VertexIndex>  srcs,
         }
     }
 
-    // Sort directed edges so duplicates can be merged and reverse pairs can be
-    // reduced exactly once per unordered node pair.
+    // Sort directed edges by unordered pair key (lo, hi) so that the forward
+    // edge (lo→hi) and its reverse (hi→lo) are always adjacent in the sorted
+    // order, regardless of how many other edges each endpoint has.
+    // Sorting by (src, dst) alone would interleave them with edges to other
+    // neighbours, so the inner accumulation loop below would never see both
+    // directions together and mutual-only graphs would always be empty.
     std::vector<std::size_t> order(nnz_dir);
     std::iota(order.begin(), order.end(), 0);
     std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
-        if (srcs[a] != srcs[b]) {
-            return srcs[a] < srcs[b];
-        }
+        const auto lo_a = std::min(srcs[a], dsts[a]);
+        const auto hi_a = std::max(srcs[a], dsts[a]);
+        const auto lo_b = std::min(srcs[b], dsts[b]);
+        const auto hi_b = std::max(srcs[b], dsts[b]);
+        if (lo_a != lo_b) return lo_a < lo_b;
+        if (hi_a != hi_b) return hi_a < hi_b;
+        // Tie-break by directed (src, dst) so deduplication is stable.
+        if (srcs[a] != srcs[b]) return srcs[a] < srcs[b];
         return dsts[a] < dsts[b];
     });
 
