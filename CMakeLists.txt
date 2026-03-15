@@ -8,7 +8,6 @@ include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
 include(ConfigurePRIMME)
-include(BuildTest)
 
 find_package(HDF5 REQUIRED COMPONENTS C)
 
@@ -55,10 +54,6 @@ add_library(actionet STATIC
         ${SOURCES_VISUALIZATION}
         src/extern/colorspace.cpp
 )
-
-
-############# TEST MODES ### Must be set before any other macros
-#TEST_BUILD_R(actionet) ## Uncomment to test R build mode.
 
 ############# FUNCTIONS AND MACROS
 ## Handle R build configuration FIRST (before CONFIGURE_APPLE) to extract architecture
@@ -150,14 +145,3 @@ target_compile_options(actionet PUBLIC -Wno-psabi -Wno-deprecated-declarations)#
 
 ## Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-## Build diagnostics (uncomment for debugging)
-#get_directory_property(CPP_Defs COMPILE_DEFINITIONS)
-#message(NOTICE "Debug info:")
-#message(STATUS "COMPILE_DEFINITIONS = ${CPP_Defs}")
-#message(STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
-#message(STATUS "LAPACK_LINKER_FLAGS: ${LAPACK_LINKER_FLAGS}")
-#message(STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
-#message(STATUS "BLAS_LINKER_FLAGS: ${BLAS_LINKER_FLAGS}")
-#message(STATUS "OpenMP_C_INCLUDE_DIRS: ${OpenMP_C_INCLUDE_DIRS}")
-#message(STATUS "OpenMP_CXX_INCLUDE_DIRS: ${OpenMP_CXX_INCLUDE_DIRS}")

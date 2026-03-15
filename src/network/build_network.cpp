@@ -327,6 +327,8 @@ symmetrize_to_csr(std::vector<VertexIndex>  srcs,
 //   - Adaptive cutoff computed incrementally (no lambda array).
 //   - Per-thread local edge accumulators; merged after the parallel region.
 //   - ef and ef_construction floored at kNN (see BuildNetworkParams docs).
+//   - Self filtering is label-based, which fixes duplicate-row / self-slot
+//     correctness issues and can intentionally change graphs versus older code.
 // ---------------------------------------------------------------------------
 static actionet::CSRGraph
 buildNetworkCore_KstarNN(const float*                        X,
@@ -352,7 +354,9 @@ buildNetworkCore_KstarNN(const float*                        X,
     const auto   kNN    = compute_kstar_knn(n);
     // ef and ef_construction are floored at kNN: the adaptive search radius
     // grows to O(sqrt(N)) and a smaller value would degrade recall.
-    // User-supplied values larger than kNN are respected.
+    // Larger user-supplied values are also respected; this is intentional and
+    // can change graph topology relative to older releases that always forced
+    // both values to kNN.
     const double ef_c   = std::max(p.ef_construction, static_cast<double>(kNN));
     const double ef_q   = std::max(p.ef,               static_cast<double>(kNN));
 
@@ -395,12 +399,12 @@ buildNetworkCore_KstarNN(const float*                        X,
     // vector and iterate in reverse for ascending-distance order.
     //
     // Self-exclusion: skip by label — do not assume self is at a fixed slot.
-    // This handles duplicated rows (another point at distance 0) correctly.
+    // This fixes duplicated-row and self-slot correctness issues.
     //
     // Adaptive cutoff: computed incrementally without a lambda array.
-    // Emit neighbors 1..neighbor_no-1 (exclusive upper bound).  neighbor_no
-    // is set to position k at the first failure (lambda < beta), so k itself
-    // is not emitted.
+    // Emit neighbors 1..neighbor_no-1 (exclusive upper bound) after label-
+    // based self filtering.  neighbor_no is set to position k at the first
+    // failure (lambda < beta), so k itself is not emitted.
     // -----------------------------------------------------------------------
     std::vector<AdaptiveScratch> per_thread(static_cast<std::size_t>(threads_use));
     std::atomic<int> tid_counter{0};

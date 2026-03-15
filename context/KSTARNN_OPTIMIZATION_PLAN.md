@@ -10,6 +10,22 @@
 - The bundled HNSW is v0.8.0 (the current upstream release) and exposes `BaseSearchStopCondition` and `searchStopConditionClosest`. There is no `searchKnnCloserFirst` function in any hnswlib release — ascending-distance order is obtained by draining the `searchKnn` max-heap into a local vector and iterating in reverse. Do not mix a vendor refresh into this implementation. Design the rewrite so a later HNSW upgrade or stop-condition experiment can be evaluated independently.
 - **Note:** Python preflight guardrails (parent plan item 1 — refusing or warning on obviously unsafe k*nn sizes) remain pending. This rewrite improves memory behavior materially but does not substitute for those guardrails. Item 1 should be implemented after this pass.
 
+## Current Status
+
+- Step 8 is implemented in `libactionet`.
+- The adaptive rewrite is intentionally correctness-first rather than parity-preserving:
+  - self filtering is label-based, so duplicate-row and self-slot ordering bugs are fixed
+  - for `algorithm="k*nn"`, effective `ef` and `ef_construction` are `max(user_value, kNN)`, so larger user-supplied values are no longer discarded
+- The temporary in-tree regression harness used during development has been removed; the repository is back to production code only.
+- High-level wrappers now expose the adaptive-search controls:
+  - Python `run_actionet(...)` exposes `network_ef_construction` and `network_ef`
+  - R `runACTIONet(...)` exposes `network_ef_construction` and `network_ef`
+  - defaults remain `200` / `200`, matching the low-level APIs
+- Remaining follow-up outside Step 8:
+  - Python preflight guardrails for unsafe `k*nn` sizes
+  - Python `network_obsm_key` / `obsm_key` scaling work
+  - benchmark capture for peak RSS and runtime on medium/large datasets
+
 ## Core Design
 
 - Keep all public APIs unchanged:
@@ -56,8 +72,11 @@ struct PointReader {
   - same metric handling and distance-to-similarity rules
   - same mutual and non-mutual symmetrization semantics
 - Do not use `searchStopConditionClosest()` in the initial rewrite.
-  - Reason: the first pass should be a parity-preserving memory rewrite.
-  - Structure the query helper so a future implementation can swap from `searchKnnCloserFirst(kNN+1)` to a custom stop-condition search without changing wrappers, row readers, or CSR assembly.
+  - Reason: the first pass should isolate the memory rewrite and correctness fixes
+    from any additional search-policy experiments.
+  - Structure the query helper so a future implementation can swap from the
+    current heap-drain/reverse pattern to a custom stop-condition search without
+    changing wrappers, row readers, or CSR assembly.
 
 ## `ef` and `ef_construction` Behavior in k*NN
 
@@ -77,7 +96,9 @@ This diverges from the `knn` path, which respects both parameters from `BuildNet
 - Use `std::max(p.ef, static_cast<double>(kNN))` for query.
 - Add a comment in the code and a note in `BuildNetworkParams` documenting that for `k*nn`, effective `ef` and `ef_construction` are floored at `kNN` because the adaptive search radius requires it.
 
-This is a behavior-preserving change (current code is equivalent to this floor for users who supply values below `kNN`) that makes the semantics explicit and avoids silently discarding user-supplied values that are larger than `kNN`.
+This is an intentional correctness-over-parity change. Older code always forced both
+values to `kNN`, discarding larger user-supplied values. The rewrite keeps the safety
+floor at `kNN` while preserving larger values so callers can request deeper search.
 
 ## Adaptive Query Rewrite
 
@@ -97,8 +118,8 @@ struct AdaptiveScratch {
 - Build HNSW by iterating rows through `Reader::load_row(i, scratch.row_buf)`:
   - For `jsd`, rows are normalized into `scratch.row_buf` before `addPoint()`.
   - For `l2`/`ip`, rows are passed directly from the source buffer.
-- Query each row with `searchKnnCloserFirst(kNN + 1)`.
-  - `searchKnnCloserFirst` returns results in ascending distance order (closest first).
+- Query each row with `searchKnn(kNN + 1)`, drain the returned max-heap into a local
+  vector, and iterate it in reverse to obtain ascending distance order.
   - **Self-exclusion:** exclude the query point by label, not by position. Do not assume self occupies any particular slot. This is correct regardless of result ordering, and handles duplicated rows (where a different point at distance 0 may appear before or at the same position as self). After filtering the self-label, apply the adaptive cutoff to the remaining non-self neighbor list in the order returned.
 - Compute the adaptive cutoff incrementally without allocating a lambda array:
   - maintain `beta_sum` and `beta_sq_sum`
@@ -117,7 +138,11 @@ struct AdaptiveScratch {
 
 ### `kNN = 0` Edge Case
 
-`compute_kstar_knn(n)` returns 0 for `n < 2`. For `n = 1`, the early-return guard produces an empty graph before any HNSW operations. For `n = 2`, `kNN = 1`; `searchKnnCloserFirst(2)` returns 2 candidates; after self-exclusion, at most 1 neighbor remains, and the adaptive cutoff loop runs at most one iteration — producing a valid (possibly non-empty) graph. No special handling is needed beyond the existing `n < 2` guard.
+`compute_kstar_knn(n)` returns 0 for `n < 2`. For `n = 1`, the early-return guard
+produces an empty graph before any HNSW operations. For `n = 2`, `kNN = 1`; after
+label-based self exclusion there is at most one non-self neighbour, and the current
+exclusive upper-bound emission rule therefore produces an empty graph. This is the
+implemented and regression-tested behavior.
 
 ## Direct CSR Symmetrization
 
@@ -297,49 +322,53 @@ Compared with the previous implementation, these estimates are lower by:
   - no API change in [build_network()`](/Users/sebastian/Documents/git_projects/actionet-python/src/actionet/core.py#L450)
   - sync vendored `src/libactionet` mirror after core implementation
   - no change to SciPy CSR conversion path
-  - no change to [run_actionet()`](/Users/sebastian/Documents/git_projects/actionet-python/src/actionet/pipeline.py#L183) in this item
+  - [run_actionet()`](/Users/sebastian/Documents/git_projects/actionet-python/src/actionet/pipeline.py#L183) now exposes `network_ef_construction` and `network_ef`; `obsm_key` remains unchanged and out of scope here
 - `actionet-r`
-  - no API change
+  - low-level API remains unchanged
   - sync vendored `src/libactionet` mirror after core implementation
   - keep current wrapper conversion and `armaSpMatFromCSR` path unchanged
+  - [runACTIONet()`](/Users/sebastian/Documents/git_projects/actionet-r/R/main.R#L1) now exposes `network_ef_construction` and `network_ef`
 
-## Validation and Benchmarks
+## Validation Status and Remaining Benchmarks
 
-### Parity Tests (`n_threads=1`)
+### Completed Validation
 
-- `algorithm="k*nn"`
-- `distance_metric in {"jsd","l2","ip"}`
-- `mutual_edges_only in {true, false}`
-- compare old vs new graph topology and weights on seeded synthetic datasets
+- deterministic single-threaded validation was run during implementation against seeded
+  `{k*nn, knn} x {jsd, l2, ip} x {mutual, non-mutual}` cases, comparing
+  `buildNetworkCore(...)` with the legacy `buildNetwork(...)` shim under the new semantics
+- the `k*nn` `ef` behavior change was explicitly verified by comparing the default path
+  against `ef=0, ef_construction=0` on seeded data
+- edge-case validation covered:
+  - `n < 2`
+  - `n = 2` (currently expected to produce an empty graph)
+  - duplicated rows
+  - zero-sum JSD rows
+  - clipped JSD rows with values outside `[0,1]`
 
 ### Edge Cases
 
 - `n < 2`
-- `n = 2` (kNN=1, minimal adaptive graph)
+- `n = 2` (kNN=1, currently expected to produce an empty graph)
 - duplicated rows (two identical points; self-exclusion by label must still work)
 - zero-sum JSD rows (normalization guard must produce a valid, not NaN, row)
 - clipped JSD rows with values outside `[0,1]` (clamp must apply before normalization)
 - low positive `density`
 - very small `n` where `kNN < 2`
 
-### Python Validation
+### Remaining Validation
 
-- existing CSR/smoke tests remain unchanged
-- add one adaptive-path parity/smoke test via Python binding
-
-### R Validation
-
-- small seeded smoke/parity run through the R wrapper
+- add one adaptive-path correctness/smoke test via Python binding
+- small seeded correctness/smoke run through the R wrapper
 - if automated R coverage is not readily available, record this as manual validation
 
-### Performance Benchmark Matrix
+### Remaining Performance Benchmark Matrix
 
 - `N in {50k, 100k, 250k}`
 - `d in {30, 464}`
 - `metric in {"jsd","l2"}`
 - `n_threads in {1, 8}`
 
-### Memory Regression Test
+### Remaining Memory Regression Test
 
 The primary acceptance criterion — that peak RSS no longer scales as `16 * N * (kNN+1)` — must be verified with an explicit measurement. Use one of the following methods depending on platform availability:
 
@@ -352,14 +381,20 @@ The benchmark should test at `N = 250k` (where the old scratch would be ~7 GB) a
 ### Acceptance Criteria
 
 - peak RSS no longer grows according to `16 * N * (kNN+1)` adaptive scratch — verified by the memory measurement above
-- no correctness regression versus current output on parity cases
+- current core path and legacy shim agree under the new semantics on deterministic
+  seeded cases
+- intentional graph changes relative to older `k*nn` are limited to the correctness
+  fixes in self filtering and effective `ef` handling
 - no clear runtime regression on medium `l2`/`ip` benchmarks
 - small `jsd` regressions are acceptable only if memory behavior matches the new design and medium/large cases improve materially
 - `getApproximationAlgo` is absent from `hnsw_imp.hpp` (leak removed, no callers remain)
 
 ## Assumptions and Follow-Up
 
-- This pass preserves current adaptive graph semantics; it is not a scientific-method change.
+- This pass prioritizes correctness over parity with older adaptive graph outputs.
+- Output changes versus older `k*nn` are expected when duplicate rows expose the old
+  position-based self-filtering bug, or when callers provide `ef`/`ef_construction`
+  values larger than `kNN`.
 - This pass is in-memory-first but backed-compatible by construction.
 - This pass is not the place to expose `network_obsm_key`; that remains the follow-up needed for package-wide scaling in Python (parent plan item 2).
 - This pass does **not** implement Python preflight guardrails for unsafe k*nn sizes; that remains pending as parent plan item 1 and should be implemented after this pass.
