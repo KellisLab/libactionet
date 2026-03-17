@@ -11,6 +11,19 @@ include(ConfigurePRIMME)
 
 find_package(HDF5 REQUIRED COMPONENTS C)
 
+# SKETCHY DEFENSIVE FIX. BUG MAY NOT EVEN EXIST.
+# Use the modern imported target if available (avoids linking both system
+# libhdf5_serial.so and a separately installed libhdf5.so simultaneously,
+# which causes an HDF5 version mismatch abort at runtime when h5py is also
+# loaded in the same process). The imported target resolves to a single lib.
+if(TARGET hdf5::hdf5-shared)
+    set(_HDF5_TARGET hdf5::hdf5-shared)
+elseif(TARGET HDF5::HDF5)
+    set(_HDF5_TARGET HDF5::HDF5)
+else()
+    set(_HDF5_TARGET "${HDF5_LIBRARIES}")
+endif()
+
 ############# COMPILER OPTIONS
 # Library uses C++17 features
 set(CMAKE_CXX_STANDARD 17)
@@ -117,7 +130,7 @@ endif()
 CONFIGURE_PRIMME(actionet)
 
 target_include_directories(actionet PUBLIC ${HDF5_INCLUDE_DIRS})
-target_link_libraries(actionet PUBLIC ${HDF5_LIBRARIES})
+target_link_libraries(actionet PUBLIC ${_HDF5_TARGET})
 
 ## Add included headers
 target_include_directories(
