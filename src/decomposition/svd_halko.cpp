@@ -5,10 +5,13 @@ template <typename T>
 arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose) {
     arma::field<arma::mat> out(3); // out: U, sigma, V
 
-    int m = A.n_rows;
-    int n = A.n_cols;
+    arma::uword m = A.n_rows;
+    arma::uword n = A.n_cols;
 
-    dim = std::min(dim, std::min(m, n) - 2);
+    const arma::uword mn_min = std::min(m, n);
+    if (static_cast<arma::uword>(dim) + 2 > mn_min)
+        dim = static_cast<int>(mn_min) - 2;
+    if (dim < 1) dim = 1;
 
     int l = dim + 2;
 
@@ -22,11 +25,11 @@ arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose
     }
 
     if (m < n) {
-        R = randNorm(l, m, seed);
+        R = randNorm(l, static_cast<int>(m), seed);
         Q = A.t() * R.t();
     }
     else {
-        R = randNorm(n, l, seed);
+        R = randNorm(static_cast<int>(n), l, seed);
         Q = A * R;
     }
 
@@ -95,11 +98,13 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
                                 int seed, bool verbose) {
     arma::field<arma::mat> out(3); // out: U, sigma, V
 
-    const int m = static_cast<int>(A.rows());
-    const int n = static_cast<int>(A.cols());
-    if (m < 2 || n < 2) {
+    const arma::uword rows_uw = A.rows();
+    const arma::uword cols_uw = A.cols();
+    if (rows_uw < 2 || cols_uw < 2) {
         return out;
     }
+    const int m = static_cast<int>(rows_uw);
+    const int n = static_cast<int>(cols_uw);
 
     dim = std::min(dim, std::min(m, n) - 2);
     if (dim < 1) {
