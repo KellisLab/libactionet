@@ -37,9 +37,13 @@ namespace actionet {
         std::string result;
 
         if (H5Tis_variable_str(type_id) > 0) {
-            // Variable-length string (modern AnnData >= 0.8 writes these).
+            // Variable-length string (modern AnnData writes UTF-8 vlen strings).
+            // We must set both H5T_VARIABLE size AND H5T_CSET_UTF8 on the memory
+            // type, otherwise HDF5 >= 1.14 refuses to convert from a UTF-8 file
+            // type to an ASCII memory type.
             hid_t mem_type = H5Tcopy(H5T_C_S1);
             H5Tset_size(mem_type, H5T_VARIABLE);
+            H5Tset_cset(mem_type, H5T_CSET_UTF8);
             char* vlen_buf = nullptr;
             check_h5(H5Aread(attr_id, mem_type, &vlen_buf) >= 0,
                       "Failed to read variable-length string attribute");
@@ -49,13 +53,15 @@ namespace actionet {
             }
             H5Tclose(mem_type);
         } else {
-            // Fixed-length string.
-            hid_t native_type = H5Tget_native_type(type_id, H5T_DIR_ASCEND);
-            check_h5(native_type >= 0, "Failed to get native attribute type");
-            size_t size = H5Tget_size(native_type);
+            // Fixed-length string. H5Tget_native_type() cannot produce a
+            // conversion path for UTF-8 charset strings (cset=H5T_CSET_UTF8),
+            // so we read directly using the file's own type_id. Fixed-length
+            // HDF5 string data is already contiguous bytes — no conversion is
+            // needed; we just need the correct size.
+            size_t size = H5Tget_size(type_id);
             if (size > 0) {
                 std::string buffer(size, '\0');
-                check_h5(H5Aread(attr_id, native_type, &buffer[0]) >= 0,
+                check_h5(H5Aread(attr_id, type_id, &buffer[0]) >= 0,
                           "Failed to read fixed-length string attribute");
                 size_t null_pos = buffer.find('\0');
                 if (null_pos != std::string::npos) {
@@ -63,7 +69,6 @@ namespace actionet {
                 }
                 result = std::move(buffer);
             }
-            H5Tclose(native_type);
         }
 
         H5Tclose(type_id);
@@ -148,8 +153,19 @@ namespace actionet {
                  "Failed to get indptr dimensions");
         indptr_.assign(static_cast<size_t>(indptr_dim[0]), 0ULL);
         if (!indptr_.empty()) {
-            check_h5(H5Dread(indptr_ds_, H5T_NATIVE_ULLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT, indptr_.data()) >= 0,
+            // Read indptr using H5T_NATIVE_LLONG (signed 64-bit) to handle both
+            // int32-stored (common for NNZ < 2^31) and int64-stored (large matrices)
+            // indptr arrays. HDF5 converts int32 -> int64 automatically.
+            // We then copy into the uint64 indptr_ vector, which is safe because
+            // valid indptr values are always non-negative.
+            std::vector<long long> indptr_signed(static_cast<size_t>(indptr_dim[0]), 0LL);
+            check_h5(H5Dread(indptr_ds_, H5T_NATIVE_LLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                             indptr_signed.data()) >= 0,
                      "Failed to read indptr");
+            for (size_t i = 0; i < indptr_signed.size(); ++i) {
+                check_h5(indptr_signed[i] >= 0, "indptr contains negative value");
+                indptr_[i] = static_cast<unsigned long long>(indptr_signed[i]);
+            }
         }
         H5Sclose(indptr_space);
 
@@ -254,9 +270,15 @@ namespace actionet {
                  "Failed to select indices hyperslab");
         hid_t mem_space_indices = H5Screate_simple(1, count_h, nullptr);
         check_h5(mem_space_indices >= 0, "Failed to create indices memory dataspace");
-        check_h5(H5Dread(indices_ds_, H5T_NATIVE_ULLONG, mem_space_indices, file_space_indices, H5P_DEFAULT,
-                         indices.data()) >= 0,
+        // Read with H5T_NATIVE_LLONG to handle both int32 and int64 stored indices.
+        // HDF5 converts int32 -> int64 automatically; we re-cast to uint64 after.
+        std::vector<long long> indices_signed(static_cast<size_t>(count), 0LL);
+        check_h5(H5Dread(indices_ds_, H5T_NATIVE_LLONG, mem_space_indices, file_space_indices, H5P_DEFAULT,
+                         indices_signed.data()) >= 0,
                  "Failed to read sparse indices slice");
+        for (size_t i = 0; i < indices_signed.size(); ++i) {
+            indices[i] = static_cast<unsigned long long>(indices_signed[i]);
+        }
         H5Sclose(mem_space_indices);
         H5Sclose(file_space_indices);
     }
