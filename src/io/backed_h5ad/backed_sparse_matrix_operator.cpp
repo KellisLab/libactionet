@@ -114,7 +114,14 @@ namespace actionet {
           indices_ds_(-1),
           indptr_ds_(-1) {
 
-        file_id_ = H5Fopen(file_path_.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        // Disable HDF5 advisory file locking so this reader can coexist with
+        // h5py/AnnData backed-mode handles that already hold a lock on the
+        // same inode (errno 11 / EAGAIN from H5FD__sec2_lock otherwise).
+        hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
+        check_h5(fapl >= 0, "Failed to create file access property list");
+        H5Pset_file_locking(fapl, 0 /*use_file_locking=false*/, 1 /*ignore_when_disabled=true*/);
+        file_id_ = H5Fopen(file_path_.c_str(), H5F_ACC_RDONLY, fapl);
+        H5Pclose(fapl);
         check_h5(file_id_ >= 0, "Failed to open h5ad file");
 
         group_id_ = H5Gopen2(file_id_, group_path_.c_str(), H5P_DEFAULT);
