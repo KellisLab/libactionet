@@ -149,7 +149,7 @@ namespace actionet {
     /// After the scan the min-shift is applied analytically:
     ///   row_factor_sum = row_factor_sum_orig + shift * row_count
     ///   Obs            = obs_orig            + shift * support_obs
-    static void backed_specificity_scan_csr_(
+    void backed_specificity_scan_csr_(
         const BackedSparseMatrixOperator& op,
         const arma::mat& H_norm_t,           // shape: n_obs x k  (i.e. Ht in C++ convention)
         arma::vec& row_count,                // out: n_var
@@ -212,7 +212,7 @@ namespace actionet {
     /// (var_col c = current col, obs_row r = indices[p]) maps to operator
     /// position S(c, r).  The accumulation is identical to the CSR case but
     /// the outer loop is over var chunks rather than obs chunks.
-    static void backed_specificity_scan_csc_(
+    void backed_specificity_scan_csc_(
         const BackedSparseMatrixOperator& op,
         const arma::mat& H_norm_t,
         arma::vec& row_count,
