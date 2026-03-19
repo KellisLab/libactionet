@@ -1,4 +1,5 @@
 #include "annotation/specificity.hpp"
+#include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
 arma::field<arma::mat> getProbsObs(const arma::mat& S, arma::mat& Ht, int thread_no) {
@@ -126,4 +127,260 @@ namespace actionet {
         arma::mat& S, arma::uvec& labels, int thread_no);
     template arma::field<arma::mat> computeFeatureSpecificity<arma::sp_mat>(
         arma::sp_mat& S, arma::uvec& labels, int thread_no);
+} // namespace actionet
+
+// ============================================================================
+// Backed sparse overloads (non-template; friend access to
+// BackedSparseMatrixOperator private members).
+// ============================================================================
+
+namespace actionet {
+
+    /// Single-pass streaming specificity for a CSR-backed HDF5 matrix.
+    ///
+    /// Iterates over row chunks.  For each stored element (obs_row r, var_col c,
+    /// logical value v = transform_value_(r, raw)):
+    ///   - Tracks global stored minimum for the shift correction.
+    ///   - Accumulates per-feature (col) and per-cell (row) nnz counts.
+    ///   - Accumulates row_factor_sum_orig[c] += v  (pre-shift column sums).
+    ///   - Accumulates obs_orig(c, :)    += v * H_norm(r, :)
+    ///   - Accumulates support_obs(c, :) +=     H_norm(r, :)  (binary support)
+    ///
+    /// After the scan the min-shift is applied analytically:
+    ///   row_factor_sum = row_factor_sum_orig + shift * row_count
+    ///   Obs            = obs_orig            + shift * support_obs
+    void backed_specificity_scan_csr_(
+        const BackedSparseMatrixOperator& op,
+        const arma::mat& H_norm_t,           // shape: n_obs x k  (i.e. Ht in C++ convention)
+        arma::vec& row_count,                // out: n_var
+        arma::vec& col_count,                // out: n_obs
+        arma::vec& row_factor_sum_orig,      // out: n_var
+        arma::mat& obs_orig,                 // out: n_var x k
+        arma::mat& support_obs,              // out: n_var x k
+        double& min_stored)                  // out: minimum stored value
+    {
+        const arma::uword n_obs = op.n_obs_;
+        const arma::uword n_var = op.n_var_;
+        const arma::uword cs    = op.chunk_size_;
+
+        row_count.zeros(n_var);
+        col_count.zeros(n_obs);
+        row_factor_sum_orig.zeros(n_var);
+        obs_orig.zeros(n_var, H_norm_t.n_cols);
+        support_obs.zeros(n_var, H_norm_t.n_cols);
+        min_stored = 0.0;
+
+        std::vector<double> data;
+        std::vector<unsigned long long> indices;
+
+        for (arma::uword row_start = 0; row_start < n_obs; row_start += cs) {
+            const arma::uword row_end = std::min<arma::uword>(n_obs, row_start + cs);
+            const unsigned long long nnz_start = op.indptr_[row_start];
+            const unsigned long long nnz_end   = op.indptr_[row_end];
+            const unsigned long long nnz_count  = nnz_end - nnz_start;
+
+            op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
+
+            for (arma::uword r = row_start; r < row_end; ++r) {
+                const unsigned long long p0 = op.indptr_[r]     - nnz_start;
+                const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
+
+                col_count(r) += static_cast<double>(p1 - p0);
+
+                const arma::rowvec h_row = H_norm_t.row(r);
+
+                for (unsigned long long p = p0; p < p1; ++p) {
+                    const arma::uword c = static_cast<arma::uword>(
+                        indices[static_cast<size_t>(p)]);
+                    const double v = op.transform_value_(r, data[static_cast<size_t>(p)]);
+
+                    if (v < min_stored) {
+                        min_stored = v;
+                    }
+                    row_count(c)           += 1.0;
+                    row_factor_sum_orig(c) += v;
+                    obs_orig.row(c)        += v * h_row;
+                    support_obs.row(c)     += h_row;
+                }
+            }
+        }
+    }
+
+    /// Single-pass streaming specificity for a CSC-backed HDF5 matrix.
+    ///
+    /// In CSC format the indptr covers var columns; each stored entry
+    /// (var_col c = current col, obs_row r = indices[p]) maps to operator
+    /// position S(c, r).  The accumulation is identical to the CSR case but
+    /// the outer loop is over var chunks rather than obs chunks.
+    void backed_specificity_scan_csc_(
+        const BackedSparseMatrixOperator& op,
+        const arma::mat& H_norm_t,
+        arma::vec& row_count,
+        arma::vec& col_count,
+        arma::vec& row_factor_sum_orig,
+        arma::mat& obs_orig,
+        arma::mat& support_obs,
+        double& min_stored)
+    {
+        const arma::uword n_obs = op.n_obs_;
+        const arma::uword n_var = op.n_var_;
+        const arma::uword cs    = op.chunk_size_;
+
+        row_count.zeros(n_var);
+        col_count.zeros(n_obs);
+        row_factor_sum_orig.zeros(n_var);
+        obs_orig.zeros(n_var, H_norm_t.n_cols);
+        support_obs.zeros(n_var, H_norm_t.n_cols);
+        min_stored = 0.0;
+
+        std::vector<double> data;
+        std::vector<unsigned long long> indices;
+
+        for (arma::uword col_start = 0; col_start < n_var; col_start += cs) {
+            const arma::uword col_end = std::min<arma::uword>(n_var, col_start + cs);
+            const unsigned long long nnz_start = op.indptr_[col_start];
+            const unsigned long long nnz_end   = op.indptr_[col_end];
+            const unsigned long long nnz_count  = nnz_end - nnz_start;
+
+            op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
+
+            for (arma::uword c = col_start; c < col_end; ++c) {
+                const unsigned long long p0 = op.indptr_[c]     - nnz_start;
+                const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+
+                for (unsigned long long p = p0; p < p1; ++p) {
+                    const arma::uword r = static_cast<arma::uword>(
+                        indices[static_cast<size_t>(p)]);
+                    // In CSC, the stored row index is obs_row, and the column is var_col.
+                    // transform_value_ requires obs_row as the first argument.
+                    const double v = op.transform_value_(r, data[static_cast<size_t>(p)]);
+
+                    if (v < min_stored) {
+                        min_stored = v;
+                    }
+                    row_count(c)           += 1.0;
+                    col_count(r)           += 1.0;
+                    row_factor_sum_orig(c) += v;
+
+                    const arma::rowvec h_row = H_norm_t.row(r);
+                    obs_orig.row(c)        += v * h_row;
+                    support_obs.row(c)     += h_row;
+                }
+            }
+        }
+    }
+
+    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                     arma::mat& H, int /*thread_no*/) {
+        stdout_printf("Computing feature specificity (backed sparse) ... ");
+
+        const arma::uword n_obs = op.n_obs_;
+        const arma::uword n_var = op.n_var_;
+        const arma::uword k     = static_cast<arma::uword>(H.n_rows);
+
+        // Normalise H column-wise (matching the in-memory path's Ht treatment).
+        // H is (k x n_obs) here; each row of H corresponds to one group/archetype.
+        // H_norm_t is the (n_obs x k) matrix used as Ht in the accumulation loops.
+        arma::mat H_norm_t = arma::trans(H);  // n_obs x k
+        for (arma::uword j = 0; j < k; ++j) {
+            const double mu = arma::mean(H_norm_t.col(j));
+            if (mu != 0.0) {
+                H_norm_t.col(j) /= mu;
+            }
+        }
+
+        // Single-pass scan: accumulate all per-feature and per-cell statistics
+        // together with the raw (pre-shift) Obs and support matrices.
+        arma::vec row_count, col_count, row_factor_sum_orig;
+        arma::mat obs_orig, support_obs;
+        double min_stored;
+
+        if (op.is_csr_) {
+            backed_specificity_scan_csr_(op, H_norm_t,
+                                         row_count, col_count,
+                                         row_factor_sum_orig,
+                                         obs_orig, support_obs,
+                                         min_stored);
+        } else {
+            backed_specificity_scan_csc_(op, H_norm_t,
+                                         row_count, col_count,
+                                         row_factor_sum_orig,
+                                         obs_orig, support_obs,
+                                         min_stored);
+        }
+
+        // Apply the min-shift analytically so we never mutate the HDF5 data.
+        // shift = -min(0, min_stored), i.e. only shift if there are negative values.
+        const double shift = (min_stored < 0.0) ? -min_stored : 0.0;
+
+        arma::vec row_factor_sum = row_factor_sum_orig + shift * row_count;
+        arma::mat Obs = obs_orig + shift * support_obs;
+
+        // Per-feature mean of non-zero elements (row_factor) and density (row_p).
+        arma::vec row_factor = arma::zeros(n_var);
+        for (arma::uword i = 0; i < n_var; ++i) {
+            if (row_count(i) > 0.0) {
+                row_factor(i) = row_factor_sum(i) / row_count(i);
+            }
+        }
+        arma::vec row_p = row_count  / static_cast<double>(n_obs);
+        arma::vec col_p = col_count  / static_cast<double>(n_var);
+
+        const double rho = arma::mean(col_p);
+        arma::vec beta = (rho == 0.0) ? arma::zeros(n_obs) : arma::vec(col_p / rho);
+
+        // Gamma = H_norm_t scaled by beta; shape (n_obs x k).
+        arma::mat Gamma = H_norm_t;
+        arma::vec a(k);
+        for (arma::uword j = 0; j < k; ++j) {
+            Gamma.col(j) %= beta;
+            a(j) = arma::max(Gamma.col(j));
+        }
+
+        // Bernstein tail bounds (identical math to in-memory path).
+        arma::mat Exp    = (row_p % row_factor) * arma::sum(Gamma, 0);
+        arma::mat Nu     = (row_p % arma::square(row_factor)) * arma::sum(arma::square(Gamma), 0);
+        arma::mat A      = row_factor * arma::trans(a);
+        arma::mat Lambda = Obs - Exp;
+
+        arma::mat logPvals_lower = arma::square(Lambda) / (2.0 * Nu);
+        arma::uvec uidx = arma::find(Lambda >= 0);
+        logPvals_lower(uidx).zeros();
+        logPvals_lower.replace(arma::datum::nan, 0.0);
+
+        arma::mat logPvals_upper = arma::square(Lambda) / (2.0 * (Nu + (Lambda % A / 3.0)));
+        arma::uvec lidx = arma::find(Lambda <= 0);
+        logPvals_upper(lidx).zeros();
+        logPvals_upper.replace(arma::datum::nan, 0.0);
+
+        const double log10_e = std::log(10.0);
+        logPvals_lower /= log10_e;
+        logPvals_upper /= log10_e;
+
+        stdout_printf("done\n");
+        FLUSH;
+
+        arma::field<arma::mat> res(3);
+        res(0) = Obs / static_cast<double>(n_obs);
+        res(1) = logPvals_upper;
+        res(2) = logPvals_lower;
+        return res;
+    }
+
+    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                     arma::uvec& labels, int thread_no) {
+        const arma::uword max_label = arma::max(labels);
+        const arma::uword n_obs     = op.n_obs_;
+
+        arma::mat H(max_label, n_obs, arma::fill::zeros);
+        for (arma::uword i = 1; i <= max_label; ++i) {
+            arma::uvec idx = arma::find(labels == i);
+            for (arma::uword j : idx) {
+                H(i - 1, j) = 1.0;
+            }
+        }
+
+        return computeFeatureSpecificity(op, H, thread_no);
+    }
+
 } // namespace actionet
