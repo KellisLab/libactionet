@@ -9,6 +9,15 @@
 
 namespace actionet {
 
+    // Forward declarations for friend functions defined in annotation/specificity.cpp.
+    // These non-template overloads implement the backed sparse specificity algorithm
+    // and require direct access to BackedSparseMatrixOperator private members.
+    class BackedSparseMatrixOperator;
+    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                     arma::mat& H, int thread_no);
+    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                     arma::uvec& labels, int thread_no);
+
     /// @brief MatrixOperator implementation backed by sparse AnnData h5ad storage.
     ///
     /// The underlying h5ad matrix is stored as obs x var. This operator exposes the
@@ -40,6 +49,11 @@ namespace actionet {
         bool isCSR() const { return is_csr_; }
 
     private:
+        // Grant direct access to the single-pass backed specificity implementation.
+        friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                                arma::mat& H, int thread_no);
+        friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                                arma::uvec& labels, int thread_no);
         static std::string read_string_attribute_(hid_t object_id, const char* name);
         static std::vector<long long> read_shape_attribute_(hid_t object_id, const char* name);
 

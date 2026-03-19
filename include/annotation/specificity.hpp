@@ -45,6 +45,43 @@ namespace actionet {
     /// @return Same as the matrix overload.
     template <typename T>
     arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::uvec& labels, int thread_no = 0);
+
+    // Forward-declare the backed sparse operator so we can declare the backed
+    // overloads without pulling the full HDF5 headers into every translation
+    // unit that includes specificity.hpp.
+    class BackedSparseMatrixOperator;
+
+    /// @brief Compute feature specificity using an HDF5-backed sparse matrix.
+    ///
+    /// Performs the same Bernstein-tail scoring as the in-memory overloads but
+    /// reads the expression matrix in chunks directly from the h5ad file.  The
+    /// algorithm executes in a single streaming pass over the stored non-zero
+    /// entries, accumulating all required statistics before applying the min-shift
+    /// correction and computing the tail bounds.
+    ///
+    /// Unlike the in-memory template overloads this function is non-mutating:
+    /// the underlying HDF5 data is never modified.
+    ///
+    /// @param op        Backed sparse matrix operator (var x obs, i.e. features x cells).
+    /// @param H         Group membership / archetype weight matrix (k x cells).
+    /// @param thread_no Reserved for future use; currently ignored.
+    ///
+    /// @return Same field layout as the in-memory overloads.
+    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                     arma::mat& H, int thread_no = 0);
+
+    /// @brief Compute backed feature specificity from discrete cluster labels.
+    ///
+    /// Converts 1-based integer labels into a binary membership matrix and
+    /// delegates to the backed matrix overload above.
+    ///
+    /// @param op        Backed sparse matrix operator (var x obs, i.e. features x cells).
+    /// @param labels    Cluster labels (1-based, length = n_cells).
+    /// @param thread_no Reserved for future use; currently ignored.
+    ///
+    /// @return Same field layout as the in-memory overloads.
+    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
+                                                     arma::uvec& labels, int thread_no = 0);
 } // namespace actionet
 
 #endif //ACTIONET_SPECIFICITY_HPP
