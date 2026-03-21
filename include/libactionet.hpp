@@ -12,6 +12,9 @@
 #include "decomposition/svd_main.hpp"
 #include "decomposition/orthogonalization.hpp"
 
+// io: Backed HDF5 matrix operators
+#include "io/backed_h5ad/create_backed_operator.hpp"
+
 // action: Main archetypal analysis for cell type identification (ACTION) module
 #include "action/aa.hpp"
 #include "action/action_decomp.hpp"

@@ -63,4 +63,74 @@ namespace actionet {
 
     template arma::field<arma::mat>
         orthogonalizeBasal<arma::sp_mat>(arma::sp_mat& S, arma::field<arma::mat>& SVD_results, arma::mat& basal_state);
+
+    // ---- Operator-backed orthogonalization ------------------------------------------------
+
+    PerturbedSVDResult orthogonalizeBatchEffect_Operator(
+        const MatrixOperator& S,
+        const SVDResult& svd,
+        const PerturbedSVDResult* prior,
+        const arma::mat& design) {
+
+        stdout_printf("Orthogonalizing batch effect (operator):\n");
+        FLUSH;
+
+        // Z = S * design = X' * design, where X is (obs x var), S is (var x obs).
+        // design is (n_obs x q), result Z is (n_var x q).
+        arma::mat Z;
+        S.matmat(design, Z);
+        gram_schmidt(Z);
+
+        // B = -(Z' * S)' = -(S' * Z)  [rmatmat computes S' * Z = X * Z, giving (n_obs x q)]
+        arma::mat B_raw;
+        S.rmatmat(Z, B_raw);
+        arma::mat B = -B_raw;
+
+        // Deflate: augment with mean-centering column.
+        arma::vec mu_A = arma::vec(arma::trans(arma::mean(Z, 0)));
+        arma::vec mu = B * mu_A;
+        arma::mat A_aug = arma::join_rows(arma::ones(Z.n_rows), Z);
+        arma::mat B_aug = arma::join_rows(-mu, B);
+
+        stdout_printf("\tDeflating reduction ... ");
+        FLUSH;
+        PerturbedSVDResult result = perturbedSVD(svd, A_aug, B_aug, prior);
+        stdout_printf("done\n");
+        FLUSH;
+
+        return result;
+    }
+
+    PerturbedSVDResult orthogonalizeBasal_Operator(
+        const MatrixOperator& S,
+        const SVDResult& svd,
+        const PerturbedSVDResult* prior,
+        const arma::mat& basal_state) {
+
+        stdout_printf("Orthogonalizing basal (operator):\n");
+        FLUSH;
+
+        arma::mat Z = basal_state;
+        gram_schmidt(Z);
+
+        // B = -(Z' * S)' = -(S' * Z)
+        arma::mat B_raw;
+        S.rmatmat(Z, B_raw);
+        arma::mat B = -B_raw;
+
+        // Deflate: augment with mean-centering column.
+        arma::vec mu_A = arma::vec(arma::trans(arma::mean(Z, 0)));
+        arma::vec mu = B * mu_A;
+        arma::mat A_aug = arma::join_rows(arma::ones(Z.n_rows), Z);
+        arma::mat B_aug = arma::join_rows(-mu, B);
+
+        stdout_printf("\tDeflating reduction ... ");
+        FLUSH;
+        PerturbedSVDResult result = perturbedSVD(svd, A_aug, B_aug, prior);
+        stdout_printf("done\n");
+        FLUSH;
+
+        return result;
+    }
+
 } // namespace actionet
