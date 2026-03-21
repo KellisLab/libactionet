@@ -9,6 +9,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -30,18 +31,20 @@ struct DirectedEdge {
     float value;
 };
 
-// Aggregated symmetric pair produced by symmetrize_to_csr Pass 1.
-struct SymPair {
-    VertexIndex lo;
-    VertexIndex hi;
-    float       w_sym;
-};
-
 inline VertexIndex checked_vertex_index(std::size_t value, const char* name) {
     if (value > static_cast<std::size_t>(std::numeric_limits<VertexIndex>::max())) {
         throw std::runtime_error(std::string(name) + " exceeds the supported HNSW vertex range");
     }
     return static_cast<VertexIndex>(value);
+}
+
+inline VertexIndex checked_neighbor_label(std::size_t value,
+                                          std::size_t n_points,
+                                          const char* name) {
+    if (value >= n_points) {
+        throw std::runtime_error(std::string(name) + " is outside the valid vertex range");
+    }
+    return checked_vertex_index(value, name);
 }
 
 inline arma::uword checked_arma_uword(std::uint64_t value, const char* name) {
@@ -58,6 +61,36 @@ inline int checked_hnsw_dim(std::size_t dim) {
         throw std::runtime_error("Feature dimensionality exceeds supported HNSW range");
     }
     return static_cast<int>(dim);
+}
+
+inline std::size_t compute_hnsw_storage_dim(std::size_t dim, double M) {
+    constexpr std::size_t label_align = alignof(hnswlib::labeltype);
+    constexpr std::size_t float_align = alignof(float);
+    if (label_align <= float_align) {
+        return dim;
+    }
+
+    const std::size_t hnsw_m = (M <= 10000.0)
+        ? static_cast<std::size_t>(M)
+        : static_cast<std::size_t>(10000);
+    const std::size_t size_links_level0 =
+        (hnsw_m * 2U) * sizeof(hnswlib::tableint) + sizeof(hnswlib::linklistsizeint);
+    const std::size_t record_size = size_links_level0 + dim * sizeof(float);
+    const std::size_t misalignment = record_size % label_align;
+    if (misalignment == 0) {
+        return dim;
+    }
+
+    // The bundled hnswlib stores labeltype immediately after the raw float data
+    // in a byte buffer.  When that offset is not aligned for labeltype, 64-bit
+    // builds trip UB in addPoint().  Padding the metric space with trailing
+    // zero-valued dimensions preserves l2/ip/jsd distances while restoring the
+    // required alignment.
+    const std::size_t pad_bytes = label_align - misalignment;
+    if ((pad_bytes % sizeof(float)) != 0) {
+        throw std::runtime_error("HNSW label alignment cannot be satisfied with float padding");
+    }
+    return dim + (pad_bytes / sizeof(float));
 }
 
 inline int checked_hnsw_threads(std::size_t n_points, int thread_no) {
@@ -101,31 +134,50 @@ inline std::size_t compute_kstar_knn(std::size_t n) {
 class ContiguousFloat32Reader {
     const float* X_;
     std::size_t  n_;
-    std::size_t  dim_;
+    std::size_t  logical_dim_;
+    std::size_t  hnsw_dim_;
     bool         jsd_;
 public:
-    ContiguousFloat32Reader(const float* X, std::size_t n, std::size_t dim, bool jsd)
-        : X_(X), n_(n), dim_(dim), jsd_(jsd) {}
+    ContiguousFloat32Reader(const float* X,
+                            std::size_t n,
+                            std::size_t logical_dim,
+                            std::size_t hnsw_dim,
+                            bool jsd)
+        : X_(X), n_(n), logical_dim_(logical_dim), hnsw_dim_(hnsw_dim), jsd_(jsd) {}
 
     std::size_t n_points() const { return n_; }
-    std::size_t dim()      const { return dim_; }
+    std::size_t dim()      const { return hnsw_dim_; }
 
     const float* load_row(std::size_t i, std::vector<float>& scratch) const {
-        const float* row = X_ + i * dim_;
-        if (!jsd_) {
+        const float* row = X_ + i * logical_dim_;
+        if (!jsd_ && logical_dim_ == hnsw_dim_) {
             return row;
         }
-        scratch.resize(dim_);
+
+        scratch.resize(hnsw_dim_);
+        if (!jsd_) {
+            for (std::size_t d = 0; d < logical_dim_; ++d) {
+                scratch[d] = row[d];
+            }
+            for (std::size_t d = logical_dim_; d < hnsw_dim_; ++d) {
+                scratch[d] = 0.0f;
+            }
+            return scratch.data();
+        }
+
         float sum = 0.0f;
-        for (std::size_t d = 0; d < dim_; ++d) {
+        for (std::size_t d = 0; d < logical_dim_; ++d) {
             scratch[d] = std::max(0.0f, std::min(1.0f, row[d]));
             sum += scratch[d];
         }
         if (sum > 0.0f) {
             const float inv = 1.0f / sum;
-            for (std::size_t d = 0; d < dim_; ++d) {
+            for (std::size_t d = 0; d < logical_dim_; ++d) {
                 scratch[d] *= inv;
             }
+        }
+        for (std::size_t d = logical_dim_; d < hnsw_dim_; ++d) {
+            scratch[d] = 0.0f;
         }
         return scratch.data();
     }
@@ -142,20 +194,19 @@ struct AdaptiveScratch {
     // Neighbor heap drain buffer: ascending order after drain+reverse.
     std::vector<std::pair<float, hnswlib::labeltype>> knn_result;
     // Per-thread directed edge accumulator — merged after the parallel region.
-    std::vector<VertexIndex> local_srcs;
-    std::vector<VertexIndex> local_dsts;
-    std::vector<float>       local_dists;
+    std::vector<DirectedEdge> local_edges;
 };
 
 // ---------------------------------------------------------------------------
 // symmetrize_to_csr: two-pass direct CSR builder.
 //
-// Given directed edge triplets (srcs, dsts, dists):
-//   Pass 1 – distance→similarity conversion, sort by unordered pair key,
-//             aggregate duplicate directed edges, compute per-pair symmetric
-//             weight and row degree counts.
-//   Pass 2 – prefix-sum degrees into indptr, write both symmetric directions
-//             directly into indices/data via a write_pos cursor.
+// Given directed edges:
+//   Pass 1 – distance→similarity conversion in place, sort by unordered pair
+//             key, aggregate duplicate directed edges in place, compute
+//             per-pair symmetric weights and row degree counts.
+//   Pass 2 – prefix-sum degrees into indptr, walk the aggregated edges again,
+//             and write both symmetric directions directly into indices/data
+//             via a write_pos cursor.
 //
 // Row indices within each CSR row are naturally sorted without a post-fill
 // sort.  Proof: for a fixed lo, entries written to row lo arrive with hi
@@ -163,39 +214,41 @@ struct AdaptiveScratch {
 // to row hi arrive with lo non-decreasing — also non-decreasing column order.
 // ---------------------------------------------------------------------------
 static actionet::CSRGraph
-symmetrize_to_csr(std::vector<VertexIndex>  srcs,
-                  std::vector<VertexIndex>  dsts,
-                  std::vector<float>        dists,
+symmetrize_to_csr(std::vector<DirectedEdge> edges,
                   std::size_t               n,
                   const std::string&        distance_metric,
                   bool                      mutual_edges_only)
 {
     const float epsilon = 1e-7f;
-    const std::size_t nnz_dir = srcs.size();
+    const std::size_t nnz_dir = edges.size();
 
-    if (dsts.size() != nnz_dir || dists.size() != nnz_dir) {
-        throw std::runtime_error("Directed edge buffers must be the same length");
-    }
     if (nnz_dir == 0) {
         return make_empty_graph(n);
     }
 
+    for (const DirectedEdge& e : edges) {
+        if (static_cast<std::size_t>(e.src) >= n ||
+            static_cast<std::size_t>(e.dst) >= n) {
+            throw std::runtime_error("Directed edge vertex index is outside the graph range");
+        }
+    }
+
     // -----------------------------------------------------------------------
-    // Pass 1a: distance → directed similarity
+    // Pass 1a: distance → directed similarity in place.
     // -----------------------------------------------------------------------
     if (distance_metric == "jsd") {
-        for (std::size_t e = 0; e < nnz_dir; ++e) {
-            dists[e] = std::max(epsilon, 1.0f - dists[e]);
+        for (DirectedEdge& e : edges) {
+            e.value = std::max(epsilon, 1.0f - e.value);
         }
     } else {
         std::vector<float> max_d(n, 0.0f);
-        for (std::size_t e = 0; e < nnz_dir; ++e) {
-            const auto dst = static_cast<std::size_t>(dsts[e]);
-            if (dists[e] > max_d[dst]) max_d[dst] = dists[e];
+        for (const DirectedEdge& e : edges) {
+            const auto dst = static_cast<std::size_t>(e.dst);
+            if (e.value > max_d[dst]) max_d[dst] = e.value;
         }
-        for (std::size_t e = 0; e < nnz_dir; ++e) {
-            const auto dst = static_cast<std::size_t>(dsts[e]);
-            dists[e] = std::max(epsilon, max_d[dst] - dists[e]);
+        for (DirectedEdge& e : edges) {
+            const auto dst = static_cast<std::size_t>(e.dst);
+            e.value = std::max(epsilon, max_d[dst] - e.value);
         }
     }
 
@@ -207,78 +260,76 @@ symmetrize_to_csr(std::vector<VertexIndex>  srcs,
     // The directed tie-break makes deduplication of exact duplicate edges
     // stable.
     // -----------------------------------------------------------------------
-    std::vector<std::size_t> order(nnz_dir);
-    std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
-        const VertexIndex lo_a = std::min(srcs[a], dsts[a]);
-        const VertexIndex hi_a = std::max(srcs[a], dsts[a]);
-        const VertexIndex lo_b = std::min(srcs[b], dsts[b]);
-        const VertexIndex hi_b = std::max(srcs[b], dsts[b]);
+    std::sort(edges.begin(), edges.end(), [&](const DirectedEdge& a, const DirectedEdge& b) {
+        const VertexIndex lo_a = std::min(a.src, a.dst);
+        const VertexIndex hi_a = std::max(a.src, a.dst);
+        const VertexIndex lo_b = std::min(b.src, b.dst);
+        const VertexIndex hi_b = std::max(b.src, b.dst);
         if (lo_a != lo_b) return lo_a < lo_b;
         if (hi_a != hi_b) return hi_a < hi_b;
-        if (srcs[a] != srcs[b]) return srcs[a] < srcs[b];
-        return dsts[a] < dsts[b];
+        if (a.src != b.src) return a.src < b.src;
+        return a.dst < b.dst;
     });
 
     // -----------------------------------------------------------------------
-    // Pass 1c: aggregate consecutive duplicate directed edges.
+    // Pass 1c: aggregate consecutive duplicate directed edges in place.
     // -----------------------------------------------------------------------
-    std::vector<DirectedEdge> edges;
-    edges.reserve(nnz_dir);
-    for (const auto idx : order) {
-        const DirectedEdge e{srcs[idx], dsts[idx], dists[idx]};
-        if (!edges.empty() &&
-            edges.back().src == e.src &&
-            edges.back().dst == e.dst) {
-            edges.back().value += e.value;
+    std::size_t dedup_size = 0;
+    for (const DirectedEdge& e : edges) {
+        if (dedup_size > 0 &&
+            edges[dedup_size - 1].src == e.src &&
+            edges[dedup_size - 1].dst == e.dst) {
+            edges[dedup_size - 1].value += e.value;
         } else {
-            edges.push_back(e);
+            edges[dedup_size] = e;
+            ++dedup_size;
         }
     }
+    edges.resize(dedup_size);
 
     // -----------------------------------------------------------------------
-    // Pass 1d: walk unordered pairs, compute symmetric weight, count degrees.
-    // flat_pairs holds one entry per accepted (lo,hi) pair.
-    // degree[v] counts the number of symmetric neighbours of vertex v.
+    // Helper: walk unordered pairs in the aggregated directed edge list.
     // -----------------------------------------------------------------------
-    std::vector<SymPair>     flat_pairs;
-    flat_pairs.reserve(edges.size() / 2 + 1);
     std::vector<std::size_t> degree(n, 0);
+    const auto for_each_sym_pair = [&](auto&& fn) {
+        for (std::size_t i = 0; i < edges.size();) {
+            const VertexIndex u0 = edges[i].src;
+            const VertexIndex v0 = edges[i].dst;
+            if (u0 == v0) { ++i; continue; }
 
-    for (std::size_t i = 0; i < edges.size();) {
-        const VertexIndex u0 = edges[i].src;
-        const VertexIndex v0 = edges[i].dst;
-        if (u0 == v0) { ++i; continue; }
+            const VertexIndex lo = std::min(u0, v0);
+            const VertexIndex hi = std::max(u0, v0);
 
-        const VertexIndex lo = std::min(u0, v0);
-        const VertexIndex hi = std::max(u0, v0);
+            double w_lo_hi = 0.0;
+            double w_hi_lo = 0.0;
 
-        double w_lo_hi = 0.0;
-        double w_hi_lo = 0.0;
+            while (i < edges.size()) {
+                const DirectedEdge& e = edges[i];
+                if (std::min(e.src, e.dst) != lo || std::max(e.src, e.dst) != hi) break;
+                if (e.src == lo) w_lo_hi += e.value;
+                else             w_hi_lo += e.value;
+                ++i;
+            }
 
-        while (i < edges.size()) {
-            const DirectedEdge& e = edges[i];
-            if (std::min(e.src, e.dst) != lo || std::max(e.src, e.dst) != hi) break;
-            if (e.src == lo) w_lo_hi += e.value;
-            else             w_hi_lo += e.value;
-            ++i;
+            float w_sym = 0.0f;
+            if (mutual_edges_only) {
+                if (w_lo_hi <= 0.0 || w_hi_lo <= 0.0) continue;
+                w_sym = std::sqrt(static_cast<float>(w_lo_hi * w_hi_lo));
+            } else {
+                const double combined = w_lo_hi + w_hi_lo;
+                if (combined <= 0.0) continue;
+                // Arithmetic mean matches the legacy (G + G.t()) / 2 semantics.
+                w_sym = static_cast<float>(0.5 * combined);
+            }
+
+            fn(lo, hi, w_sym);
         }
+    };
 
-        float w_sym = 0.0f;
-        if (mutual_edges_only) {
-            if (w_lo_hi <= 0.0 || w_hi_lo <= 0.0) continue;
-            w_sym = std::sqrt(static_cast<float>(w_lo_hi * w_hi_lo));
-        } else {
-            const double combined = w_lo_hi + w_hi_lo;
-            if (combined <= 0.0) continue;
-            // Arithmetic mean matches the legacy (G + G.t()) / 2 semantics.
-            w_sym = static_cast<float>(0.5 * combined);
-        }
-
-        flat_pairs.push_back({lo, hi, w_sym});
+    for_each_sym_pair([&](VertexIndex lo, VertexIndex hi, float) {
         degree[static_cast<std::size_t>(lo)] += 1;
         degree[static_cast<std::size_t>(hi)] += 1;
-    }
+    });
 
     // -----------------------------------------------------------------------
     // Pass 2a: prefix-sum degrees into indptr.
@@ -304,16 +355,16 @@ symmetrize_to_csr(std::vector<VertexIndex>  srcs,
         write_pos[v] = static_cast<std::size_t>(g.indptr[v]);
     }
 
-    for (const SymPair& sp : flat_pairs) {
-        const std::size_t lo = static_cast<std::size_t>(sp.lo);
-        const std::size_t hi = static_cast<std::size_t>(sp.hi);
-        g.indices[write_pos[lo]] = sp.hi;
-        g.data[write_pos[lo]]    = sp.w_sym;
+    for_each_sym_pair([&](VertexIndex lo_v, VertexIndex hi_v, float w_sym) {
+        const std::size_t lo = static_cast<std::size_t>(lo_v);
+        const std::size_t hi = static_cast<std::size_t>(hi_v);
+        g.indices[write_pos[lo]] = hi_v;
+        g.data[write_pos[lo]]    = w_sym;
         ++write_pos[lo];
-        g.indices[write_pos[hi]] = sp.lo;
-        g.data[write_pos[hi]]    = sp.w_sym;
+        g.indices[write_pos[hi]] = lo_v;
+        g.data[write_pos[hi]]    = w_sym;
         ++write_pos[hi];
-    }
+    });
 
     return g;
 }
@@ -363,8 +414,9 @@ buildNetworkCore_KstarNN(const float*                        X,
     const bool   jsd    = (p.distance_metric == "jsd");
     const int    threads_use = checked_hnsw_threads(n, p.thread_no);
     const auto   n_ll   = static_cast<long long>(n);
+    const auto   hnsw_dim = compute_hnsw_storage_dim(dim, p.M);
 
-    ContiguousFloat32Reader reader(X, n, dim, jsd);
+    ContiguousFloat32Reader reader(X, n, dim, hnsw_dim, jsd);
 
     // -----------------------------------------------------------------------
     // Build HNSW index: rows fed through reader so JSD normalization happens
@@ -373,7 +425,7 @@ buildNetworkCore_KstarNN(const float*                        X,
     stdout_printf("\tBuilding index ... ");
     FLUSH;
 
-    auto idx_kstar = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(dim), p.M, ef_c);
+    auto idx_kstar = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(reader.dim()), p.M, ef_c);
     idx_kstar.hnsw->setEf(ef_q);
 
     // Each thread uses its own row_buf scratch for load_row().
@@ -470,11 +522,13 @@ buildNetworkCore_KstarNN(const float*                        X,
                  it != sc.knn_result.rend() && emitted < neighbor_no - 1;
                  ++it) {
                 if (static_cast<std::size_t>(it->second) == src) continue;
-                sc.local_srcs.push_back(
-                    checked_vertex_index(static_cast<std::size_t>(it->second),
-                                         "k*nn neighbor label"));
-                sc.local_dsts.push_back(static_cast<VertexIndex>(src));
-                sc.local_dists.push_back(it->first);
+                sc.local_edges.push_back({
+                    checked_neighbor_label(static_cast<std::size_t>(it->second),
+                                           n,
+                                           "k*nn neighbor label"),
+                    static_cast<VertexIndex>(src),
+                    it->first
+                });
                 ++emitted;
             }
         }
@@ -491,30 +545,26 @@ buildNetworkCore_KstarNN(const float*                        X,
     // -----------------------------------------------------------------------
     std::size_t total_edges = 0;
     for (const auto& sc : per_thread) {
-        total_edges += sc.local_srcs.size();
+        if (sc.local_edges.size() > (std::numeric_limits<std::size_t>::max() - total_edges)) {
+            throw std::runtime_error("k*nn edge count exceeds addressable memory on this platform");
+        }
+        total_edges += sc.local_edges.size();
     }
 
-    std::vector<VertexIndex> all_srcs;
-    std::vector<VertexIndex> all_dsts;
-    std::vector<float>       all_dists;
-    all_srcs.reserve(total_edges);
-    all_dsts.reserve(total_edges);
-    all_dists.reserve(total_edges);
+    std::vector<DirectedEdge> all_edges;
+    all_edges.reserve(total_edges);
 
     for (auto& sc : per_thread) {
-        all_srcs.insert(all_srcs.end(), sc.local_srcs.begin(), sc.local_srcs.end());
-        all_dsts.insert(all_dsts.end(), sc.local_dsts.begin(), sc.local_dsts.end());
-        all_dists.insert(all_dists.end(), sc.local_dists.begin(), sc.local_dists.end());
+        all_edges.insert(all_edges.end(),
+                         std::make_move_iterator(sc.local_edges.begin()),
+                         std::make_move_iterator(sc.local_edges.end()));
         // Release per-thread memory immediately.
-        sc.local_srcs.clear();  sc.local_srcs.shrink_to_fit();
-        sc.local_dsts.clear();  sc.local_dsts.shrink_to_fit();
-        sc.local_dists.clear(); sc.local_dists.shrink_to_fit();
+        sc.local_edges.clear();
+        sc.local_edges.shrink_to_fit();
     }
 
     auto g = symmetrize_to_csr(
-        std::move(all_srcs),
-        std::move(all_dsts),
-        std::move(all_dists),
+        std::move(all_edges),
         n,
         p.distance_metric,
         p.mutual_edges_only
@@ -552,13 +602,14 @@ buildNetworkCore_KNN(const float*                        X,
     const bool jsd         = (p.distance_metric == "jsd");
     const int  threads_use = checked_hnsw_threads(n, p.thread_no);
     const auto n_ll        = static_cast<long long>(n);
+    const auto hnsw_dim    = compute_hnsw_storage_dim(dim, p.M);
 
-    ContiguousFloat32Reader reader(X, n, dim, jsd);
+    ContiguousFloat32Reader reader(X, n, dim, hnsw_dim, jsd);
 
     stdout_printf("\tBuilding index ... ");
     FLUSH;
 
-    auto idx_knn = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(dim),
+    auto idx_knn = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(reader.dim()),
                                   p.M, p.ef_construction);
     idx_knn.hnsw->setEf(p.ef);
 
@@ -577,26 +628,20 @@ buildNetworkCore_KNN(const float*                        X,
     stdout_printf("\tConstructing kNN edges ... ");
     FLUSH;
 
-    std::vector<VertexIndex> all_srcs;
-    std::vector<VertexIndex> all_dsts;
-    std::vector<float>       all_dists;
+    std::vector<DirectedEdge> all_edges;
 
     constexpr std::size_t MAX_RESERVE = 500000000ULL;
     const auto estimated = checked_product(n, static_cast<std::size_t>(p.k), "knn edge estimate");
     if (estimated < MAX_RESERVE) {
         try {
-            all_srcs.reserve(estimated);
-            all_dsts.reserve(estimated);
-            all_dists.reserve(estimated);
+            all_edges.reserve(estimated);
         } catch (...) {}
     }
 
     #pragma omp parallel num_threads(threads_use)
     {
         std::vector<float>  row_buf;
-        std::vector<VertexIndex> local_srcs;
-        std::vector<VertexIndex> local_dsts;
-        std::vector<float>       local_dists;
+        std::vector<DirectedEdge> local_edges;
         std::vector<std::pair<float, hnswlib::labeltype>> nbrs;
 
         #pragma omp for nowait schedule(static)
@@ -617,20 +662,22 @@ buildNetworkCore_KNN(const float*                        X,
             int added = 0;
             for (auto it = nbrs.rbegin(); it != nbrs.rend() && added < p.k; ++it) {
                 if (static_cast<std::size_t>(it->second) == src) continue;
-                local_srcs.push_back(static_cast<VertexIndex>(src));
-                local_dsts.push_back(
-                    checked_vertex_index(static_cast<std::size_t>(it->second),
-                                         "knn neighbor label"));
-                local_dists.push_back(it->first);
+                local_edges.push_back({
+                    static_cast<VertexIndex>(src),
+                    checked_neighbor_label(static_cast<std::size_t>(it->second),
+                                           n,
+                                           "knn neighbor label"),
+                    it->first
+                });
                 ++added;
             }
         }
 
         #pragma omp critical
         {
-            all_srcs.insert(all_srcs.end(), local_srcs.begin(), local_srcs.end());
-            all_dsts.insert(all_dsts.end(), local_dsts.begin(), local_dsts.end());
-            all_dists.insert(all_dists.end(), local_dists.begin(), local_dists.end());
+            all_edges.insert(all_edges.end(),
+                             std::make_move_iterator(local_edges.begin()),
+                             std::make_move_iterator(local_edges.end()));
         }
     }
     // idx_knn goes out of scope here — HierarchicalNSW and SpaceInterface deleted.
@@ -641,9 +688,7 @@ buildNetworkCore_KNN(const float*                        X,
     FLUSH;
 
     auto g = symmetrize_to_csr(
-        std::move(all_srcs),
-        std::move(all_dsts),
-        std::move(all_dists),
+        std::move(all_edges),
         n,
         p.distance_metric,
         p.mutual_edges_only
