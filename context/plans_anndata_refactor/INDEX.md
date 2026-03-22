@@ -38,7 +38,15 @@ The contract breakage period ends when Plan 07 passes all parity checks.
   regression tests, and added a repeatable stage-03 validator script
   (`tests/validate_stage03.R`) that passes all 17 shape and numerical checks
   against the Plan 00 baseline.
-- Plans 04-07 remain pending.
+- As of 2026-03-22, Plan 04 is complete.
+- Plan 04 removed all C++-path transpose shims from `actionet-python`, updated
+  the pybind11 boundary to use direct CSC construction (scipy→arma) and
+  memcpy-based dense transport (arma→numpy, Fortran-order), fixed the
+  orthogonalization field layout in `wp_decomposition.cpp` to the Plan 02
+  public contract, updated operator orthogonalization wrappers to use the typed
+  `KernelReductionResult` API, and added a repeatable stage-04 validator script
+  (`tests/validate_stage04.py`) that passes all 20 shape and consistency checks.
+- Plans 05-07 remain pending.
 
 ## Agent Environment Guidance
 
@@ -59,7 +67,7 @@ record any nontrivial setup commands in the implementation handoff.
 | [02A](02A_ORTHOGONALIZATION_CONTRACT_REPAIR.md) | Orthogonalization Contract Repair | libactionet | High | **Complete** |
 | [03](03_R_FRONTEND_ADAPTATION.md) | R Frontend Adaptation | actionet-r | Medium | **Complete** |
 | [03A](03A_R_FRONTEND_POST_FLIP_REPAIR.md) | R Frontend Post-Flip Repair | actionet-r | Medium | **Complete** |
-| [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | Pending |
+| [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | **Complete** |
 | [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | Pending |
 | [06](06_UNIFIED_SPECIFICITY.md) | Unified Specificity | libactionet, actionet-python | Medium | Pending |
 | [07](07_FINAL_PARITY_VALIDATION.md) | Final Cross-Language Parity Validation | all | Low | Pending |

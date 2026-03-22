@@ -8,7 +8,7 @@
    02 C++ Core Contract Flip     [DONE]
    02A Orthogonalization Repair  [DONE]
    03 R Frontend Adaptation      [parallel follow-up; currently pending]
->> 04 Python Frontend Adaptation + Boundary Optimization <<
+>> 04 Python Frontend Adaptation + Boundary Optimization << [DONE]
    05 Operator-Backed IRLB
    06 Unified Specificity
    07 Final Cross-Language Parity Validation
@@ -580,3 +580,73 @@ actionet.layout_network(adata, seed=42)
 - Dense transport uses memcpy or zero-copy instead of element-by-element
 - Full pipeline produces identical values to baseline
 - Measurable memory reduction on a ~50k cell dataset
+
+## Implementation Notes (2026-03-22)
+
+**Status: COMPLETE.**
+
+### Changes made
+
+**Stage A — Transpose shim removal:**
+- `anndata_utils.py`: `anndata_to_matrix(transpose=True)` deprecated with
+  `DeprecationWarning`; all internal callers updated.
+- `anndata_utils.py`: `add_action_results()` — removed `.T` on H results.
+- `core.py` `reduce_kernel()`: removed `transpose=True`, removed `result["S_r"].T`.
+- `core.py` `run_action()`: removed `.T` on S_r input, removed `.T` on H outputs.
+- `core.py` `compute_feature_specificity()`: removed `transpose=True`.
+- `core.py` `compute_archetype_feature_specificity()`: removed `H.T` and
+  `transpose=True`; backed sparse path no longer transposes H.
+- `core.py` `run_svd()`: removed `.T` on matrix before passing to C++; updated
+  `layout_network` to read `u` (cells × k) instead of `v` for initial coords.
+- `batch_correction.py` `correct_batch_effect()`: removed `transpose=True`,
+  removed `result["S_r"].T`.
+- `batch_correction.py` `correct_basal_expression()`: same.
+- `imputation.py` `impute_features()`: removed `transpose=True`; changed
+  from `features × cells` to `cells × features` for diffusion; fixed axis
+  for `original_max`.
+
+**Note:** `annotation.py` `.T` operations on expression for `annotate_cells`
+were **preserved** — `computeFeatureStats`/`computeFeatureStatsVision` in
+`libactionet` still expect `features × cells`. These will be addressed in
+Plan 06 (Unified Specificity).
+
+**Stage B — Pybind11 boundary optimization:**
+- `wp_utils.cpp` `numpy_to_arma_mat()`: replaced O(n*m) element-by-element
+  loop with alias-transpose construction (`arma::mat(ptr, n_cols, n_rows,
+  false, true).t()`).
+- `wp_utils.cpp` `scipy_to_arma_sparse()`: replaced COO intermediary with
+  direct CSC construction using Armadillo's `sp_mat(row_indices, col_ptrs,
+  values, n_rows, n_cols)` constructor with `sort_locations=false`.
+- `wp_utils.cpp` `arma_mat_to_numpy()`: replaced element-by-element loop
+  with single `memcpy` returning a Fortran-order NumPy array.
+- `wp_utils.cpp` `arma_sparse_to_scipy()`: switched from iterator-based CSR
+  construction to direct CSC export via Armadillo internal arrays
+  (`col_ptrs`, `row_indices`, `values`). Falls back to CSR iterator if
+  direct CSC export fails.
+- `wp_utils.h`: updated function documentation.
+- `wp_decomposition.cpp` orthogonalization wrappers: fixed field layout from
+  old `{U, sigma, S_r/sigma, A, B}` to Plan 02 public layout
+  `{S_r, sigma, U, A, B}`; sigma now returned via `arma_vec_to_numpy`.
+- `wp_decomposition.cpp` operator wrappers: updated from old `SVDResult` +
+  sigma reconstruction to typed `KernelReductionResult` API.
+
+**Stage C — Backed/streaming path:**
+- `_matrix_source.py`: no changes needed; already works with cells × genes.
+- `_run_specificity_backed_sparse` docstring updated for new `H` orientation.
+
+### Validation
+
+All 20 checks in `tests/validate_stage04.py` pass:
+- S_r shape is `(cells, k)` ✓
+- U shape is `(genes, k)` ✓
+- H_stacked shape is `(cells, archetypes)` ✓
+- Network shape is `(cells, cells)` ✓
+- SVD `u = cells × k`, `v = genes × k` ✓
+- No `DeprecationWarning` from normal pipeline ✓
+- SVD consistency check (`X * U / sigma ≈ S_r`) ✓
+
+### Deferred to Plan 06
+
+- `annotation.py` `.T` on expression for `annotate_cells` / `computeFeatureStats`
+  (legacy function not yet updated in `libactionet`).
+

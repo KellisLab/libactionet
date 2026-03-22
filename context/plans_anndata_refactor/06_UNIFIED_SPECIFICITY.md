@@ -5,9 +5,9 @@
 ```
    00 Parity Baseline            [DONE]
    01 R Network Cleanup          [optional; currently pending]
-   02 C++ Core Contract Flip     [required; currently pending]
-   03 R Frontend Adaptation      [required; currently pending]
-   04 Python Frontend Adaptation [required; currently pending]
+   02 C++ Core Contract Flip     [DONE]
+   03 R Frontend Adaptation      [DONE]
+   04 Python Frontend Adaptation [DONE]
 >> 06 Unified Specificity <<
    05 Operator-Backed IRLB       [optional / parallel; currently pending]
    07 Final Cross-Language Parity Validation
@@ -253,6 +253,60 @@ If backed operator specificity is exposed through a separate pybind function,
 ensure it accepts a `MatrixOperator` (or a Python `LinearOperator` wrapper)
 and routes to the unified C++ implementation.
 
+### Stage G: Update `computeFeatureStats` / `computeFeatureStatsVision` orientation
+
+**Files**: `libactionet/src/annotation/marker_stats.cpp`,
+`libactionet/include/annotation/marker_stats.hpp`,
+`actionet-python/src/actionet/annotation.py`
+
+**Context (deferred from Plan 04):**
+
+`computeFeatureStats` and `computeFeatureStatsVision` were **not** updated in
+Plan 02. Their headers still document `S` as `features × cells`. As a result,
+`actionet-python/src/actionet/annotation.py` (`annotate_cells`) was left with
+the following transpose shims (deliberately preserved in Plan 04):
+
+```python
+# backed path (annotation.py ~line 390):
+S = S_cells.T.tocsr()   # cells x features → features x cells  ← keep until here
+
+# in-memory path (annotation.py ~line 395):
+S = S.T                  # cells x genes → genes x cells  ← keep until here
+```
+
+These shims must be removed as part of this plan, in conjunction with
+flipping the C++ functions to accept `cells × genes`:
+
+#### G1: Flip `computeFeatureStats` and `computeFeatureStatsVision`
+
+Update both functions to accept `S` as `cells × genes` (obs × var), consistent
+with the Plan 02 contract. Internally, wherever `S.row(i)` (gene-indexed rows)
+is used for cell-column access, switch to `S.col(i)` (gene-indexed columns),
+or use `S.t()` only on the narrow access point rather than materializing a full
+transpose.
+
+#### G2: Remove transpose shims in `annotation.py`
+
+After G1, remove the two residual transpose operations in `annotate_cells`:
+
+```python
+# backed path — after G1:
+if not issparse(S_cells):
+    S_cells = csr_matrix(np.asarray(S_cells))
+S = S_cells  # cells x features, direct (was S_cells.T.tocsr())
+
+# in-memory path — after G1:
+S = source.matrix
+if not issparse(S):
+    S = csr_matrix(S)
+# S is cells x genes, no .T needed
+```
+
+#### G3: Update marker_stats.hpp documentation
+
+Update the `@param S` documentation in `marker_stats.hpp` to reflect the new
+`cells × genes` (obs × var) orientation.
+
 ## Validation
 
 ### Numerical parity — in-memory, non-mutating
@@ -300,8 +354,11 @@ specificity code in Python should be the wrapper that calls C++.
 |------|------|---------|
 | `libactionet` | `src/annotation/specificity.cpp` | Non-mutating, shared accumulator |
 | `libactionet` | `include/annotation/specificity.hpp` | Updated docs (const correctness) |
+| `libactionet` | `src/annotation/marker_stats.cpp` | Flip S to cells × genes (Stage G) |
+| `libactionet` | `include/annotation/marker_stats.hpp` | Update @param S docs (Stage G) |
 | `actionet-python` | `src/actionet/core.py` | Delete Python fallback |
 | `actionet-python` | `src/actionet/wp_annotation.cpp` | Verify pass-through |
+| `actionet-python` | `src/actionet/annotation.py` | Remove `.T`/`.T.tocsr()` shims in `annotate_cells` (Stage G) |
 | `actionet-r` | `R/r_specificity.R` | Verify compatibility |
 
 ## Completion Criteria
@@ -312,3 +369,5 @@ specificity code in Python should be the wrapper that calls C++.
 - All four storage paths produce identical results
 - Cross-language parity confirmed
 - Input matrix is never mutated
+- `computeFeatureStats` / `computeFeatureStatsVision` accept `cells × genes`
+- Zero `.T` operations on expression matrix in `annotation.py`
