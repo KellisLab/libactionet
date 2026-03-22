@@ -5,7 +5,8 @@
 ```
    00 Parity Baseline            [DONE]
    01 R Network Cleanup          [optional; currently pending]
-   02 C++ Core Contract Flip     [required; currently pending]
+   02 C++ Core Contract Flip     [DONE]
+   02A Orthogonalization Repair  [DONE]
    03 R Frontend Adaptation      [parallel follow-up; currently pending]
 >> 04 Python Frontend Adaptation + Boundary Optimization <<
    05 Operator-Backed IRLB
@@ -13,7 +14,8 @@
    07 Final Cross-Language Parity Validation
 ```
 
-**Dependencies**: Plan 02 (C++ core updated).
+**Dependencies**: Plans 02 and 02A (`libactionet` core updated, including the
+repaired orthogonalization reduction contract).
 **Blocks**: Plan 07 (final parity). Can run in parallel with Plan 03.
 
 ## Contract Notice
@@ -219,6 +221,48 @@ After:
 S = anndata_to_matrix(adata, layer=layer)                   # cells x genes
 # ...
 obsm={corrected_key: result["S_r"]}                         # cells x k, direct
+```
+
+#### A5b: `wp_decomposition.cpp` — operator orthogonalization wrappers
+
+After Plan 02A, `libactionet` no longer expects a manually reconstructed
+`SVDResult` in the orthogonalization operator path. The pybind wrapper should
+pass the public reduction contract directly:
+
+```cpp
+actionet::KernelReductionResult reduction;
+reduction.S_r = S_r_mat;      // cells x k
+reduction.sigma = sigma_vec;  // k
+reduction.U = U_mat;          // genes x k
+reduction.A = A_mat;          // genes x p
+reduction.B = B_mat;          // cells x p
+
+actionet::KernelReductionResult result =
+    actionet::orthogonalizeBatchEffect_Operator(*op, reduction, design_mat);
+```
+
+Apply the same pattern to `orthogonalizeBasal_Operator(...)`.
+
+Remove the old wrapper-side reconstruction:
+
+```cpp
+// Old legacy reconstruction — remove this
+svd.U = U_mat;
+svd.sigma = sigma_vec;
+svd.V = S_r_mat;
+for (size_t i = 0; i < sigma_vec.n_elem; i++) {
+    svd.V.col(i) /= sigma_vec(i);
+}
+```
+
+and return the corrected reduction directly:
+
+```cpp
+out["S_r"] = arma_mat_to_numpy(result.S_r);  // cells x k
+out["U"] = arma_mat_to_numpy(result.U);      // genes x k
+out["A"] = arma_mat_to_numpy(result.A);
+out["B"] = arma_mat_to_numpy(result.B);
+out["sigma"] = arma_vec_to_numpy(result.sigma);
 ```
 
 #### A6: `compute_feature_specificity()` / `compute_archetype_feature_specificity()`

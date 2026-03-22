@@ -316,46 +316,50 @@ namespace actionet {
     }
 
     void BackedSparseMatrixOperator::matvec(const arma::vec& x, arma::vec& y) const {
-        if (x.n_elem != n_obs_) {
+        // S is cells × genes.  matvec: y = S * x, x is gene-length, y is cell-length.
+        if (x.n_elem != n_var_) {
             throw std::runtime_error("BackedSparseMatrixOperator::matvec dimension mismatch");
         }
         if (is_csr_) {
-            matvec_csr_(x, y);
-        } else {
-            matvec_csc_(x, y);
-        }
-    }
-
-    void BackedSparseMatrixOperator::rmatvec(const arma::vec& x, arma::vec& y) const {
-        if (x.n_elem != n_var_) {
-            throw std::runtime_error("BackedSparseMatrixOperator::rmatvec dimension mismatch");
-        }
-        if (is_csr_) {
-            rmatvec_csr_(x, y);
+            rmatvec_csr_(x, y);   // old rmatvec_csr_ computes sum over genes → cell-length output
         } else {
             rmatvec_csc_(x, y);
         }
     }
 
+    void BackedSparseMatrixOperator::rmatvec(const arma::vec& x, arma::vec& y) const {
+        // S is cells × genes.  rmatvec: y = S' * x, x is cell-length, y is gene-length.
+        if (x.n_elem != n_obs_) {
+            throw std::runtime_error("BackedSparseMatrixOperator::rmatvec dimension mismatch");
+        }
+        if (is_csr_) {
+            matvec_csr_(x, y);    // old matvec_csr_ accumulates into gene columns → gene-length output
+        } else {
+            matvec_csc_(x, y);
+        }
+    }
+
     void BackedSparseMatrixOperator::matmat(const arma::mat& X, arma::mat& Y) const {
-        if (X.n_rows != n_obs_) {
+        // S is cells × genes.  matmat: Y = S * X, X is (n_var × q), Y is (n_obs × q).
+        if (X.n_rows != n_var_) {
             throw std::runtime_error("BackedSparseMatrixOperator::matmat dimension mismatch");
         }
         if (is_csr_) {
-            matmat_csr_(X, Y);
+            rmatmat_csr_(X, Y);   // old rmatmat_csr_ produces (n_obs × q) output
         } else {
-            matmat_csc_(X, Y);
+            rmatmat_csc_(X, Y);
         }
     }
 
     void BackedSparseMatrixOperator::rmatmat(const arma::mat& X, arma::mat& Y) const {
-        if (X.n_rows != n_var_) {
+        // S is cells × genes.  rmatmat: Y = S' * X, X is (n_obs × q), Y is (n_var × q).
+        if (X.n_rows != n_obs_) {
             throw std::runtime_error("BackedSparseMatrixOperator::rmatmat dimension mismatch");
         }
         if (is_csr_) {
-            rmatmat_csr_(X, Y);
+            matmat_csr_(X, Y);    // old matmat_csr_ produces (n_var × q) output
         } else {
-            rmatmat_csc_(X, Y);
+            matmat_csc_(X, Y);
         }
     }
 

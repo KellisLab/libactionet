@@ -5,7 +5,8 @@
 ```
    00 Parity Baseline            [DONE]
    01 R Network Cleanup          [optional; currently pending]
-   02 C++ Core Contract Flip     [required; currently pending]
+   02 C++ Core Contract Flip     [DONE]
+   02A Orthogonalization Repair  [DONE]
 >> 03 R Frontend Adaptation <<
    04 Python Frontend Adaptation + Boundary Optimization
    05 Operator-Backed IRLB
@@ -13,7 +14,8 @@
    07 Final Cross-Language Parity Validation
 ```
 
-**Dependencies**: Plan 02 (C++ core now expects cells x genes / cells x k).
+**Dependencies**: Plans 02 and 02A (`libactionet` now exposes the repaired
+cells x genes / cells x k public contract, including orthogonalization).
 **Blocks**: Plan 07 (final parity). Can run in parallel with Plan 04.
 
 ## Contract Notice
@@ -318,36 +320,52 @@ the C++ functions expect the new orientation. The wrappers should:
 
 #### F1: `wr_decomposition.cpp` — orthogonalization wrappers
 
-Current pattern (appears 4+ times):
+Before Plan 02A, the wrapper had to reconstruct legacy SVD state manually.
+That is no longer correct. `libactionet` orthogonalization now consumes the
+same public reduction contract returned by `reduceKernel()`:
 
 ```cpp
-// Reconstruct V from S_r
-SVD_results(2) = S_r_mat;  // was: k x cells interpreted as V
-for (size_t i = 0; i < sigma_vec.n_elem; i++) {
-    SVD_results(2).col(i) /= sigma_vec(i);
-}
-// ... orthogonalize ...
-// Return S_r as V.t()
-res["S_r"] = arma::trans(V);  // k x cells
+// Public reduction contract from libactionet:
+//   (0) S_r     cells x k
+//   (1) sigma   k
+//   (2) U       genes x k
+//   (3) A       genes x p
+//   (4) B       cells x p
+arma::field<arma::mat> reduction_results(5);
+reduction_results(0) = S_r_mat;
+reduction_results(1) = sigma_vec;
+reduction_results(2) = U_mat;
+reduction_results(3) = A_mat;
+reduction_results(4) = B_mat;
+
+arma::field<arma::mat> corrected =
+    actionet::orthogonalizeBatchEffect(S, reduction_results, design);
 ```
 
-After the flip, S_r arrives as `cells x k` and should be returned as
-`cells x k`:
+Replace the old reconstruction/transposition pattern:
 
 ```cpp
-// S_r_mat is cells x k (from R, new orientation)
-// V = S_r / sigma = cells x k (each column divided by sigma)
+// Old legacy reconstruction — remove this
+SVD_results(0) = U_mat;
+SVD_results(1) = sigma_vec;
 SVD_results(2) = S_r_mat;
 for (size_t i = 0; i < sigma_vec.n_elem; i++) {
     SVD_results(2).col(i) /= sigma_vec(i);
 }
-// ... orthogonalize ...
-// Return S_r directly (cells x k)
-res["S_r"] = V_scaled;  // no arma::trans()
 ```
 
-Trace through the exact SVD field indices to ensure U/V are assigned
-correctly for the new orientation.
+Return values directly in the public reduction layout:
+
+```cpp
+res["S_r"] = corrected(0);  // cells x k
+res["sigma"] = corrected(1).col(0);
+res["U"] = corrected(2);    // genes x k
+res["A"] = corrected(3);    // genes x p'
+res["B"] = corrected(4);    // cells x p'
+```
+
+Do **not** divide `S_r` by `sigma` in the wrapper. Do **not** transpose the
+returned `S_r`.
 
 #### F2: `wr_action.cpp` — reduceKernel wrappers
 

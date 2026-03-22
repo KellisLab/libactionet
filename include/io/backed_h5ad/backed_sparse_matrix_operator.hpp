@@ -37,8 +37,9 @@ namespace actionet {
 
     /// @brief MatrixOperator implementation backed by sparse AnnData h5ad storage.
     ///
-    /// The underlying h5ad matrix is stored as obs x var. This operator exposes the
-    /// transpose shape (var x obs) to match ACTIONet's decomposition expectations.
+    /// The underlying h5ad matrix is stored as obs x var (cells x genes).
+    /// This operator exposes the native obs x var shape (cells x genes),
+    /// matching the AnnData-native orientation contract (Plan 02).
     class BackedSparseMatrixOperator final : public MatrixOperator {
     public:
         BackedSparseMatrixOperator(const std::string& file_path,
@@ -53,8 +54,8 @@ namespace actionet {
         BackedSparseMatrixOperator(BackedSparseMatrixOperator&& other) noexcept;
         BackedSparseMatrixOperator& operator=(BackedSparseMatrixOperator&& other) noexcept;
 
-        arma::uword rows() const override { return n_var_; } // S = X' => rows are features
-        arma::uword cols() const override { return n_obs_; } // columns are cells
+        arma::uword rows() const override { return n_obs_; } // rows = cells (obs)
+        arma::uword cols() const override { return n_var_; } // cols = genes (var)
 
         void matvec(const arma::vec& x, arma::vec& y) const override;
         void rmatvec(const arma::vec& x, arma::vec& y) const override;

@@ -8,9 +8,22 @@
 namespace actionet {
     /// @brief Run ACTION decomposition with pruning and merging.
     ///
-    /// @param S_r Reduced input matrix (<em>vars</em> x <em>obs</em>).
+    /// AnnData-native orientation contract (Plan 02):
+    ///   Input  S_r: cells × k  (obs × archetypes-dim; was k × cells).
+    ///   Output field(5):
+    ///     (0) H_stacked: cells × archetypes  (was archetypes × cells)
+    ///     (1) C_stacked: cells × archetypes  (unchanged)
+    ///     (2) H_merged:  cells × archetypes  (was archetypes × cells)
+    ///     (3) C_merged:  cells × archetypes  (unchanged)
+    ///     (4) assigned_archetypes: (cells,)  (unchanged)
+    ///
+    /// Internally the pipeline transposes S_r to k × cells before passing it
+    /// to the column-oriented SPA/AA/simplex routines, then transposes the H
+    /// outputs back to cells × archetypes before returning.
+    ///
+    /// @param S_r Reduced input matrix (cells × k).
     /// @param k_min Minimum number of archetypes (>= 2).
-    /// @param k_max Maximum number of archetypes (<= <code>S_r.n_cols</code>).
+    /// @param k_max Maximum number of archetypes (<= <code>S_r.n_rows</code>).
     /// @param max_it Maximum number of iterations for AA.
     /// @param tol Convergence tolerance for AA.
     /// @param spec_th Specificity threshold (z-score) for pruning.

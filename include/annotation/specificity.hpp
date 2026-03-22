@@ -11,8 +11,8 @@ namespace actionet {
     /// group defined by the membership matrix H.  The algorithm:
     ///   1. Shifts S so all values are non-negative (subtracts global min).
     ///   2. Normalises H column-wise (divides each column by its mean).
-    ///   3. Computes per-feature and per-cell density estimates (row_p, col_p)
-    ///      and observed co-occurrence Obs = S * H_norm.
+    ///   3. Computes per-gene and per-cell density estimates (row_p, col_p)
+    ///      and observed co-occurrence Obs = S.t() * H_norm  (genes × k).
     ///   4. Derives expected co-occurrence and variance under a null model,
     ///      then evaluates one-sided Bernstein tail bounds to yield log10-scaled
     ///      significance matrices.
@@ -21,14 +21,14 @@ namespace actionet {
     ///       caller needs the original matrix unchanged.
     ///
     /// @tparam T  arma::mat or arma::sp_mat.
-    /// @param S   Feature matrix (features x cells).
-    /// @param H   Group membership / archetype weight matrix (k x cells).
+    /// @param S   Feature matrix (cells × genes, i.e. obs × var).
+    /// @param H   Group membership / archetype weight matrix (cells × k).
     /// @param thread_no Number of threads (0 = auto).
     ///
     /// @return Field(3):
-    ///   - (0) average_profile  (features x k)
-    ///   - (1) upper_significance (features x k) -- enrichment log10 p-values
-    ///   - (2) lower_significance (features x k) -- depletion  log10 p-values
+    ///   - (0) average_profile  (genes × k)
+    ///   - (1) upper_significance (genes × k) -- enrichment log10 p-values
+    ///   - (2) lower_significance (genes × k) -- depletion  log10 p-values
     template <typename T>
     arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::mat& H, int thread_no = 0);
 
@@ -38,7 +38,7 @@ namespace actionet {
     /// delegates to the matrix overload above.
     ///
     /// @tparam T  arma::mat or arma::sp_mat.
-    /// @param S      Feature matrix (features x cells).
+    /// @param S      Feature matrix (cells × genes, i.e. obs × var).
     /// @param labels  Cluster labels (1-based, length = n_cells).
     /// @param thread_no Number of threads (0 = auto).
     ///
@@ -62,8 +62,8 @@ namespace actionet {
     /// Unlike the in-memory template overloads this function is non-mutating:
     /// the underlying HDF5 data is never modified.
     ///
-    /// @param op        Backed sparse matrix operator (var x obs, i.e. features x cells).
-    /// @param H         Group membership / archetype weight matrix (k x cells).
+    /// @param op        Backed sparse matrix operator (obs × var, i.e. cells × genes).
+    /// @param H         Group membership / archetype weight matrix (cells × k).
     /// @param thread_no Reserved for future use; currently ignored.
     ///
     /// @return Same field layout as the in-memory overloads.
@@ -75,7 +75,7 @@ namespace actionet {
     /// Converts 1-based integer labels into a binary membership matrix and
     /// delegates to the backed matrix overload above.
     ///
-    /// @param op        Backed sparse matrix operator (var x obs, i.e. features x cells).
+    /// @param op        Backed sparse matrix operator (obs × var, i.e. cells × genes).
     /// @param labels    Cluster labels (1-based, length = n_cells).
     /// @param thread_no Reserved for future use; currently ignored.
     ///

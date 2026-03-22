@@ -11,9 +11,9 @@ namespace actionet {
 
     /// @brief MatrixOperator implementation backed by dense AnnData h5ad storage.
     ///
-    /// The underlying h5ad matrix is stored as obs x var (a 2D HDF5 dataset).
-    /// This operator exposes the transpose shape (var x obs) to match ACTIONet's
-    /// decomposition expectations, consistent with BackedSparseMatrixOperator.
+    /// The underlying h5ad matrix is stored as obs x var (cells x genes).
+    /// This operator exposes the native obs x var shape (cells x genes),
+    /// matching the AnnData-native orientation contract (Plan 02).
     ///
     /// Dense slabs are read via HDF5 hyperslabs.  The user-supplied chunk_size
     /// is treated as an upper bound on rows-per-slab; the actual slab height is
@@ -40,8 +40,8 @@ namespace actionet {
         BackedDenseMatrixOperator(BackedDenseMatrixOperator&& other) noexcept;
         BackedDenseMatrixOperator& operator=(BackedDenseMatrixOperator&& other) noexcept;
 
-        arma::uword rows() const override { return n_var_; }
-        arma::uword cols() const override { return n_obs_; }
+        arma::uword rows() const override { return n_obs_; }  // rows = cells (obs)
+        arma::uword cols() const override { return n_var_; }  // cols = genes (var)
 
         void matvec(const arma::vec& x, arma::vec& y) const override;
         void rmatvec(const arma::vec& x, arma::vec& y) const override;

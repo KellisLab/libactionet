@@ -180,34 +180,12 @@ namespace actionet {
         }
     }
 
-    // S = X' where X is (obs x var) on disk.
-    // Operator shape: rows = n_var_, cols = n_obs_.
-    // matvec: y = S * x = X' * x, where x is (n_obs,), y is (n_var,).
-    // Iterate over obs-chunks of X, accumulate X_chunk' * x_chunk.
+    // S = X (obs x var), operator shape: rows = n_obs_, cols = n_var_.
+    // matvec: y = S * x, where x is (n_var,), y is (n_obs,) — S is cells x genes.
+    // Iterate over obs-chunks of X, each chunk is (obs_count x n_var); y_chunk = chunk * x.
     void BackedDenseMatrixOperator::matvec(const arma::vec& x, arma::vec& y) const {
-        if (x.n_elem != n_obs_) {
-            throw std::runtime_error("BackedDenseMatrixOperator::matvec dimension mismatch");
-        }
-
-        y.zeros(n_var_);
-        arma::mat slab;
-
-        for (arma::uword obs_start = 0; obs_start < n_obs_; obs_start += effective_chunk_size_) {
-            const arma::uword obs_end = std::min(n_obs_, obs_start + effective_chunk_size_);
-            const arma::uword obs_count = obs_end - obs_start;
-
-            read_slab_(obs_start, obs_count, slab);
-            apply_transforms_(obs_start, slab);
-
-            // y += slab.t() * x_chunk  =>  y += (obs_count x n_var).t() * (obs_count,)
-            y += slab.t() * x.subvec(obs_start, obs_end - 1);
-        }
-    }
-
-    // rmatvec: y = S' * x = X * x, where x is (n_var,), y is (n_obs,).
-    void BackedDenseMatrixOperator::rmatvec(const arma::vec& x, arma::vec& y) const {
         if (x.n_elem != n_var_) {
-            throw std::runtime_error("BackedDenseMatrixOperator::rmatvec dimension mismatch");
+            throw std::runtime_error("BackedDenseMatrixOperator::matvec dimension mismatch");
         }
 
         y.set_size(n_obs_);
@@ -220,18 +198,19 @@ namespace actionet {
             read_slab_(obs_start, obs_count, slab);
             apply_transforms_(obs_start, slab);
 
-            // y_chunk = slab * x  =>  (obs_count x n_var) * (n_var,)
+            // y_chunk = slab * x  =>  (obs_count x n_var) * (n_var,) = (obs_count,)
             y.subvec(obs_start, obs_end - 1) = slab * x;
         }
     }
 
-    // matmat: Y = S * X = X_disk' * X, where X is (n_obs, k), Y is (n_var, k).
-    void BackedDenseMatrixOperator::matmat(const arma::mat& X, arma::mat& Y) const {
-        if (X.n_rows != n_obs_) {
-            throw std::runtime_error("BackedDenseMatrixOperator::matmat dimension mismatch");
+    // rmatvec: y = S' * x, where x is (n_obs,), y is (n_var,).
+    // Iterate over obs-chunks; accumulate slab.t() * x_chunk into y.
+    void BackedDenseMatrixOperator::rmatvec(const arma::vec& x, arma::vec& y) const {
+        if (x.n_elem != n_obs_) {
+            throw std::runtime_error("BackedDenseMatrixOperator::rmatvec dimension mismatch");
         }
 
-        Y.zeros(n_var_, X.n_cols);
+        y.zeros(n_var_);
         arma::mat slab;
 
         for (arma::uword obs_start = 0; obs_start < n_obs_; obs_start += effective_chunk_size_) {
@@ -241,15 +220,15 @@ namespace actionet {
             read_slab_(obs_start, obs_count, slab);
             apply_transforms_(obs_start, slab);
 
-            // Y += slab.t() * X_chunk
-            Y += slab.t() * X.rows(obs_start, obs_end - 1);
+            // y += slab.t() * x_chunk  =>  (n_var x obs_count) * (obs_count,) = (n_var,)
+            y += slab.t() * x.subvec(obs_start, obs_end - 1);
         }
     }
 
-    // rmatmat: Y = S' * X = X_disk * X, where X is (n_var, k), Y is (n_obs, k).
-    void BackedDenseMatrixOperator::rmatmat(const arma::mat& X, arma::mat& Y) const {
+    // matmat: Y = S * X, where X is (n_var, k), Y is (n_obs, k).
+    void BackedDenseMatrixOperator::matmat(const arma::mat& X, arma::mat& Y) const {
         if (X.n_rows != n_var_) {
-            throw std::runtime_error("BackedDenseMatrixOperator::rmatmat dimension mismatch");
+            throw std::runtime_error("BackedDenseMatrixOperator::matmat dimension mismatch");
         }
 
         Y.set_size(n_obs_, X.n_cols);
@@ -262,8 +241,29 @@ namespace actionet {
             read_slab_(obs_start, obs_count, slab);
             apply_transforms_(obs_start, slab);
 
-            // Y_chunk = slab * X
+            // Y_chunk = slab * X  =>  (obs_count x n_var) * (n_var x k) = (obs_count x k)
             Y.rows(obs_start, obs_end - 1) = slab * X;
+        }
+    }
+
+    // rmatmat: Y = S' * X, where X is (n_obs, k), Y is (n_var, k).
+    void BackedDenseMatrixOperator::rmatmat(const arma::mat& X, arma::mat& Y) const {
+        if (X.n_rows != n_obs_) {
+            throw std::runtime_error("BackedDenseMatrixOperator::rmatmat dimension mismatch");
+        }
+
+        Y.zeros(n_var_, X.n_cols);
+        arma::mat slab;
+
+        for (arma::uword obs_start = 0; obs_start < n_obs_; obs_start += effective_chunk_size_) {
+            const arma::uword obs_end = std::min(n_obs_, obs_start + effective_chunk_size_);
+            const arma::uword obs_count = obs_end - obs_start;
+
+            read_slab_(obs_start, obs_count, slab);
+            apply_transforms_(obs_start, slab);
+
+            // Y += slab.t() * X_chunk  =>  (n_var x obs_count) * (obs_count x k) = (n_var x k)
+            Y += slab.t() * X.rows(obs_start, obs_end - 1);
         }
     }
 

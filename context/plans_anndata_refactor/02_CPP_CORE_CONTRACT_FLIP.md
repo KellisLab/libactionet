@@ -4,8 +4,8 @@
 
 ```
    00 Parity Baseline            [DONE]
-   01 R Network Cleanup          [optional; currently pending]
->> 02 C++ Core Contract Flip <<
+   01 R Network Cleanup          [DONE]
+>> 02 C++ Core Contract Flip <<  [DONE]
    03 R Frontend Adaptation
    04 Python Frontend Adaptation + Boundary Optimization
    05 Operator-Backed IRLB
@@ -16,6 +16,11 @@
 **Dependencies**: Plan 00 (baseline exists). Plan 01 is desirable but not
 strictly required.
 **Blocks**: Plans 03, 04 (frontend adaptations depend on this).
+
+**Follow-up**: Plan 02A repaired the remaining orthogonalization contract
+mismatch and added repo-local validation. Downstream plans should target the
+repaired API state described in Plan 02A, not the transient first landing of
+Plan 02.
 
 ## Contract Notice
 
@@ -537,11 +542,37 @@ Both build modes must compile without error.
 
 ## Completion Criteria
 
-- All public headers document the new orientation contract
-- `reduceKernel`, `runACTION`, `computeFeatureSpecificity`,
+- [x] All public headers document the new orientation contract
+- [x] `reduceKernel`, `runACTION`, `computeFeatureSpecificity`,
   `orthogonalizeBatchEffect` accept and return matrices in AnnData-native
   orientation
-- Backed operators expose native `obs x var` without internal transpose
-- No full expression-matrix transpose is materialized inside C++
-- Both build modes (standard + R) compile without error
-- Numerical parity with baseline confirmed (values match, shapes transposed)
+- [x] Backed operators expose native `obs x var` without internal transpose
+- [x] No full expression-matrix transpose is materialized inside C++
+- [x] Both build modes (standard + R) compile without error
+- [x] Orthogonalization public contract repaired in follow-up Plan 02A;
+  repo-local validator `validate_plan02_core` passes
+- [ ] Numerical parity with baseline confirmed (values match, shapes transposed)
+  — requires Plans 03 and 04 to generate new baselines; script at
+  `test/validate_plan02_orientation.py`
+
+## Implementation Notes (2026-03-22)
+
+All code changes were implemented in a single pass. Key decisions:
+
+- `applyKernelPostSVD`: swapped `perturbedSVD(svd, A, B)` → `perturbedSVD(svd, B, A)`
+  because with `S` in cells×genes, the row-space perturbation is `B` (cells×p) and
+  the col-space perturbation is `A` (genes×p). The field convention `A=genes×p`,
+  `B=cells×p` is preserved for downstream compatibility; only the perturbedSVD
+  call order is swapped.
+- `BackedSparseMatrixOperator`: public `matvec`/`rmatvec`/`matmat`/`rmatmat` now
+  dispatch to the *swapped* internal helpers (`matvec` → `rmatvec_csr_`, etc.)
+  rather than rewriting the low-level I/O. No internal algorithm code was changed.
+- `BackedDenseMatrixOperator`: matvec/rmatvec semantics fully swapped; the slab
+  read path (`read_slab_`) is unchanged.
+- `specificity.cpp` sparse overload: `S.t()` is computed lazily via Armadillo's
+  sparse transpose wrapper — this materializes a transposed view but Armadillo's
+  CSC/CSR iterator handles it correctly.
+- `wrappers_r/`: doc-only changes; actual wrapper code will break until Plan 03.
+- 2026-03-22 follow-up (Plan 02A): orthogonalization now consumes the public
+  reduction contract directly and is validated in-repo via
+  `test/validate_plan02_core.cpp`.

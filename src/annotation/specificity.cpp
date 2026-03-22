@@ -7,38 +7,40 @@ arma::field<arma::mat> getProbsObs(const arma::mat& S, arma::mat& Ht, int thread
     arma::uvec nnz_idx = arma::find(Sb > 0);
     (Sb(nnz_idx)).ones();
 
-    arma::vec col_p = arma::vec(arma::trans(arma::sum(Sb, 0)));
-    arma::vec row_p = arma::vec(arma::sum(Sb, 1));
-    arma::vec row_factor = arma::vec(arma::sum(S, 1));
+    // S is cells x genes.  gene density = sum over cell axis (dim=0).  cell density = sum over gene axis (dim=1).
+    arma::vec row_p   = arma::trans(arma::sum(Sb, 0));      // gene-length  (was: sum over cols of genes x cells)
+    arma::vec col_p   = arma::vec(arma::sum(Sb, 1));        // cell-length  (was: sum over rows of genes x cells)
+    arma::vec row_factor = arma::trans(arma::sum(S, 0));    // gene-length row sums (pre-binarization)
 
     arma::field<arma::mat> out(4);
-    out(0) = row_factor / row_p; // mean of nonzero elements
-    out(1) = row_p / S.n_cols;
-    out(2) = col_p / S.n_rows;
-    out(3) = S * Ht;
+    out(0) = row_factor / row_p;       // mean of nonzero elements per gene
+    out(1) = row_p / S.n_rows;         // gene density (n_rows = cells)
+    out(2) = col_p / S.n_cols;         // cell density (n_cols = genes)
+    out(3) = S.t() * Ht;              // (cells x genes)'(cells x k) = genes x k
 
     return (out);
 }
 
 arma::field<arma::mat> getProbsObs(const arma::sp_mat& S, arma::mat& Ht, int thread_no) {
     // Heuristic optimization! Shall add parallel for later on
-    arma::vec row_p = arma::zeros(S.n_rows);
-    arma::vec col_p = arma::zeros(S.n_cols);
-    arma::vec row_factor = arma::zeros(S.n_rows);
+    // S is cells x genes.  row_p = gene density (n_genes length), col_p = cell density (n_cells length).
+    arma::vec row_p = arma::zeros(S.n_cols);      // gene-length  (was n_rows for genes x cells)
+    arma::vec col_p = arma::zeros(S.n_rows);      // cell-length  (was n_cols for genes x cells)
+    arma::vec row_factor = arma::zeros(S.n_cols); // gene-length sum of values
 
     arma::sp_mat::const_iterator it = S.begin();
     arma::sp_mat::const_iterator it_end = S.end();
     for (; it != it_end; ++it) {
-        col_p[it.col()]++;
-        row_p[it.row()]++;
-        row_factor[it.row()] += (*it);
+        col_p[it.row()]++;              // cell density: row index = cell
+        row_p[it.col()]++;              // gene density: col index = gene
+        row_factor[it.col()] += (*it); // gene value sum: col index = gene
     }
 
     arma::field<arma::mat> out(4);
-    out(0) = row_factor / row_p; // mean of nonzero elements
-    out(1) = row_p / S.n_cols;
-    out(2) = col_p / S.n_rows;
-    out(3) = spmat_mat_product_parallel(S, Ht, thread_no);
+    out(0) = row_factor / row_p;       // mean of nonzero elements per gene
+    out(1) = row_p / S.n_rows;         // gene density (n_rows = cells)
+    out(2) = col_p / S.n_cols;         // cell density (n_cols = genes)
+    out(3) = spmat_mat_product_parallel(S.t(), Ht, thread_no);  // (cells x genes)'(cells x k) = genes x k
 
     return (out);
 }
@@ -52,7 +54,8 @@ namespace actionet {
         double min_val = S.min();
         S.for_each([min_val](arma::mat::elem_type& val) { val -= min_val; });
 
-        arma::mat Ht = arma::trans(H);
+        // H is cells x k (Plan 02).  Normalise each column (archetype) by its mean.
+        arma::mat Ht = H;   // cells x k — passed directly to getProbsObs
         Ht.each_col([](arma::vec& h) {
             double mu = arma::mean(h);
             h /= (mu == 0) ? 1 : mu;
@@ -60,21 +63,21 @@ namespace actionet {
 
         arma::field<arma::mat> p = getProbsObs(S, Ht, thread_no);
 
-        arma::vec row_factor = p(0);
-        arma::vec row_p = p(1);
-        arma::vec col_p = p(2);
-        arma::mat Obs = p(3);
+        arma::vec row_factor = p(0);  // genes-length: mean of nonzero per gene
+        arma::vec row_p = p(1);       // genes-length: gene density
+        arma::vec col_p = p(2);       // cells-length: cell density
+        arma::mat Obs = p(3);         // genes x k
 
         double rho = arma::mean(col_p);
         arma::vec beta = col_p / rho; // Relative density compared to the overall density
-        arma::mat Gamma = Ht;
-        arma::vec a(H.n_rows);
-        for (int i = 0; i < H.n_rows; i++) {
+        arma::mat Gamma = Ht;         // cells x k
+        arma::vec a(H.n_cols);        // k-length (H.n_cols = k)
+        for (int i = 0; i < (int)H.n_cols; i++) {
             Gamma.col(i) %= beta;
             a(i) = arma::max(Gamma.col(i));
         }
 
-        arma::mat Exp = (row_p % row_factor) * arma::sum(Gamma, 0);
+        arma::mat Exp = (row_p % row_factor) * arma::sum(Gamma, 0);           // genes x k
         arma::mat Nu = (row_p % arma::square(row_factor)) * arma::sum(arma::square(Gamma), 0);
         arma::mat A = (row_factor * arma::trans(a));
         arma::mat Lambda = Obs - Exp;
@@ -96,7 +99,7 @@ namespace actionet {
         FLUSH;
 
         arma::field<arma::mat> res(3);
-        res(0) = Obs / Ht.n_rows;
+        res(0) = Obs / Ht.n_rows;     // average profile: genes x k (divide by n_cells)
         res(1) = logPvals_upper;
         res(2) = logPvals_lower;
 
@@ -109,13 +112,15 @@ namespace actionet {
 
     template <typename T>
     arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::uvec& labels, int thread_no) {
-        arma::mat H(arma::max(labels), S.n_cols);
+        // S is cells x genes.  n_cells = S.n_rows.
+        // H is built as cells x k (matching the new contract).
+        arma::mat H(S.n_rows, arma::max(labels), arma::fill::zeros);  // cells x k
 
-        for (int i = 1; i <= arma::max(labels); i++) {
-            arma::vec v = arma::zeros(S.n_cols);
-            arma::uvec idx = arma::find(labels == i);
-            v(idx) = arma::ones(idx.n_elem);
-            H.row(i - 1) = arma::trans(v);
+        for (int i = 1; i <= (int)arma::max(labels); i++) {
+            arma::uvec idx = arma::find(labels == (arma::uword)i);
+            for (arma::uword j : idx) {
+                H(j, i - 1) = 1.0;
+            }
         }
 
         arma::field<arma::mat> res = computeFeatureSpecificity(S, H, thread_no);
@@ -276,12 +281,11 @@ namespace actionet {
 
         const arma::uword n_obs = op.n_obs_;
         const arma::uword n_var = op.n_var_;
-        const arma::uword k     = static_cast<arma::uword>(H.n_rows);
+        const arma::uword k     = static_cast<arma::uword>(H.n_cols);  // H is cells x k (Plan 02)
 
         // Normalise H column-wise (matching the in-memory path's Ht treatment).
-        // H is (k x n_obs) here; each row of H corresponds to one group/archetype.
-        // H_norm_t is the (n_obs x k) matrix used as Ht in the accumulation loops.
-        arma::mat H_norm_t = arma::trans(H);  // n_obs x k
+        // H is (n_obs x k) — each column corresponds to one group/archetype.
+        arma::mat H_norm_t = H;  // n_obs x k — no transpose needed (was H.t() when H was k x n_obs)
         for (arma::uword j = 0; j < k; ++j) {
             const double mu = arma::mean(H_norm_t.col(j));
             if (mu != 0.0) {
@@ -372,11 +376,12 @@ namespace actionet {
         const arma::uword max_label = arma::max(labels);
         const arma::uword n_obs     = op.n_obs_;
 
-        arma::mat H(max_label, n_obs, arma::fill::zeros);
+        // H is cells x k (Plan 02)
+        arma::mat H(n_obs, max_label, arma::fill::zeros);
         for (arma::uword i = 1; i <= max_label; ++i) {
             arma::uvec idx = arma::find(labels == i);
             for (arma::uword j : idx) {
-                H(i - 1, j) = 1.0;
+                H(j, i - 1) = 1.0;
             }
         }
 

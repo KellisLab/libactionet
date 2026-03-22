@@ -5,11 +5,19 @@
 // as typed structs; legacy arma::field wrappers are kept for backward
 // compatibility with existing R and Python bindings.
 //
+// AnnData-native orientation contract (Plan 02):
+//   S  : cells x genes  (obs x var)
+//   S_r: cells x k
+//   U  : genes x k      (gene loadings, unchanged)
+//   A  : genes x p      (perturbation left,  unchanged)
+//   B  : cells x p      (perturbation right, unchanged)
+//
 // The reduction pipeline is:
 //   1. Compute (or accept precomputed) truncated SVD of S.
-//   2. Compute perturbation matrices A, B from column/row means of S.
-//   3. Apply perturbedSVD to the SVD + perturbation.
-//   4. Round and scale the right singular vectors to produce S_r.
+//   2. Compute perturbation matrices A (gene-space) and B (cell-space) from
+//      column/row means of S (cells x genes).
+//   3. Apply perturbedSVD with swapped A/B roles (B pertains to row-space = cells).
+//   4. Round and scale the left singular vectors (U, cells x k) to produce S_r.
 
 #ifndef ACTIONET_REDUCE_KERNEL_HPP
 #define ACTIONET_REDUCE_KERNEL_HPP
@@ -22,18 +30,18 @@ namespace actionet {
 
     /// @brief Result of kernel reduction.
     ///
-    /// Fields follow standard SVD naming conventions:
-    ///   - U  : Left singular vectors of the perturbed decomposition (features × k).
-    ///          These correspond to the "V" (gene loadings) output in some legacy
-    ///          field-based interfaces.
-    ///   - S_r: Reduced kernel matrix (k × cells), derived from the right singular
-    ///          vectors scaled by sigma and discretised.
+    /// AnnData-native orientation (cells x genes input contract):
+    ///   - S_r: Reduced kernel matrix (cells × k), derived from the left singular
+    ///          vectors of the perturbed decomposition, scaled by sigma and
+    ///          discretised.  Was (k × cells) in the pre-Plan-02 contract.
+    ///   - U  : Gene loadings (genes × k).  These correspond to the right singular
+    ///          vectors of S (cells × genes).  Name kept as U for legacy compat.
     struct KernelReductionResult {
-        arma::mat S_r;      ///< Reduced kernel (k × cells)
+        arma::mat S_r;      ///< Reduced kernel (cells × k)    — was (k × cells)
         arma::vec sigma;    ///< Singular values (k)
-        arma::mat U;        ///< Left singular vectors of perturbed SVD (features × k)
-        arma::mat A;        ///< Accumulated left perturbation (features × p)
-        arma::mat B;        ///< Accumulated right perturbation (cells × p)
+        arma::mat U;        ///< Gene loadings / right singular vectors (genes × k)
+        arma::mat A;        ///< Left perturbation (genes × p)
+        arma::mat B;        ///< Right perturbation (cells × p)
     };
 
     // ---- Legacy field ↔ struct conversion helpers ----------------------------------------
@@ -63,21 +71,27 @@ namespace actionet {
 
     /// @brief Compute perturbation matrices A and B from an operator-backed matrix.
     ///
-    /// A and B encode centering corrections derived from row and column means of S.
+    /// A and B encode centering corrections derived from column and row means of S.
+    /// With S in cells × genes (obs × var) orientation:
+    ///   A (genes × 2) — gene-space (col-space) perturbation.
+    ///   B (cells × 2) — cell-space (row-space) perturbation.
     ///
-    /// @param S  Matrix operator (features × cells).
-    /// @param[out] A  Left perturbation matrix  (features × 2).
-    /// @param[out] B  Right perturbation matrix (cells × 2).
+    /// @param S  Matrix operator (cells × genes, obs × var).
+    /// @param[out] A  Gene-space perturbation matrix  (genes × 2).
+    /// @param[out] B  Cell-space perturbation matrix  (cells × 2).
     void computeKernelPerturbationTerms(const MatrixOperator& S, arma::mat& A, arma::mat& B);
 
     /// @brief Apply ACTION kernel post-processing from a precomputed SVD and perturbation terms.
     ///
-    /// Applies perturbedSVD, then rounds and scales the right singular vectors to
-    /// produce the reduced kernel S_r.
+    /// S is treated as cells × genes.  perturbedSVD is called with B (cells × p) as
+    /// the left (row-space) perturbation and A (genes × p) as the right (col-space)
+    /// perturbation, matching the new orientation.  S_r is assembled from the left
+    /// singular vectors (cells × k), not the right.
     ///
-    /// @param svd  Precomputed truncated SVD of S.
-    /// @param A    Left perturbation matrix  (features × p).
-    /// @param B    Right perturbation matrix (cells × p).
+    /// @param svd  Precomputed truncated SVD of S (cells × genes).
+    ///             svd.U is (cells × k), svd.V is (genes × k).
+    /// @param A    Gene-space (col-space) perturbation (genes × p).
+    /// @param B    Cell-space (row-space) perturbation (cells × p).
     KernelReductionResult applyKernelPostSVD(const SVDResult& svd, const arma::mat& A, const arma::mat& B);
 
     /// @brief Compute reduced ACTION kernel from precomputed SVD and operator-backed matrix.
@@ -86,7 +100,7 @@ namespace actionet {
     KernelReductionResult reduceKernelFromSVD_Operator(const MatrixOperator& S, const SVDResult& svd,
                                                        bool verbose = true);
 
-    /// @brief Compute reduced ACTION kernel from operator-backed matrix using selected SVD.
+    /// @brief Compute reduced ACTION kernel from operator-backed matrix (cells × genes) using selected SVD.
     ///
     /// @note Unavailable in R builds (PRIMME is Python-only in v1).
     KernelReductionResult reduceKernel_Operator(const MatrixOperator& S, int k, int svd_alg = ALG_HALKO,
@@ -106,7 +120,7 @@ namespace actionet {
     /// that are already materialised in memory.
     ///
     /// @tparam T Dense (arma::mat) or sparse (arma::sp_mat) matrix type.
-    /// @param S      Input matrix (features × cells).
+    /// @param S      Input matrix (cells × genes, obs × var).
     /// @param svd    Precomputed truncated SVD of S.
     /// @param verbose Print status messages.
     template <typename T>
@@ -117,14 +131,14 @@ namespace actionet {
     /// @brief Compute a reduced kernel matrix using truncated SVD.
     ///
     /// @tparam T Dense or sparse Armadillo matrix type.
-    /// @param S Input matrix (<em>features</em> × <em>cells</em>).
+    /// @param S Input matrix (<em>cells</em> × <em>genes</em>, i.e. obs × var).
     /// @param k Number of singular vectors to estimate.
     /// @param svd_alg SVD algorithm (see @c runSVD()).
     /// @param max_it Maximum number of SVD iterations.
     /// @param seed Random seed.
     /// @param verbose Print status messages.
     ///
-    /// @return Field with 5 elements: {S_r, sigma, U, A, B}.
+    /// @return Field with 5 elements: {S_r (cells × k), sigma, U (genes × k), A, B}.
     template <typename T>
     arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg = 0, int max_it = 0,
                                         int seed = 0, bool verbose = true);

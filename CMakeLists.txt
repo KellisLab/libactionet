@@ -156,5 +156,39 @@ endif ()
 target_compile_options(actionet PUBLIC -Wno-psabi -Wno-deprecated-declarations)# -ferror-limit=10)#-fmax-errors=10)
 #add_compile_options(-w)
 
+option(LIBACTIONET_BUILD_VALIDATORS "Build internal validation executables" ON)
+
+if (LIBACTIONET_BUILD_VALIDATORS)
+    add_executable(validate_plan02_core test/validate_plan02_core.cpp)
+    target_compile_features(validate_plan02_core PRIVATE cxx_std_17)
+    target_include_directories(
+            validate_plan02_core
+            PRIVATE "${actionet_SOURCE_DIR}/include/extern/armadillo"
+            PRIVATE "${actionet_SOURCE_DIR}/include/extern/gcem"
+            PRIVATE "${actionet_SOURCE_DIR}/include/extern"
+            PRIVATE "${actionet_SOURCE_DIR}/include"
+    )
+    if (LIBACTIONET_BUILD_R)
+        target_include_directories(
+                validate_plan02_core
+                PRIVATE ${r_RInclude}
+                PRIVATE ${r_RcppInclude}
+                PRIVATE ${r_RcppArmaInclude}
+        )
+        target_compile_definitions(
+                validate_plan02_core
+                PRIVATE VALIDATE_PLAN02_R_HOME="${R_HOME}"
+        )
+        execute_process(
+                COMMAND bash -c "${R_HOME}/bin/R CMD config --ldflags"
+                OUTPUT_VARIABLE r_LDFLAGS
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        separate_arguments(r_LDFLAGS UNIX_COMMAND "${r_LDFLAGS}")
+        target_link_options(validate_plan02_core PRIVATE ${r_LDFLAGS})
+    endif ()
+    target_link_libraries(validate_plan02_core PRIVATE actionet)
+endif ()
+
 ## Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

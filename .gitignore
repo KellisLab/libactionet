@@ -2,6 +2,7 @@
 .vscode/
 pybind11/
 build/
+build*/
 build_test/
 cmake-build-*/
 .Rproj.user
@@ -17,4 +18,8 @@ cmake-build-*/
 *.o
 *.so
 *.a
+*.npy
+*.npz
+*.h5
+*.h5ad
 ~*

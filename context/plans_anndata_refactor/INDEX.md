@@ -24,7 +24,11 @@ The contract breakage period ends when Plan 07 passes all parity checks.
 ## Current Execution State
 
 - As of 2026-03-21, Plans 00 and 01 are complete and verified.
-- Plans 02-07 remain pending.
+- As of 2026-03-22, Plans 02 and 02A are complete.
+- Plan 02A repaired the remaining orthogonalization contract mismatch and added
+  a repo-local core validator (`validate_plan02_core`) that passes in both
+  build modes.
+- Plans 03-07 remain pending.
 
 ## Agent Environment Guidance
 
@@ -41,7 +45,8 @@ record any nontrivial setup commands in the implementation handoff.
 |------|-------|-----------------|------|--------|
 | [00](00_PARITY_BASELINE.md) | Parity Baseline Infrastructure | all | Low | **Complete** |
 | [01](01_R_NETWORK_CLEANUP.md) | R Network Cleanup | actionet-r, libactionet | Low | **Complete** |
-| [02](02_CPP_CORE_CONTRACT_FLIP.md) | C++ Core Contract Flip | libactionet | High | Pending |
+| [02](02_CPP_CORE_CONTRACT_FLIP.md) | C++ Core Contract Flip | libactionet | High | **Complete** |
+| [02A](02A_ORTHOGONALIZATION_CONTRACT_REPAIR.md) | Orthogonalization Contract Repair | libactionet | High | **Complete** |
 | [03](03_R_FRONTEND_ADAPTATION.md) | R Frontend Adaptation | actionet-r | Medium | Pending |
 | [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | Pending |
 | [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | Pending |
@@ -57,11 +62,13 @@ record any nontrivial setup commands in the implementation handoff.
 │
 ├──► 02 C++ Core Contract Flip
 │    │
-│    ├──► 03 R Frontend Adaptation ──────────┐
-│    │                                       │
-│    ├──► 04 Python Frontend Adaptation ─────┤
-│    │                                       │
-│    └──► 05 Operator-Backed IRLB            │
+│    ├──► 02A Orthogonalization Repair
+│    │    │
+│    │    ├──► 03 R Frontend Adaptation ─────┐
+│    │    │                                   │
+│    │    └──► 04 Python Frontend Adaptation ─┤
+│    │                                        │
+│    └──► 05 Operator-Backed IRLB             │
 │                                            ▼
 │                                   06 Unified Specificity
 │                                            │
@@ -72,9 +79,9 @@ record any nontrivial setup commands in the implementation handoff.
 
 ### Parallelism
 
-- Plans 03 and 04 can execute in parallel (they modify different repos)
+- Plans 03 and 04 can execute in parallel after Plan 02A
 - Plan 05 can execute in parallel with Plans 03 and 04
-- Plan 06 requires Plans 02, 03, and 04 to be complete
+- Plan 06 requires Plans 02A, 03, and 04 to be complete
 - Plan 01 is independent and can land at any time after Plan 00
 
 ## Estimated Scope
@@ -84,6 +91,7 @@ record any nontrivial setup commands in the implementation handoff.
 | 00 | ~3 new scripts + fixture | Small |
 | 01 | ~3 files across 2 repos | Small |
 | 02 | ~12 files in libactionet | Large |
+| 02A | ~8 files in libactionet + docs | Small-Medium |
 | 03 | ~12 files in actionet-r | Medium |
 | 04 | ~8 files in actionet-python | Medium-Large |
 | 05 | ~4 files in libactionet | Medium |
