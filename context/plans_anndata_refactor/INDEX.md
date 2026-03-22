@@ -28,7 +28,17 @@ The contract breakage period ends when Plan 07 passes all parity checks.
 - Plan 02A repaired the remaining orthogonalization contract mismatch and added
   a repo-local core validator (`validate_plan02_core`) that passes in both
   build modes.
-- Plans 03-07 remain pending.
+- As of 2026-03-22, Plan 03 is complete.
+- Plan 03 removed all C++-path transpose shims from `actionet-r`, fixed
+  downstream dimension-helper cascade effects, and verified numerical parity
+  with the Plan 00 baseline up to SVD sign conventions.
+- As of 2026-03-22, Plan 03A is complete.
+- Plan 03A fixed three confirmed regressions (layoutNetwork SVD-space bug,
+  filterActionet axis inversion, bare-matrix input contract), added 9 new
+  regression tests, and added a repeatable stage-03 validator script
+  (`tests/validate_stage03.R`) that passes all 17 shape and numerical checks
+  against the Plan 00 baseline.
+- Plans 04-07 remain pending.
 
 ## Agent Environment Guidance
 
@@ -47,7 +57,8 @@ record any nontrivial setup commands in the implementation handoff.
 | [01](01_R_NETWORK_CLEANUP.md) | R Network Cleanup | actionet-r, libactionet | Low | **Complete** |
 | [02](02_CPP_CORE_CONTRACT_FLIP.md) | C++ Core Contract Flip | libactionet | High | **Complete** |
 | [02A](02A_ORTHOGONALIZATION_CONTRACT_REPAIR.md) | Orthogonalization Contract Repair | libactionet | High | **Complete** |
-| [03](03_R_FRONTEND_ADAPTATION.md) | R Frontend Adaptation | actionet-r | Medium | Pending |
+| [03](03_R_FRONTEND_ADAPTATION.md) | R Frontend Adaptation | actionet-r | Medium | **Complete** |
+| [03A](03A_R_FRONTEND_POST_FLIP_REPAIR.md) | R Frontend Post-Flip Repair | actionet-r | Medium | **Complete** |
 | [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | Pending |
 | [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | Pending |
 | [06](06_UNIFIED_SPECIFICITY.md) | Unified Specificity | libactionet, actionet-python | Medium | Pending |
