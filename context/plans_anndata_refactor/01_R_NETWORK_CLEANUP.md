@@ -3,8 +3,8 @@
 ## Position in Sequence
 
 ```
-   00 Parity Baseline            [DONE before this plan starts]
->> 01 R Network Cleanup <<
+   00 Parity Baseline            [DONE]
+>> 01 R Network Cleanup          [DONE]
    02 C++ Core Contract Flip
    03 R Frontend Adaptation
    04 Python Frontend Adaptation + Boundary Optimization
@@ -13,8 +13,11 @@
    07 Final Cross-Language Parity Validation
 ```
 
-**Dependencies**: Plan 00 (baseline captured).
-**Blocks**: None directly. This is a low-risk early win that can land independently.
+**Status**: **Complete** (2026-03-21)
+
+**Validation result**: `C_buildNetwork` with `cells x k` H matrix produces
+bit-identical output (max abs diff = 0) to the Plan 00 baseline.
+R package builds cleanly with `devtools::load_all()`.
 
 ## Contract Notice
 
@@ -23,6 +26,15 @@ Public API breakage across `libactionet`, `actionet-r`, and `actionet-python` is
 explicitly permitted and expected until the full sequence completes.
 
 See `context/ANNDATA_UNIFICATION_HANDOFF.md` for the complete rationale.
+
+## Agent Execution Note
+
+Implementing agents may create repo-local virtual environments or temporary
+environments under `.venv` or `/tmp` and install Python, R, or build
+dependencies as needed to run the validation steps in this plan.
+
+Prefer isolated environments over modifying unrelated global environments, and
+record any nontrivial setup commands in the handoff.
 
 ## Problem
 

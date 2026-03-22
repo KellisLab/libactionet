@@ -21,12 +21,26 @@ where one or more repos are incompatible. This is expected and approved.
 
 The contract breakage period ends when Plan 07 passes all parity checks.
 
+## Current Execution State
+
+- As of 2026-03-21, Plans 00 and 01 are complete and verified.
+- Plans 02-07 remain pending.
+
+## Agent Environment Guidance
+
+Implementing agents may create repo-local virtual environments or temporary
+environments under `.venv` or `/tmp` and install Python, R, or build
+dependencies as needed to execute the validation steps in these plans.
+
+Prefer isolated environments over modifying unrelated global environments, and
+record any nontrivial setup commands in the implementation handoff.
+
 ## Plan Index
 
 | Plan | Title | Primary Repo(s) | Risk | Status |
 |------|-------|-----------------|------|--------|
-| [00](00_PARITY_BASELINE.md) | Parity Baseline Infrastructure | all | Low | Pending |
-| [01](01_R_NETWORK_CLEANUP.md) | R Network Cleanup | actionet-r, libactionet | Low | Pending |
+| [00](00_PARITY_BASELINE.md) | Parity Baseline Infrastructure | all | Low | **Complete** |
+| [01](01_R_NETWORK_CLEANUP.md) | R Network Cleanup | actionet-r, libactionet | Low | **Complete** |
 | [02](02_CPP_CORE_CONTRACT_FLIP.md) | C++ Core Contract Flip | libactionet | High | Pending |
 | [03](03_R_FRONTEND_ADAPTATION.md) | R Frontend Adaptation | actionet-r | Medium | Pending |
 | [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | Pending |

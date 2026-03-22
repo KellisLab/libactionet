@@ -8,7 +8,7 @@
 namespace actionet {
     /// @brief Build a cell-cell network from archetype weights.
     ///
-    /// @param H Archetype weights (k x cells).
+    /// @param H Archetype weights (cells x k, AnnData-native orientation).
     /// @param algorithm "k*nn" or "knn".
     /// @param distance_metric "jsd", "l2", or "ip".
     /// @param density Graph density factor.

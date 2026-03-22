@@ -4,7 +4,7 @@
 
 ```
    00 Parity Baseline            [DONE]
-   01 R Network Cleanup          [DONE]
+   01 R Network Cleanup          [optional; currently pending]
 >> 02 C++ Core Contract Flip <<
    03 R Frontend Adaptation
    04 Python Frontend Adaptation + Boundary Optimization
@@ -24,6 +24,15 @@ Public API breakage across `libactionet`, `actionet-r`, and `actionet-python` is
 explicitly permitted and expected until the full sequence completes.
 
 See `context/ANNDATA_UNIFICATION_HANDOFF.md` for the complete rationale.
+
+## Agent Execution Note
+
+Implementing agents may create repo-local virtual environments or temporary
+environments under `.venv` or `/tmp` and install Python, R, or build
+dependencies as needed to run the validation steps in this plan.
+
+Prefer isolated environments over modifying unrelated global environments, and
+record any nontrivial setup commands in the handoff.
 
 **This plan intentionally breaks the `libactionet` public header contract.**
 After this plan lands, both `actionet-r` and `actionet-python` will fail to

@@ -780,15 +780,14 @@ buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_met
         throw nnApproachException;
     }
 
-    const std::size_t dim = H.n_rows;
-    const std::size_t n_points = H.n_cols;
+    // H is cells x k (AnnData-native orientation): n_rows = cells, n_cols = k.
+    const std::size_t n_points = H.n_rows;
+    const std::size_t dim      = H.n_cols;
 
     std::vector<float> X(checked_product(n_points, dim, "Legacy buildNetwork input"));
-    for (std::size_t col = 0; col < n_points; ++col) {
-        const double* src = H.colptr(col);
-        float* dst = X.data() + col * dim;
-        for (std::size_t d = 0; d < dim; ++d) {
-            dst[d] = static_cast<float>(src[d]);
+    for (std::size_t i = 0; i < n_points; ++i) {
+        for (std::size_t j = 0; j < dim; ++j) {
+            X[i * dim + j] = static_cast<float>(H(i, j));
         }
     }
 

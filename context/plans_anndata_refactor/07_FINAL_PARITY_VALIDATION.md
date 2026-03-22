@@ -4,12 +4,12 @@
 
 ```
    00 Parity Baseline            [DONE]
-   01 R Network Cleanup          [DONE]
-   02 C++ Core Contract Flip     [DONE]
-   03 R Frontend Adaptation      [DONE]
-   04 Python Frontend Adaptation [DONE]
-   05 Operator-Backed IRLB       [DONE]
-   06 Unified Specificity        [DONE]
+   01 R Network Cleanup          [currently pending]
+   02 C++ Core Contract Flip     [currently pending]
+   03 R Frontend Adaptation      [currently pending]
+   04 Python Frontend Adaptation [currently pending]
+   05 Operator-Backed IRLB       [currently pending]
+   06 Unified Specificity        [currently pending]
 >> 07 Final Cross-Language Parity Validation <<
 ```
 
@@ -21,6 +21,15 @@
 This plan concludes the AnnData orientation unification. After this plan
 passes, the contract breakage period is over. The new orientation contract
 is the permanent API.
+
+## Agent Execution Note
+
+Implementing agents may create repo-local virtual environments or temporary
+environments under `.venv` or `/tmp` and install Python, R, or build
+dependencies as needed to run the validation steps in this plan.
+
+Prefer isolated environments over modifying unrelated global environments, and
+record any nontrivial setup commands in the handoff.
 
 ## Objective
 

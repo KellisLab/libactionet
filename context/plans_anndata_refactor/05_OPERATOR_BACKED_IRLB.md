@@ -4,10 +4,10 @@
 
 ```
    00 Parity Baseline            [DONE]
-   01 R Network Cleanup          [DONE]
-   02 C++ Core Contract Flip     [DONE]
-   03 R Frontend Adaptation      [DONE or in parallel]
-   04 Python Frontend Adaptation [DONE or in parallel]
+   01 R Network Cleanup          [optional; currently pending]
+   02 C++ Core Contract Flip     [required; currently pending]
+   03 R Frontend Adaptation      [parallel follow-up; currently pending]
+   04 Python Frontend Adaptation [parallel follow-up; currently pending]
 >> 05 Operator-Backed IRLB <<
    06 Unified Specificity
    07 Final Cross-Language Parity Validation
@@ -24,6 +24,15 @@ Public API breakage across `libactionet`, `actionet-r`, and `actionet-python` is
 explicitly permitted and expected until the full sequence completes.
 
 See `context/ANNDATA_UNIFICATION_HANDOFF.md` for the complete rationale.
+
+## Agent Execution Note
+
+Implementing agents may create repo-local virtual environments or temporary
+environments under `.venv` or `/tmp` and install Python, R, or build
+dependencies as needed to run the validation steps in this plan.
+
+Prefer isolated environments over modifying unrelated global environments, and
+record any nontrivial setup commands in the handoff.
 
 ## Objective
 
