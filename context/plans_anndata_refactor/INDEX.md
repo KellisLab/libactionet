@@ -46,7 +46,12 @@ The contract breakage period ends when Plan 07 passes all parity checks.
   public contract, updated operator orthogonalization wrappers to use the typed
   `KernelReductionResult` API, and added a repeatable stage-04 validator script
   (`tests/validate_stage04.py`) that passes all 20 shape and consistency checks.
-- Plans 05-07 remain pending.
+|- As of 2026-03-22, Plan 05 is complete.
+|- Plan 05 added a `MatrixOperator` overload to IRLB, removed the `ALG_IRLB` throw
+  in `runSVD_Operator`, and removed the `LIBACTIONET_BUILD_R` gate from
+  `reduceKernel_Operator`. Both standard and R builds compile cleanly. Operator IRLB
+  agrees with in-memory IRLB to machine precision (`< 1e-13` in sigma).
+- Plans 06-07 remain pending.
 
 ## Agent Environment Guidance
 
@@ -68,7 +73,7 @@ record any nontrivial setup commands in the implementation handoff.
 | [03](03_R_FRONTEND_ADAPTATION.md) | R Frontend Adaptation | actionet-r | Medium | **Complete** |
 | [03A](03A_R_FRONTEND_POST_FLIP_REPAIR.md) | R Frontend Post-Flip Repair | actionet-r | Medium | **Complete** |
 | [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | **Complete** |
-| [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | Pending |
+| [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | **Complete** |
 | [06](06_UNIFIED_SPECIFICITY.md) | Unified Specificity | libactionet, actionet-python | Medium | Pending |
 | [07](07_FINAL_PARITY_VALIDATION.md) | Final Cross-Language Parity Validation | all | Low | Pending |
 

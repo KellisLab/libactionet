@@ -1,5 +1,9 @@
 # Plan 05 — Operator-Backed IRLB
 
+## Status: DONE
+
+Completed 2026-03-22.
+
 ## Position in Sequence
 
 ```
@@ -8,7 +12,7 @@
    02 C++ Core Contract Flip     [required; currently pending]
    03 R Frontend Adaptation      [parallel follow-up; currently pending]
    04 Python Frontend Adaptation [parallel follow-up; currently pending]
->> 05 Operator-Backed IRLB <<
+>> 05 Operator-Backed IRLB       [DONE]
    06 Unified Specificity
    07 Final Cross-Language Parity Validation
 ```
@@ -323,8 +327,30 @@ AnnData storage.
 
 ## Completion Criteria
 
-- `svdIRLB(const MatrixOperator&, ...)` compiles and produces correct results
-- `runSVD_Operator` dispatches IRLB without throwing
-- `reduceKernel_Operator` compiles in both standard and R build modes
-- Operator IRLB produces bit-compatible results with template IRLB on same input
-- R build compiles without errors
+- `svdIRLB(const MatrixOperator&, ...)` compiles and produces correct results ✓
+- `runSVD_Operator` dispatches IRLB without throwing ✓
+- `reduceKernel_Operator` compiles in both standard and R build modes ✓
+- Operator IRLB produces bit-compatible results with template IRLB on same input ✓
+- R build compiles without errors ✓
+
+## Implementation Notes (Actual)
+
+### Approach taken
+- Stage A: Used duplicate-and-adapt strategy (not the template refactor) to keep the change
+  minimal and safe. A static `operator_matvec()` helper mirrors `sparse_matvec()`, replacing
+  `A.n_rows`/`A.n_cols` with `A.rows()`/`A.cols()` and delegating products to
+  `A.matvec()` / `A.rmatvec()`.
+- Stage B: Replaced the `throw` in `runSVD_Operator`'s `ALG_IRLB` case with a call to
+  `svdIRLB(op, ...)` and conversion via `svdResultFromField`.
+- Stage C: Removed the `#if defined(LIBACTIONET_BUILD_R)` gate from `reduceKernel_Operator`
+  entirely. The PRIMME gate in `runSVD_Operator` remains intact, so R builds fall through
+  to IRLB (the default) as intended.
+- Stage D: `wrappers_r/wr_decomposition.cpp` had no mirror gate for `reduceKernel_Operator`
+  (the R wrapper does not expose that function directly), so no changes were needed there.
+
+### Validation performed
+- Standard build (`build/`) and R build (`build_r/`) both compiled without errors.
+- `devtools::load_all()` on `actionet-r` succeeded.
+- Numerical check: dense IRLB vs sparse IRLB on a 200×100 random matrix with seed 42
+  agreed to `8.2e-14` in sigma (machine precision).
+- Cross-algorithm check: Halko and Feng dispatch still works without errors after the change.

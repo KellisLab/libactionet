@@ -102,8 +102,10 @@ namespace actionet {
                 return runSVD_PRIMME_Operator(op, k, max_it, seed, verbose);
 #endif
             case ALG_IRLB:
-            default:
-                throw std::runtime_error("Operator-backed IRLB is unsupported; use Halko, Feng, or PRIMME.");
+            default: {
+                arma::field<arma::mat> result = svdIRLB(op, k, max_it, seed, verbose);
+                return svdResultFromField(result);
+            }
         }
     }
 

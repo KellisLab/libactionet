@@ -4,6 +4,7 @@
 #define ACTIONET_SVD_IRBLA_HPP
 
 #include "libactionet_config.hpp"
+#include "decomposition/matrix_operator.hpp"
 
 /// @brief Truncated SVD using IRLBA (sparse).
 ///
@@ -26,5 +27,21 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters = 1000, int s
 ///
 /// @return Field containing {U, S, V}.
 arma::field<arma::mat> svdIRLB(arma::mat& A, int dim, int iters = 1000, int seed = 0, bool verbose = true);
+
+/// @brief Truncated SVD using IRLBA via abstract matrix operator.
+///
+/// Enables IRLB on out-of-memory / backed matrices without materialising the
+/// full matrix.  Matrix-vector products are delegated to the operator's
+/// matvec (y = A*x) and rmatvec (y = A'*x) methods.
+///
+/// @param A Matrix operator (m × n logical matrix).
+/// @param dim Number of components.
+/// @param iters Maximum iterations.
+/// @param seed Random seed.
+/// @param verbose Print progress messages.
+///
+/// @return Field containing {U, S, V}.
+arma::field<arma::mat> svdIRLB(const actionet::MatrixOperator& A, int dim,
+                                int iters = 1000, int seed = 0, bool verbose = true);
 
 #endif //ACTIONET_SVD_IRBLA_HPP
