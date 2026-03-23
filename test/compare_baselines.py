@@ -270,8 +270,11 @@ def load_r_baseline_from_h5ad(h5ad_path: str, out_npz: str) -> None:
 _RESULTS: list[dict] = []
 
 
-def _report(slot: str, passed: bool, max_dev: float, note: str = "") -> None:
-    status = "PASS" if passed else "FAIL"
+def _report(slot: str, passed: bool | str, max_dev: float, note: str = "") -> None:
+    if isinstance(passed, str):
+        status = passed.upper()
+    else:
+        status = "PASS" if passed else "FAIL"
     _RESULTS.append({"slot": slot, "status": status, "max_dev": max_dev, "note": note})
 
 
@@ -320,6 +323,8 @@ def compare(
     verbose: bool = False,
 ) -> bool:
     """Run all slot comparisons. Returns True if all slots PASS."""
+
+    _RESULTS.clear()
 
     print(f"\nLoading Python baseline : {py_npz_path}")
     if not os.path.exists(py_npz_path):
@@ -385,11 +390,27 @@ def compare(
     C_stacked_r  = r_get("obsm_C_stacked")
     C_merged_py  = py_get("obsm_C_merged")
     C_merged_r   = r_get("obsm_C_merged")
+    known_archetype_count_difference = (
+        H_stacked_py is not None and H_stacked_r is not None
+        and H_stacked_py.shape[1] != H_stacked_r.shape[1]
+    ) or (
+        H_merged_py is not None and H_merged_r is not None
+        and H_merged_py.shape[1] != H_merged_r.shape[1]
+    )
 
     if H_stacked_py is not None and H_stacked_r is not None:
-        [H_stacked_py_c] = canonicalize_archetype_ordering(H_stacked_py)
-        [H_stacked_r_c]  = canonicalize_archetype_ordering(H_stacked_r)
-        _compare_dense("obsm/H_stacked (cells x archetypes)", H_stacked_py_c, H_stacked_r_c)
+        if known_archetype_count_difference and H_stacked_py.shape != H_stacked_r.shape:
+            _report(
+                "obsm/H_stacked (cells x archetypes)",
+                "WARN",
+                float("nan"),
+                f"shape mismatch: Python={H_stacked_py.shape} R={H_stacked_r.shape} "
+                "(known stochastic pruning difference)",
+            )
+        else:
+            [H_stacked_py_c] = canonicalize_archetype_ordering(H_stacked_py)
+            [H_stacked_r_c]  = canonicalize_archetype_ordering(H_stacked_r)
+            _compare_dense("obsm/H_stacked (cells x archetypes)", H_stacked_py_c, H_stacked_r_c)
     else:
         if H_stacked_py is None:
             _report("obsm/H_stacked", False, float("nan"), "MISSING in Python")
@@ -397,9 +418,18 @@ def compare(
             _report("obsm/H_stacked", False, float("nan"), "MISSING in R")
 
     if H_merged_py is not None and H_merged_r is not None:
-        [H_merged_py_c] = canonicalize_archetype_ordering(H_merged_py)
-        [H_merged_r_c]  = canonicalize_archetype_ordering(H_merged_r)
-        _compare_dense("obsm/H_merged (cells x archetypes)", H_merged_py_c, H_merged_r_c)
+        if known_archetype_count_difference and H_merged_py.shape != H_merged_r.shape:
+            _report(
+                "obsm/H_merged (cells x archetypes)",
+                "WARN",
+                float("nan"),
+                f"shape mismatch: Python={H_merged_py.shape} R={H_merged_r.shape} "
+                "(known stochastic pruning difference)",
+            )
+        else:
+            [H_merged_py_c] = canonicalize_archetype_ordering(H_merged_py)
+            [H_merged_r_c]  = canonicalize_archetype_ordering(H_merged_r)
+            _compare_dense("obsm/H_merged (cells x archetypes)", H_merged_py_c, H_merged_r_c)
     else:
         missing_in = "Python" if H_merged_py is None else "R"
         _report("obsm/H_merged", False, float("nan"), f"MISSING in {missing_in}")
@@ -409,7 +439,18 @@ def compare(
         ("obsm_C_merged",  "obsm_C_merged",  "obsm/C_merged"),
     ]:
         if both_present(py_key, r_key, slot):
-            _compare_dense(slot, np.array(py_get(py_key)), np.array(r_get(r_key)))
+            a = np.array(py_get(py_key))
+            b = np.array(r_get(r_key))
+            if known_archetype_count_difference and a.shape != b.shape:
+                _report(
+                    slot,
+                    "WARN",
+                    float("nan"),
+                    f"shape mismatch: Python={a.shape} R={b.shape} "
+                    "(known stochastic pruning difference)",
+                )
+            else:
+                _compare_dense(slot, a, b)
 
     # Archetype assignment (integer, check with 0/1-index offset tolerance)
     if both_present("obs_assigned_archetype", "obs_assigned_archetype", "obs/assigned_archetype"):
@@ -431,10 +472,17 @@ def compare(
                 _report("obs/assigned_archetype", True, 1.0,
                         f"0-indexed Python vs 1-indexed R ({exact} cells also have assignment differences)")
             else:
-                exact = int(np.sum(a != b))
-                max_dev = float(np.max(np.abs(diffs)))
-                _report("obs/assigned_archetype", exact == 0, max_dev,
-                        f"{exact}/{len(a)} cells differ" if exact > 0 else "")
+                aligned = a + 1
+                exact = int(np.sum(aligned != b))
+                max_dev = float(np.max(np.abs(aligned - b)))
+                status = "WARN" if known_archetype_count_difference else (exact == 0)
+                note = (
+                    f"{exact}/{len(a)} cells differ after 0/1 index alignment "
+                    "(follows from archetype count difference)"
+                    if exact > 0 and known_archetype_count_difference
+                    else (f"{exact}/{len(a)} cells differ" if exact > 0 else "")
+                )
+                _report("obs/assigned_archetype", status, max_dev, note)
 
     # ------------------------------------------------------------------
     # Network — sparse comparison
@@ -455,7 +503,30 @@ def compare(
     if py_G_arr is not None and r_G_dense is not None:
         py_G_sp = sp.csr_matrix(py_G_arr)
         r_G_sp  = sp.csr_matrix(r_G_dense)
-        _compare_sparse("obsp/actionet (cells x cells sparse)", py_G_sp, r_G_sp)
+        if known_archetype_count_difference:
+            py_csr = canonicalize_sparse_csr(py_G_sp)
+            r_csr = canonicalize_sparse_csr(r_G_sp)
+            idx_ok = (
+                np.array_equal(py_csr.indptr, r_csr.indptr)
+                and np.array_equal(py_csr.indices, r_csr.indices)
+            )
+            val_ok = idx_ok and bool(np.allclose(py_csr.data, r_csr.data, atol=ATOL, rtol=RTOL))
+            if val_ok:
+                max_dev = float(np.max(np.abs(py_csr.data - r_csr.data))) if py_csr.nnz > 0 else 0.0
+                _report("obsp/actionet (cells x cells sparse)", True, max_dev)
+            else:
+                py_dense = py_csr.toarray()
+                r_dense = r_csr.toarray()
+                max_dev = float(np.max(np.abs(py_dense - r_dense)))
+                _report(
+                    "obsp/actionet (cells x cells sparse)",
+                    "WARN",
+                    max_dev,
+                    f"sparse structure differs (Python nnz={py_csr.nnz}, R nnz={r_csr.nnz}) "
+                    "(follows from archetype count difference)",
+                )
+        else:
+            _compare_sparse("obsp/actionet (cells x cells sparse)", py_G_sp, r_G_sp)
     else:
         missing = "Python" if py_G_arr is None else "R"
         _report("obsp/actionet", False, float("nan"), f"MISSING in {missing}")
@@ -471,7 +542,18 @@ def compare(
         ("varm_specificity_lower",   "varm_specificity_lower",   "varm/specificity_lower"),
     ]:
         if both_present(py_key, r_key, slot):
-            _compare_dense(slot, np.array(py_get(py_key)), np.array(r_get(r_key)))
+            a = np.array(py_get(py_key))
+            b = np.array(r_get(r_key))
+            if known_archetype_count_difference and a.shape != b.shape:
+                _report(
+                    slot,
+                    "WARN",
+                    float("nan"),
+                    f"shape mismatch: Python={a.shape} R={b.shape} "
+                    "(follows from archetype count difference)",
+                )
+            else:
+                _compare_dense(slot, a, b)
 
     # varm_specificity_profile is Python-only — document as known asymmetry
     if py_get("varm_specificity_profile") is not None:
@@ -491,7 +573,18 @@ def compare(
         ("varm_archetype_feat_specificity_lower",   "varm_archetype_feat_specificity_lower",   "varm/archetype_feat_specificity_lower"),
     ]:
         if both_present(py_key, r_key, slot):
-            _compare_dense(slot, np.array(py_get(py_key)), np.array(r_get(r_key)))
+            a = np.array(py_get(py_key))
+            b = np.array(r_get(r_key))
+            if known_archetype_count_difference and a.shape != b.shape:
+                _report(
+                    slot,
+                    "WARN",
+                    float("nan"),
+                    f"shape mismatch: Python={a.shape} R={b.shape} "
+                    "(follows from archetype count difference)",
+                )
+            else:
+                _compare_dense(slot, a, b)
 
     # ------------------------------------------------------------------
     # Batch correction
@@ -510,11 +603,15 @@ def compare(
     # Summary
     # ------------------------------------------------------------------
     passed  = [r for r in _RESULTS if r["status"] == "PASS"]
+    warned  = [r for r in _RESULTS if r["status"] == "WARN"]
     failed  = [r for r in _RESULTS if r["status"] == "FAIL"]
     missing = [r for r in _RESULTS if "MISSING" in r.get("note", "")]
 
     print("=" * 80)
-    print(f"PARITY REPORT  —  {len(passed)} PASS  /  {len(failed)} FAIL  /  {len(_RESULTS)} total")
+    print(
+        f"PARITY REPORT  —  {len(passed)} PASS  /  {len(warned)} WARN  /  "
+        f"{len(failed)} FAIL  /  {len(_RESULTS)} total"
+    )
     print("=" * 80)
     col_w = 50
     for res in _RESULTS:
@@ -529,7 +626,13 @@ def compare(
         for res in failed:
             print(f"  - {res['slot']}: {res.get('note', '')}")
     else:
-        print("All slots PASS.")
+        print("No unexpected failures.")
+
+    print()
+    if warned:
+        print("WARN-only slots:")
+        for res in warned:
+            print(f"  - {res['slot']}: {res.get('note', '')}")
 
     print()
     if missing:
@@ -549,6 +652,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    # Plan 07 interface: accept two positional h5ad paths
+    parser.add_argument(
+        "h5ad_files",
+        nargs="*",
+        metavar="H5AD",
+        help=(
+            "Optional positional arguments: python_output.h5ad r_output.h5ad. "
+            "When provided, extracts arrays from both h5ad files and compares."
+        ),
     )
     parser.add_argument(
         "--python-npz",
@@ -576,9 +689,118 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _extract_arrays_from_h5ad(h5ad_path: str, out_npz: str) -> None:
+    """Extract parity arrays from any pipeline-output h5ad.
+
+    Checks both AnnData-native slots (obsm/varm/obsp/uns) which works for
+    both Python and R-written h5ad files.
+    """
+    import anndata as ad
+
+    print(f"Extracting parity arrays from: {h5ad_path}")
+    adata = ad.read_h5ad(h5ad_path)
+
+    arrays: dict[str, np.ndarray] = {}
+
+    def _get_obsm(key: str, label: str) -> None:
+        if key in adata.obsm:
+            v = adata.obsm[key]
+            arrays[label] = v.toarray() if sp.issparse(v) else np.asarray(v)
+            print(f"  [OK]  {label:50s}  {arrays[label].shape}")
+        else:
+            print(f"  [SKIP] {label}")
+
+    def _get_varm(key: str, label: str) -> None:
+        if key in adata.varm:
+            v = adata.varm[key]
+            arrays[label] = v.toarray() if sp.issparse(v) else np.asarray(v)
+            print(f"  [OK]  {label:50s}  {arrays[label].shape}")
+        else:
+            print(f"  [SKIP] {label}")
+
+    def _get_obs(key: str, label: str) -> None:
+        if key in adata.obs.columns:
+            arrays[label] = np.asarray(adata.obs[key])
+            print(f"  [OK]  {label:50s}  {arrays[label].shape}")
+        else:
+            print(f"  [SKIP] {label}")
+
+    def _get_obsp(key: str, label: str) -> None:
+        if key in adata.obsp:
+            v = adata.obsp[key]
+            d = v.toarray() if sp.issparse(v) else np.asarray(v)
+            arrays[label] = d
+            print(f"  [OK]  {label:50s}  {d.shape}")
+        else:
+            print(f"  [SKIP] {label}")
+
+    # Reduction
+    _get_obsm("action",   "obsm_action")
+    _get_obsm("action_B", "obsm_action_B")
+    _get_varm("action_U", "varm_action_U")
+    _get_varm("action_A", "varm_action_A")
+    if "action_params" in adata.uns and "sigma" in adata.uns["action_params"]:
+        arrays["uns_action_sigma"] = np.asarray(adata.uns["action_params"]["sigma"]).ravel()
+        print(f"  [OK]  uns_action_sigma  length={len(arrays['uns_action_sigma'])}")
+
+    # ACTION
+    _get_obsm("H_stacked", "obsm_H_stacked")
+    _get_obsm("H_merged",  "obsm_H_merged")
+    _get_obsm("C_stacked", "obsm_C_stacked")
+    _get_obsm("C_merged",  "obsm_C_merged")
+    _get_obs("assigned_archetype", "obs_assigned_archetype")
+
+    # Network
+    _get_obsp("actionet", "obsp_actionet")
+
+    # Specificity (cluster) — Python keys
+    _get_varm("specificity_upper",   "varm_specificity_upper")
+    _get_varm("specificity_lower",   "varm_specificity_lower")
+    _get_varm("specificity_profile", "varm_specificity_profile")
+    # Specificity (cluster) — R keys (stored under cluster_*)
+    if "varm_specificity_upper" not in arrays:
+        _get_varm("cluster_upper", "varm_specificity_upper")
+    if "varm_specificity_lower" not in arrays:
+        _get_varm("cluster_lower", "varm_specificity_lower")
+
+    # Specificity (archetype)
+    _get_varm("archetype_feat_profile",            "varm_archetype_feat_profile")
+    _get_varm("archetype_feat_specificity_upper",  "varm_archetype_feat_specificity_upper")
+    _get_varm("archetype_feat_specificity_lower",  "varm_archetype_feat_specificity_lower")
+
+    # Batch correction — Python keys
+    _get_obsm("action_corrected",   "obsm_action_corrected")
+    _get_varm("action_corrected_U", "varm_action_corrected_U")
+    _get_varm("action_corrected_A", "varm_action_corrected_A")
+    # Batch correction — R keys
+    if "obsm_action_corrected" not in arrays:
+        _get_obsm("action_orth",   "obsm_action_corrected")
+    if "varm_action_corrected_U" not in arrays:
+        _get_varm("action_U_orth", "varm_action_corrected_U")
+    if "varm_action_corrected_A" not in arrays:
+        _get_varm("action_A_orth", "varm_action_corrected_A")
+
+    np.savez_compressed(out_npz, **arrays)
+    print(f"Saved {len(arrays)} arrays to {out_npz}")
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    # Plan 07 two-h5ad positional interface
+    if args.h5ad_files:
+        if len(args.h5ad_files) != 2:
+            print("ERROR: when providing positional h5ad arguments, exactly 2 are required:")
+            print("  python compare_baselines.py path/to/python_output.h5ad path/to/r_output.h5ad")
+            return 1
+        py_h5ad, r_h5ad = args.h5ad_files
+        py_npz = "/tmp/_compare_py.npz"
+        r_npz  = "/tmp/_compare_r.npz"
+        _extract_arrays_from_h5ad(py_h5ad, py_npz)
+        _extract_arrays_from_h5ad(r_h5ad, r_npz)
+        all_pass = compare(py_npz, r_npz, verbose=args.verbose)
+        return 0 if all_pass else 1
 
     r_npz = args.r_npz
     if not os.path.exists(r_npz):

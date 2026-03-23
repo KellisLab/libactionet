@@ -14,9 +14,9 @@ namespace actionet {
     // and require direct access to BackedSparseMatrixOperator private members.
     class BackedSparseMatrixOperator;
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     arma::mat& H, int thread_no);
+                                                     const arma::mat& H, int thread_no);
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     arma::uvec& labels, int thread_no);
+                                                     const arma::uvec& labels, int thread_no);
     // Forward declarations for the internal single-pass scan helpers.
     void backed_specificity_scan_csr_(const BackedSparseMatrixOperator& op,
                                       const arma::mat& H_norm_t,
@@ -69,9 +69,9 @@ namespace actionet {
     private:
         // Grant direct access to the single-pass backed specificity implementation.
         friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                                arma::mat& H, int thread_no);
+                                                                const arma::mat& H, int thread_no);
         friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                                arma::uvec& labels, int thread_no);
+                                                                const arma::uvec& labels, int thread_no);
         // Internal scan helpers used by the above friends.
         friend void backed_specificity_scan_csr_(const BackedSparseMatrixOperator& op,
                                                  const arma::mat& H_norm_t,

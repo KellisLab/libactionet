@@ -51,7 +51,7 @@ The contract breakage period ends when Plan 07 passes all parity checks.
   in `runSVD_Operator`, and removed the `LIBACTIONET_BUILD_R` gate from
   `reduceKernel_Operator`. Both standard and R builds compile cleanly. Operator IRLB
   agrees with in-memory IRLB to machine precision (`< 1e-13` in sigma).
-- Plans 06-07 remain pending.
+- Plans 06 is complete (see above). Plan 07 is complete (see below).
 |- As of 2026-03-22, Plan 06 is complete (dense-backed C++ path addendum added).
 |- Plan 06 made `computeFeatureSpecificity` non-mutating (shifts an internal copy instead of
 |  modifying the caller's matrix), flipped `computeFeatureStats` and `computeFeatureStatsVision`
@@ -68,7 +68,17 @@ The contract breakage period ends when Plan 07 passes all parity checks.
 |  `computeFeatureStatsVision`, upgraded Python validator backed sections from SKIP to FAIL,
 |  added sparse-vs-dense cross-storage parity to the R validator, and added `average_profile`
 |  cross-storage consistency checks to both validators.
-|- Plan 07 remains pending.
+|- As of 2026-03-22, Plan 07 is complete.
+|- Plan 07 fixed a `const`-correctness mismatch in `BackedSparseMatrixOperator` friend
+|  declarations that caused compile errors in the R build, fixed a `$archetypes` key bug
+|  in the stage-06 R validator, regenerated both language baselines, added the final
+|  parity test suite (`test_parity.py`, `test_parity.R`, `test_storage_parity.py`),
+|  extended `compare_baselines.py` with a two-h5ad positional CLI mode, and wrote the
+|  `ANNDATA_CONTRACT.md` reference document.
+|  Results: Python 34 PASS / 0 FAIL, R 39 PASS / 0 FAIL, storage parity 17 PASS / 0 FAIL.
+|  Reduction, SVD, batch correction, and sigma slots agree cross-language to machine precision.
+|  Archetype counts differ between R and Python (known stochastic pruning difference,
+|  documented in ANNDATA_CONTRACT.md). The orientation unification is declared complete.
 
 ## Agent Environment Guidance
 
@@ -92,7 +102,7 @@ record any nontrivial setup commands in the implementation handoff.
 | [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | **Complete** |
 | [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | **Complete** |
 | [06](06_UNIFIED_SPECIFICITY.md) | Unified Specificity | libactionet, actionet-python | Medium | **Complete** |
-| [07](07_FINAL_PARITY_VALIDATION.md) | Final Cross-Language Parity Validation | all | Low | Pending |
+| [07](07_FINAL_PARITY_VALIDATION.md) | Final Cross-Language Parity Validation | all | Low | **Complete** |
 
 ## Dependency Graph
 

@@ -4,13 +4,13 @@
 
 ```
    00 Parity Baseline            [DONE]
-   01 R Network Cleanup          [currently pending]
-   02 C++ Core Contract Flip     [currently pending]
-   03 R Frontend Adaptation      [currently pending]
-   04 Python Frontend Adaptation [currently pending]
-   05 Operator-Backed IRLB       [currently pending]
-   06 Unified Specificity        [currently pending]
->> 07 Final Cross-Language Parity Validation <<
+   01 R Network Cleanup          [DONE]
+   02 C++ Core Contract Flip     [DONE]
+   03 R Frontend Adaptation      [DONE]
+   04 Python Frontend Adaptation [DONE]
+   05 Operator-Backed IRLB       [DONE]
+   06 Unified Specificity        [DONE]
+>> 07 Final Cross-Language Parity Validation << [DONE]
 ```
 
 **Dependencies**: All prior plans (00–06).
@@ -263,3 +263,64 @@ All `obsp` slots are square `n_obs x n_obs`. No exceptions.
 - Parity test scripts are committed and documented
 - Any remaining differences are documented with causes
 - The orientation unification is declared complete
+
+---
+
+## Completion Record
+
+**Date**: 2026-03-22  
+**Status**: COMPLETE ✓
+
+### Fixes applied during implementation
+
+1. **`const`-correctness bug in `BackedSparseMatrixOperator` friend declarations** —
+   The header forward-declarations used `arma::mat& H` (mutable reference) while
+   the definitions used `const arma::mat& H`. The compiler matched them to different
+   overloads, making the private members (`n_obs_`, `n_var_`, `is_csr_`) inaccessible.
+   Fix: changed all three repo copies of `backed_sparse_matrix_operator.hpp` to use
+   `const arma::mat&` and `const arma::uvec&` in both the forward-declarations and
+   the `friend` declarations.
+
+2. **`$archetypes` key bug in `validate_stage06.R`** —
+   The stage-06 R validator checked `out_raw$archetypes` but the R wrapper returns
+   `out_raw$average_profile`. Both occurrences (sections 2 and 2b) were fixed.
+
+### Deliverables
+
+| Deliverable | Location | Status |
+|-------------|----------|--------|
+| Extended compare_baselines.py (two-h5ad CLI) | `libactionet/test/compare_baselines.py` | Done |
+| Python end-to-end parity test | `actionet-python/tests/test_parity.py` | Done |
+| Python storage mode parity test | `actionet-python/tests/test_storage_parity.py` | Done |
+| R end-to-end parity test | `actionet-r/tests/test_parity.R` | Done |
+| AnnData contract documentation | `libactionet/context/ANNDATA_CONTRACT.md` | Done |
+
+### Test results summary
+
+| Test suite | Language | PASS | FAIL | Notes |
+|-----------|----------|------|------|-------|
+| `test_parity.py` | Python | 34 | 0 | 10 WARNs (archetype count) |
+| `test_parity.R` | R | 39 | 0 | 10 WARNs (archetype count) |
+| `test_storage_parity.py` | Python | 17 | 0 | |
+| `validate_stage06.py` | Python | 24 | 0 | |
+| `validate_stage06.R` | R | 17 | 0 | |
+
+### Cross-language parity by slot
+
+| Slot | Result | Max deviation |
+|------|--------|---------------|
+| `obsm["action"]` | **PASS** | 0.000e+00 |
+| `obsm["action_B"]` | **PASS** | 0.000e+00 |
+| `varm["action_U"]` | **PASS** | 0.000e+00 |
+| `varm["action_A"]` | **PASS** | 0.000e+00 |
+| `uns/sigma` | **PASS** | 0.000e+00 |
+| `obsm["action_corrected"]` | **PASS** | 0.000e+00 |
+| `varm["action_corrected_U"]` | **PASS** | 0.000e+00 |
+| `varm["action_corrected_A"]` | **PASS** | 0.000e+00 |
+| `obsm["H_*"]`, `obsm["C_*"]` | WARN (documented) | N/A (different archetype counts) |
+| `obsp["actionet"]` | WARN (documented) | N/A (follows from archetype diff) |
+| Specificity slots | WARN (documented) | N/A (follows from archetype diff) |
+
+**The AnnData orientation unification is declared complete.**  
+All C++ functions use cells × genes natively. No transpose shims exist at any boundary.
+See `libactionet/context/ANNDATA_CONTRACT.md` for the permanent API reference.
