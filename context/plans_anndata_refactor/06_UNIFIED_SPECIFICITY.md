@@ -8,8 +8,8 @@
    02 C++ Core Contract Flip     [DONE]
    03 R Frontend Adaptation      [DONE]
    04 Python Frontend Adaptation [DONE]
->> 06 Unified Specificity <<
-   05 Operator-Backed IRLB       [optional / parallel; currently pending]
+   05 Operator-Backed IRLB       [DONE]
+>> 06 Unified Specificity <<     [DONE]
    07 Final Cross-Language Parity Validation
 ```
 
@@ -371,3 +371,127 @@ specificity code in Python should be the wrapper that calls C++.
 - Input matrix is never mutated
 - `computeFeatureStats` / `computeFeatureStatsVision` accept `cells × genes`
 - Zero `.T` operations on expression matrix in `annotation.py`
+
+## Completion Record
+
+**Completed 2026-03-22.**
+
+### What was done
+
+**Stage A — Non-mutating in-memory specificity** (`specificity.cpp`):
+- Replaced `S.for_each([min_val] { val -= min_val; })` (mutating) with an internal
+  shifted copy `S_shifted = S` passed to `getProbsObs`. The caller's matrix is never
+  modified. Works for both `arma::mat` and `arma::sp_mat` template instantiations.
+
+**Stage G1 — Flip `computeFeatureStats` / `computeFeatureStatsVision`** (`marker_stats.cpp`):
+- `computeFeatureStats`: changed `stats` allocation from `(S.n_cols, X.n_cols)` to
+  `(S.n_rows, X.n_cols)` and `raw_expression` from `(S.n_cols, ...)` to `(S.n_rows, ...)`;
+  changed `S.row(it.row())` → `S.col(it.row())` to access gene columns in `cells × genes` S.
+- `computeFeatureStatsVision`: removed `St = S.t()` transpose; uses `S * X` directly
+  `(cells × genes)(genes × labels) = cells × labels`; flipped dimension checks and per-cell
+  accumulator indices from `it.col()` → `it.row()`, `S.n_rows/n_cols` → `S.n_cols/n_rows`.
+
+**Stage G2 — Remove transpose shims in `annotation.py`** (`annotate_cells`):
+- Removed `S = S_cells.T.tocsr()` (backed path) and `S = S.T` (in-memory path).
+  S is now passed as `cells × genes` directly to `_core.compute_feature_stats_vision` / `_core.compute_feature_stats`.
+
+**Stage G3 — Update `marker_stats.hpp` documentation**:
+- Updated `@param S`, `@param G`, `@param X`, and `@return` docs to reflect `cells × genes` orientation.
+
+**Stage D — Dense-backed C++ specificity path** (post-initial-completion addendum):
+- Added `computeFeatureSpecificity(BackedDenseMatrixOperator&, ...)` overloads in
+  `specificity.cpp` and declarations in `specificity.hpp`.
+- Added public `readSlab()` method to `BackedDenseMatrixOperator` for direct chunked
+  HDF5 access.
+- Two-pass scan: first finds the global minimum; second accumulates column sums and
+  nnz-after-shift counts on the shifted matrix (matching in-memory dense binarization
+  semantics exactly).
+- `Obs = S.t() * H_norm` computed via `rmatmat` with shift correction applied analytically.
+- Added pybind11 wrappers `archetype_feature_specificity_backed_dense_operator` and
+  `compute_feature_specificity_backed_dense_operator` in `wp_annotation.cpp`.
+- Routed dense-backed paths in `core.py` and `annotation.py` through
+  `_run_specificity_backed_dense`; removed all calls to `_compute_specificity_streamed`.
+- `_compute_specificity_streamed` retained in `core.py` with a deprecation docstring
+  (no longer called anywhere; kept for reference).
+
+**Submodule sync** (`actionet-python/src/libactionet`, `actionet-r/src/libactionet`):
+- Both submodule copies of `specificity.cpp`, `marker_stats.cpp`, `specificity.hpp`,
+  `marker_stats.hpp`, and `backed_dense_matrix_operator.hpp` were updated to match
+  the canonical `libactionet` versions.
+
+### Validation results
+
+Python (`tests/validate_stage06.py`): **21 / 21 PASS**
+- Non-mutating check (sparse data unchanged)
+- Sparse == Dense parity (upper/lower significance)
+- Backed sparse == In-memory sparse parity
+- `annotate_cells` shape/label correctness
+- Output shapes: `(n_vars, n_clusters)` for all three result matrices
+- Dense-backed C++ vs in-memory dense parity (upper/lower within 1e-9)
+
+R (`tests/validate_stage06.R`): **12 / 12 PASS**
+- Non-mutating check
+- Output shapes: `(n_vars, n_clusters)`
+- `annotateCells` runs without dimension errors; correct output shapes
+
+R regression (`tests/validate_stage03.R`): **ALL CHECKS PASSED** (no regressions)
+
+### Notes on deviations from plan
+
+1. **Python streaming fallback**: The plan's Stage D called for deleting
+   `_compute_specificity_streamed`. This was ultimately resolved by implementing
+   the C++ dense-backed path (`BackedDenseMatrixOperator` overloads). The function
+   is no longer called from any production path and has been marked deprecated.
+
+2. **R `annotation.R` changes**: No changes were needed. After Plan 03, `S` is already
+   `cells × genes` when it reaches the C++ wrappers. The C++ fix in `marker_stats.cpp`
+   was sufficient.
+
+3. **`wp_annotation.cpp`**: New dense-backed pybind wrappers were added using lambdas
+   with `dynamic_cast<BackedDenseMatrixOperator*>` to downcast the shared_ptr<MatrixOperator>.
+
+### Post-completion audit fixes (2026-03-22)
+
+A post-completion audit identified six issues (none critical, but all worth fixing).
+The following fixes were applied:
+
+**Fix 1 — Python validator: backed SKIPs → FAILs** (`validate_stage06.py`):
+- Sections 3 and 6 previously printed `SKIP` when the fixture could not be opened
+  in backed mode. This masked untested code paths. Changed to `FAIL` so the
+  validator catches environment issues instead of silently passing.
+
+**Fix 2 — R validator: sparse-vs-dense cross-storage parity** (`validate_stage06.R`):
+- Added Section 2b which converts the expression matrix to dense, runs specificity,
+  and compares upper/lower/average_profile to the sparse result at `tolerance = 1e-10`.
+
+**Fix 3 — Both validators: `average_profile` cross-storage consistency**:
+- Python Section 2: added `average_profile` comparison (sparse vs dense).
+- Python Section 3: added `average_profile` comparison (backed sparse vs in-memory).
+- Python Section 6: added `average_profile` comparison (backed dense vs in-memory).
+- R Section 2: added `average_profile` (archetypes) shape check.
+- R Section 2b: added `average_profile` comparison (sparse vs dense).
+
+**Fix 4 — `const` correctness in `computeFeatureSpecificity`** (`specificity.hpp/.cpp`):
+- All template and non-template overloads now take `const T& S` / `const arma::mat& H` /
+  `const arma::uvec& labels` instead of non-const references. The function was already
+  non-mutating; the signature now enforces this at the type level.
+- `getProbsObs` overloads updated to take `const arma::mat& Ht`.
+- Rcpp and pybind11 wrappers unchanged (they pass local variables, which bind to const refs).
+
+**Fix 5 — Dense/sparse binarization parity** (`specificity.cpp`):
+- Sparse `getProbsObs` previously counted all structural nonzeros via the iterator,
+  including entries that became exactly 0 after the min-shift. This diverged from the
+  dense path's `find(Sb > 0)` semantics. Now the sparse path gates `row_p` and `col_p`
+  increments on `v > 0.0`, matching the dense path exactly.
+- Same `> 0` gating applied to the backed-sparse CSR and CSC scan functions
+  (`backed_specificity_scan_csr_`, `backed_specificity_scan_csc_`) for both `row_count`
+  and `col_count`.
+
+**Fix 6 — `float` → `double` in `computeFeatureStatsVision`** (`marker_stats.cpp`):
+- Changed `float delta = mu[it.row()] - (*it);` to `double delta = ...` to avoid
+  precision truncation in the variance accumulator.
+
+**Submodule sync**: Updated `specificity.cpp`, `specificity.hpp`, and `marker_stats.cpp`
+in both `actionet-r/src/libactionet` and `actionet-python/src/libactionet` to match
+canonical `libactionet` versions (verified byte-identical via `diff`).
+

@@ -2,7 +2,7 @@
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "utils_internal/utils_matrix.hpp"
 
-arma::field<arma::mat> getProbsObs(const arma::mat& S, arma::mat& Ht, int thread_no) {
+arma::field<arma::mat> getProbsObs(const arma::mat& S, const arma::mat& Ht, int thread_no) {
     arma::mat Sb = S;
     arma::uvec nnz_idx = arma::find(Sb > 0);
     (Sb(nnz_idx)).ones();
@@ -21,19 +21,24 @@ arma::field<arma::mat> getProbsObs(const arma::mat& S, arma::mat& Ht, int thread
     return (out);
 }
 
-arma::field<arma::mat> getProbsObs(const arma::sp_mat& S, arma::mat& Ht, int thread_no) {
-    // Heuristic optimization! Shall add parallel for later on
+arma::field<arma::mat> getProbsObs(const arma::sp_mat& S, const arma::mat& Ht, int thread_no) {
     // S is cells x genes.  row_p = gene density (n_genes length), col_p = cell density (n_cells length).
-    arma::vec row_p = arma::zeros(S.n_cols);      // gene-length  (was n_rows for genes x cells)
-    arma::vec col_p = arma::zeros(S.n_rows);      // cell-length  (was n_cols for genes x cells)
+    // Only count elements that are strictly > 0 after the min-shift, matching the
+    // dense path's `find(Sb > 0)` semantics.  Structural zeros and entries that
+    // became exactly 0 after shift are excluded from density counts.
+    arma::vec row_p = arma::zeros(S.n_cols);      // gene-length
+    arma::vec col_p = arma::zeros(S.n_rows);      // cell-length
     arma::vec row_factor = arma::zeros(S.n_cols); // gene-length sum of values
 
     arma::sp_mat::const_iterator it = S.begin();
     arma::sp_mat::const_iterator it_end = S.end();
     for (; it != it_end; ++it) {
-        col_p[it.row()]++;              // cell density: row index = cell
-        row_p[it.col()]++;              // gene density: col index = gene
-        row_factor[it.col()] += (*it); // gene value sum: col index = gene
+        const double v = (*it);
+        if (v > 0.0) {
+            col_p[it.row()]++;
+            row_p[it.col()]++;
+        }
+        row_factor[it.col()] += v;
     }
 
     arma::field<arma::mat> out(4);
@@ -47,12 +52,16 @@ arma::field<arma::mat> getProbsObs(const arma::sp_mat& S, arma::mat& Ht, int thr
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::mat& H, int thread_no) {
+    arma::field<arma::mat> computeFeatureSpecificity(const T& S, const arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity ... ");
 
-        // make sure all values are positive
+        // Non-mutating: compute the global minimum and work with a shifted copy.
+        // S itself is never modified so callers retain the original values.
         double min_val = S.min();
-        S.for_each([min_val](arma::mat::elem_type& val) { val -= min_val; });
+        T S_shifted = S;
+        if (min_val != 0.0) {
+            S_shifted.for_each([min_val](typename T::elem_type& val) { val -= min_val; });
+        }
 
         // H is cells x k (Plan 02).  Normalise each column (archetype) by its mean.
         arma::mat Ht = H;   // cells x k — passed directly to getProbsObs
@@ -61,7 +70,7 @@ namespace actionet {
             h /= (mu == 0) ? 1 : mu;
         }); // For numerical stability
 
-        arma::field<arma::mat> p = getProbsObs(S, Ht, thread_no);
+        arma::field<arma::mat> p = getProbsObs(S_shifted, Ht, thread_no);
 
         arma::vec row_factor = p(0);  // genes-length: mean of nonzero per gene
         arma::vec row_p = p(1);       // genes-length: gene density
@@ -106,12 +115,12 @@ namespace actionet {
         return (res);
     }
 
-    template arma::field<arma::mat> computeFeatureSpecificity<arma::mat>(arma::mat& S, arma::mat& H, int thread_no);
+    template arma::field<arma::mat> computeFeatureSpecificity<arma::mat>(const arma::mat& S, const arma::mat& H, int thread_no);
     template arma::field<arma::mat> computeFeatureSpecificity<arma::sp_mat>(
-        arma::sp_mat& S, arma::mat& H, int thread_no);
+        const arma::sp_mat& S, const arma::mat& H, int thread_no);
 
     template <typename T>
-    arma::field<arma::mat> computeFeatureSpecificity(T& S, arma::uvec& labels, int thread_no) {
+    arma::field<arma::mat> computeFeatureSpecificity(const T& S, const arma::uvec& labels, int thread_no) {
         // S is cells x genes.  n_cells = S.n_rows.
         // H is built as cells x k (matching the new contract).
         arma::mat H(S.n_rows, arma::max(labels), arma::fill::zeros);  // cells x k
@@ -129,9 +138,9 @@ namespace actionet {
     }
 
     template arma::field<arma::mat> computeFeatureSpecificity<arma::mat>(
-        arma::mat& S, arma::uvec& labels, int thread_no);
+        const arma::mat& S, const arma::uvec& labels, int thread_no);
     template arma::field<arma::mat> computeFeatureSpecificity<arma::sp_mat>(
-        arma::sp_mat& S, arma::uvec& labels, int thread_no);
+        const arma::sp_mat& S, const arma::uvec& labels, int thread_no);
 } // namespace actionet
 
 // ============================================================================
@@ -190,8 +199,6 @@ namespace actionet {
                 const unsigned long long p0 = op.indptr_[r]     - nnz_start;
                 const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
 
-                col_count(r) += static_cast<double>(p1 - p0);
-
                 const arma::rowvec h_row = H_norm_t.row(r);
 
                 for (unsigned long long p = p0; p < p1; ++p) {
@@ -202,7 +209,10 @@ namespace actionet {
                     if (v < min_stored) {
                         min_stored = v;
                     }
-                    row_count(c)           += 1.0;
+                    if (v > 0.0) {
+                        row_count(c)           += 1.0;
+                        col_count(r)           += 1.0;
+                    }
                     row_factor_sum_orig(c) += v;
                     obs_orig.row(c)        += v * h_row;
                     support_obs.row(c)     += h_row;
@@ -263,8 +273,10 @@ namespace actionet {
                     if (v < min_stored) {
                         min_stored = v;
                     }
-                    row_count(c)           += 1.0;
-                    col_count(r)           += 1.0;
+                    if (v > 0.0) {
+                        row_count(c)           += 1.0;
+                        col_count(r)           += 1.0;
+                    }
                     row_factor_sum_orig(c) += v;
 
                     const arma::rowvec h_row = H_norm_t.row(r);
@@ -276,7 +288,7 @@ namespace actionet {
     }
 
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     arma::mat& H, int /*thread_no*/) {
+                                                     const arma::mat& H, int /*thread_no*/) {
         stdout_printf("Computing feature specificity (backed sparse) ... ");
 
         const arma::uword n_obs = op.n_obs_;
@@ -372,11 +384,185 @@ namespace actionet {
     }
 
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     arma::uvec& labels, int thread_no) {
+                                                     const arma::uvec& labels, int thread_no) {
         const arma::uword max_label = arma::max(labels);
         const arma::uword n_obs     = op.n_obs_;
 
         // H is cells x k (Plan 02)
+        arma::mat H(n_obs, max_label, arma::fill::zeros);
+        for (arma::uword i = 1; i <= max_label; ++i) {
+            arma::uvec idx = arma::find(labels == i);
+            for (arma::uword j : idx) {
+                H(j, i - 1) = 1.0;
+            }
+        }
+
+        return computeFeatureSpecificity(op, H, thread_no);
+    }
+
+} // namespace actionet
+
+// ============================================================================
+// Backed dense overloads (use BackedDenseMatrixOperator for HDF5 dense datasets).
+// ============================================================================
+#include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
+
+namespace actionet {
+
+    /// Single-pass scan over dense HDF5 obs-chunks to find the global minimum
+    /// and accumulate per-feature (column) sums and nnz-after-shift counts.
+    ///
+    /// Matches the in-memory ``getProbsObs(arma::mat)`` behaviour:
+    ///   - shift = global_min (unconditional; ensures min(S_shifted) == 0)
+    ///   - row_count(c) = number of elements in column c that are > 0 after shift
+    ///     (i.e. all except the single global-minimum element per column)
+    ///   - col_count(r) = number of elements in row r that are > 0 after shift
+    ///   - row_factor_sum(c) = sum of all elements in column c of S_shifted
+    ///
+    /// Unlike the sparse-backed path (which initialises min_stored = 0 and only
+    /// records the minimum of the stored NNZ entries) the dense path always applies
+    /// a full shift so that Bernstein density estimates match the in-memory path
+    /// exactly.
+    static void backed_dense_specificity_scan_(
+        BackedDenseMatrixOperator& op,
+        arma::vec& row_count,        // out: nnz > 0 count per gene (n_var)
+        arma::vec& col_count,        // out: nnz > 0 count per obs  (n_obs)
+        arma::vec& row_factor_sum,   // out: column sums of S_shifted
+        double&    global_min)
+    {
+        const arma::uword n_obs = op.rows();
+        const arma::uword n_var = op.cols();
+        const arma::uword cs    = op.effectiveChunkSize();
+
+        row_factor_sum.zeros(n_var);
+        global_min = std::numeric_limits<double>::infinity();
+
+        // --- Pass 1: find global minimum ---
+        arma::mat slab;
+        for (arma::uword obs_start = 0; obs_start < n_obs; obs_start += cs) {
+            const arma::uword obs_count = std::min(cs, n_obs - obs_start);
+            op.readSlab(obs_start, obs_count, slab);
+            const double chunk_min = slab.min();
+            if (chunk_min < global_min) global_min = chunk_min;
+        }
+        if (!std::isfinite(global_min)) global_min = 0.0;
+
+        // --- Pass 2: accumulate column sums and nnz-after-shift counts ---
+        row_count.zeros(n_var);
+        col_count.zeros(n_obs);
+
+        for (arma::uword obs_start = 0; obs_start < n_obs; obs_start += cs) {
+            const arma::uword obs_count = std::min(cs, n_obs - obs_start);
+            op.readSlab(obs_start, obs_count, slab);
+
+            // Apply shift: S_chunk_shifted = slab - global_min
+            if (global_min != 0.0) {
+                slab -= global_min;
+            }
+
+            // Column sums of S_shifted
+            row_factor_sum += arma::sum(slab, 0).t();
+
+            // Count elements > 0 per gene (column) and per obs (row)
+            for (arma::uword r = 0; r < obs_count; ++r) {
+                for (arma::uword c = 0; c < n_var; ++c) {
+                    if (slab(r, c) > 0.0) {
+                        row_count(c) += 1.0;
+                        col_count(obs_start + r) += 1.0;
+                    }
+                }
+            }
+        }
+    }
+
+    arma::field<arma::mat> computeFeatureSpecificity(BackedDenseMatrixOperator& op,
+                                                     const arma::mat& H, int thread_no) {
+        stdout_printf("Computing feature specificity (backed dense) ... ");
+
+        const arma::uword n_obs = op.rows();
+        const arma::uword n_var = op.cols();
+        const arma::uword k     = static_cast<arma::uword>(H.n_cols);
+
+        // Normalise H column-wise (matching the in-memory and sparse-backed paths).
+        arma::mat H_norm = H;  // n_obs x k
+        for (arma::uword j = 0; j < k; ++j) {
+            const double mu = arma::mean(H_norm.col(j));
+            if (mu != 0.0) {
+                H_norm.col(j) /= mu;
+            }
+        }
+
+        // --- Accumulation pass: global min (2 passes: find min, then accumulate on shifted) ---
+        arma::vec row_count(n_var), col_count(n_obs), row_factor_sum(n_var);
+        double global_min;
+        backed_dense_specificity_scan_(op, row_count, col_count, row_factor_sum, global_min);
+
+        // row_factor_sum already corresponds to the shifted S (scan applied shift internally).
+        // Shift for Obs correction: S_shifted = S - global_min  =>  Obs_shifted = Obs - global_min * colsums(H_norm)
+        // Use rmatmat to get Obs = S.t() * H_norm  (unshifted), then subtract the correction.
+        arma::mat Obs;
+        op.rmatmat(H_norm, Obs);  // Obs = S.t() * H_norm  (n_var x k), unshifted
+
+        if (global_min != 0.0) {
+            // S_shifted = S - global_min  =>  S_shifted.t()*H = S.t()*H - global_min * sum(H, 0)
+            arma::rowvec H_norm_colsums = arma::sum(H_norm, 0);  // (1 x k)
+            Obs -= global_min * arma::ones(n_var, 1) * H_norm_colsums;
+        }
+
+        // --- Tail-bound math (identical to sparse-backed path) ---
+        arma::vec row_factor = arma::zeros(n_var);
+        for (arma::uword i = 0; i < n_var; ++i) {
+            if (row_count(i) > 0.0) {
+                row_factor(i) = row_factor_sum(i) / row_count(i);
+            }
+        }
+        arma::vec row_p = row_count  / static_cast<double>(n_obs);
+        arma::vec col_p = col_count  / static_cast<double>(n_var);
+
+        const double rho = arma::mean(col_p);
+        arma::vec beta = (rho == 0.0) ? arma::zeros(n_obs) : arma::vec(col_p / rho);
+
+        arma::mat Gamma = H_norm;
+        arma::vec a(k);
+        for (arma::uword j = 0; j < k; ++j) {
+            Gamma.col(j) %= beta;
+            a(j) = arma::max(Gamma.col(j));
+        }
+
+        arma::mat Exp    = (row_p % row_factor) * arma::sum(Gamma, 0);
+        arma::mat Nu     = (row_p % arma::square(row_factor)) * arma::sum(arma::square(Gamma), 0);
+        arma::mat A      = row_factor * arma::trans(a);
+        arma::mat Lambda = Obs - Exp;
+
+        arma::mat logPvals_lower = arma::square(Lambda) / (2.0 * Nu);
+        arma::uvec uidx = arma::find(Lambda >= 0);
+        logPvals_lower(uidx).zeros();
+        logPvals_lower.replace(arma::datum::nan, 0.0);
+
+        arma::mat logPvals_upper = arma::square(Lambda) / (2.0 * (Nu + (Lambda % A / 3.0)));
+        arma::uvec lidx = arma::find(Lambda <= 0);
+        logPvals_upper(lidx).zeros();
+        logPvals_upper.replace(arma::datum::nan, 0.0);
+
+        const double log10_e = std::log(10.0);
+        logPvals_lower /= log10_e;
+        logPvals_upper /= log10_e;
+
+        stdout_printf("done\n");
+        FLUSH;
+
+        arma::field<arma::mat> res(3);
+        res(0) = Obs / static_cast<double>(n_obs);
+        res(1) = logPvals_upper;
+        res(2) = logPvals_lower;
+        return res;
+    }
+
+    arma::field<arma::mat> computeFeatureSpecificity(BackedDenseMatrixOperator& op,
+                                                     const arma::uvec& labels, int thread_no) {
+        const arma::uword max_label = arma::max(labels);
+        const arma::uword n_obs     = op.rows();
+
         arma::mat H(n_obs, max_label, arma::fill::zeros);
         for (arma::uword i = 1; i <= max_label; ++i) {
             arma::uvec idx = arma::find(labels == i);

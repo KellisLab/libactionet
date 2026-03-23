@@ -52,6 +52,23 @@ The contract breakage period ends when Plan 07 passes all parity checks.
   `reduceKernel_Operator`. Both standard and R builds compile cleanly. Operator IRLB
   agrees with in-memory IRLB to machine precision (`< 1e-13` in sigma).
 - Plans 06-07 remain pending.
+|- As of 2026-03-22, Plan 06 is complete (dense-backed C++ path addendum added).
+|- Plan 06 made `computeFeatureSpecificity` non-mutating (shifts an internal copy instead of
+|  modifying the caller's matrix), flipped `computeFeatureStats` and `computeFeatureStatsVision`
+|  to accept `cells × genes` (removing the last `features × cells` survivors), removed the
+|  two `.T`/`.T.tocsr()` transpose shims from `annotate_cells` in `annotation.py`, and updated
+|  header documentation for both `specificity.hpp` and `marker_stats.hpp`.
+|  A subsequent addendum added a full C++ dense-backed specificity path
+|  (`BackedDenseMatrixOperator` overloads + pybind11 wrappers); `_compute_specificity_streamed`
+|  is no longer called and is deprecated. All 21 Python checks and 12 R checks pass;
+|  stage-03 R regression tests are unaffected.
+|  A post-completion audit applied six additional fixes: `const` correctness on all
+|  `computeFeatureSpecificity` signatures, unified `> 0` binarization gating across
+|  dense/sparse/backed-sparse `getProbsObs` paths, `float` → `double` precision fix in
+|  `computeFeatureStatsVision`, upgraded Python validator backed sections from SKIP to FAIL,
+|  added sparse-vs-dense cross-storage parity to the R validator, and added `average_profile`
+|  cross-storage consistency checks to both validators.
+|- Plan 07 remains pending.
 
 ## Agent Environment Guidance
 
@@ -74,7 +91,7 @@ record any nontrivial setup commands in the implementation handoff.
 | [03A](03A_R_FRONTEND_POST_FLIP_REPAIR.md) | R Frontend Post-Flip Repair | actionet-r | Medium | **Complete** |
 | [04](04_PYTHON_FRONTEND_ADAPTATION.md) | Python Frontend Adaptation + Boundary Optimization | actionet-python | Medium | **Complete** |
 | [05](05_OPERATOR_BACKED_IRLB.md) | Operator-Backed IRLB | libactionet | Medium | **Complete** |
-| [06](06_UNIFIED_SPECIFICITY.md) | Unified Specificity | libactionet, actionet-python | Medium | Pending |
+| [06](06_UNIFIED_SPECIFICITY.md) | Unified Specificity | libactionet, actionet-python | Medium | **Complete** |
 | [07](07_FINAL_PARITY_VALIDATION.md) | Final Cross-Language Parity Validation | all | Low | Pending |
 
 ## Dependency Graph

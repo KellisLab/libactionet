@@ -52,6 +52,21 @@ namespace actionet {
         const std::string& groupPath() const { return group_path_; }
         arma::uword effectiveChunkSize() const { return effective_chunk_size_; }
 
+        /// @brief Read an obs-chunk into a dense matrix (obs_count × n_var).
+        ///
+        /// The slab is read from HDF5 and all configured transforms (log1p,
+        /// row_scale) are applied before returning.  The resulting matrix has
+        /// @p obs_count rows and n_var columns.
+        ///
+        /// @param obs_start  First observation row to read.
+        /// @param obs_count  Number of rows to read (clamped to available rows).
+        /// @param slab       Output matrix; resized to (obs_count × n_var).
+        void readSlab(arma::uword obs_start, arma::uword obs_count, arma::mat& slab) const {
+            const arma::uword clamped = std::min(obs_count, n_obs_ - obs_start);
+            read_slab_(obs_start, clamped, slab);
+            apply_transforms_(obs_start, slab);
+        }
+
     private:
         static std::vector<long long> read_shape_(hid_t dataset_id);
 
