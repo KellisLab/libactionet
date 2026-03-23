@@ -66,6 +66,23 @@ namespace actionet {
         const std::string& groupPath() const { return group_path_; }
         bool isCSR() const { return is_csr_; }
 
+        /// @brief Extract selected columns as a dense matrix.
+        ///
+        /// Returns an (n_selected_rows × n_selected_cols) dense matrix containing
+        /// the requested columns in request order.  When @p row_indices is non-empty,
+        /// only those observation rows are included; otherwise all rows are returned.
+        ///
+        /// @param col_indices  Column indices to extract (0-based, request-ordered).
+        /// @param row_indices  Row indices to extract (0-based); empty = all rows.
+        arma::mat takeColumnsDense(const arma::uvec& col_indices,
+                                   const arma::uvec& row_indices = {}) const;
+
+        /// @brief Extract selected columns as a sparse matrix.
+        ///
+        /// Same semantics as takeColumnsDense but returns CSC sparse output.
+        arma::sp_mat takeColumnsSparse(const arma::uvec& col_indices,
+                                       const arma::uvec& row_indices = {}) const;
+
     private:
         // Grant direct access to the single-pass backed specificity implementation.
         friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
@@ -108,6 +125,13 @@ namespace actionet {
         void rmatvec_csc_(const arma::vec& x, arma::vec& y) const;
         void matmat_csc_(const arma::mat& X, arma::mat& Y) const;
         void rmatmat_csc_(const arma::mat& X, arma::mat& Y) const;
+
+        void take_columns_dense_csr_(const arma::uvec& col_indices,
+                                     const arma::uvec& row_indices,
+                                     arma::mat& out) const;
+        void take_columns_dense_csc_(const arma::uvec& col_indices,
+                                     const arma::uvec& row_indices,
+                                     arma::mat& out) const;
 
         std::string file_path_;
         std::string group_path_;

@@ -267,4 +267,49 @@ namespace actionet {
         }
     }
 
+    // ---- takeColumns implementations ------------------------------------------------
+
+    arma::mat BackedDenseMatrixOperator::takeColumnsDense(
+        const arma::uvec& col_indices,
+        const arma::uvec& row_indices) const {
+
+        const arma::uword n_sel = col_indices.n_elem;
+        if (n_sel == 0) {
+            const arma::uword n_out_rows = row_indices.is_empty() ? n_obs_ : row_indices.n_elem;
+            return arma::mat(n_out_rows, 0);
+        }
+
+        // Build sparse selector E: shape (n_var, n_sel), E(col_indices[j], j) = 1.
+        arma::umat locations(2, n_sel);
+        arma::vec ones(n_sel, arma::fill::ones);
+        for (arma::uword j = 0; j < n_sel; ++j) {
+            locations(0, j) = col_indices(j);
+            locations(1, j) = j;
+        }
+        arma::sp_mat selector(locations, ones, n_var_, n_sel, /*sort_locations=*/true,
+                              /*check_for_zeros=*/false);
+
+        // Y = S @ selector via matmat  =>  (n_obs x n_sel)
+        arma::mat E_dense(selector);
+        arma::mat Y;
+        matmat(E_dense, Y);
+
+        if (!row_indices.is_empty()) {
+            arma::mat sub(row_indices.n_elem, n_sel);
+            for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+                sub.row(i) = Y.row(row_indices(i));
+            }
+            return sub;
+        }
+        return Y;
+    }
+
+    arma::sp_mat BackedDenseMatrixOperator::takeColumnsSparse(
+        const arma::uvec& col_indices,
+        const arma::uvec& row_indices) const {
+
+        arma::mat dense = takeColumnsDense(col_indices, row_indices);
+        return arma::sp_mat(dense);
+    }
+
 } // namespace actionet

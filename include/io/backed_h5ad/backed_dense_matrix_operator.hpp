@@ -52,6 +52,18 @@ namespace actionet {
         const std::string& groupPath() const { return group_path_; }
         arma::uword effectiveChunkSize() const { return effective_chunk_size_; }
 
+        /// @brief Extract selected columns as a dense matrix via matmat with a
+        ///        selector matrix.
+        ///
+        /// @param col_indices  Column indices to extract (0-based, request-ordered).
+        /// @param row_indices  Row indices to extract (0-based); empty = all rows.
+        arma::mat takeColumnsDense(const arma::uvec& col_indices,
+                                   const arma::uvec& row_indices = {}) const;
+
+        /// @brief Extract selected columns as a sparse matrix.
+        arma::sp_mat takeColumnsSparse(const arma::uvec& col_indices,
+                                       const arma::uvec& row_indices = {}) const;
+
         /// @brief Read an obs-chunk into a dense matrix (obs_count × n_var).
         ///
         /// The slab is read from HDF5 and all configured transforms (log1p,

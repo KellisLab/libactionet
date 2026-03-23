@@ -574,4 +574,260 @@ namespace actionet {
             }
         }
     }
+
+    // ---- takeColumns implementations ------------------------------------------------
+
+    void BackedSparseMatrixOperator::take_columns_dense_csr_(
+        const arma::uvec& col_indices,
+        const arma::uvec& row_indices,
+        arma::mat& out) const {
+
+        const arma::uword n_sel_cols = col_indices.n_elem;
+        const bool all_rows = row_indices.is_empty();
+        const arma::uword n_sel_rows = all_rows ? n_obs_ : row_indices.n_elem;
+
+        out.zeros(n_sel_rows, n_sel_cols);
+
+        // Build col -> output-position lookup (sentinel = n_sel_cols means "skip").
+        std::vector<arma::uword> col_map(static_cast<size_t>(n_var_), n_sel_cols);
+        for (arma::uword j = 0; j < n_sel_cols; ++j) {
+            const arma::uword c = col_indices(j);
+            if (col_map[c] == n_sel_cols) {
+                col_map[c] = j;
+            }
+        }
+
+        // Build row -> output-position lookup when row_indices is given.
+        std::vector<arma::uword> row_map;
+        if (!all_rows) {
+            row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                const arma::uword r = row_indices(i);
+                if (row_map[r] == n_sel_rows) {
+                    row_map[r] = i;
+                }
+            }
+        }
+
+        for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
+            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+            const unsigned long long nnz_start = indptr_[row_start];
+            const unsigned long long nnz_end = indptr_[row_end];
+            const unsigned long long nnz_count = nnz_end - nnz_start;
+            if (nnz_count == 0) continue;
+
+            std::vector<double> data;
+            std::vector<unsigned long long> indices;
+            load_chunk_cached_(nnz_start, nnz_count, data, indices);
+
+            for (arma::uword r = row_start; r < row_end; ++r) {
+                const arma::uword out_row = all_rows ? r : row_map[r];
+                if (out_row == n_sel_rows) continue;
+
+                const unsigned long long local_start = indptr_[r] - nnz_start;
+                const unsigned long long local_end = indptr_[r + 1] - nnz_start;
+                for (unsigned long long p = local_start; p < local_end; ++p) {
+                    const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
+                    const arma::uword out_col = col_map[col];
+                    if (out_col == n_sel_cols) continue;
+                    out(out_row, out_col) = transform_value_(r, data[static_cast<size_t>(p)]);
+                }
+            }
+        }
+
+        // Handle duplicate columns: copy first-match values.
+        for (arma::uword j = 0; j < n_sel_cols; ++j) {
+            const arma::uword c = col_indices(j);
+            if (col_map[c] != j) {
+                out.col(j) = out.col(col_map[c]);
+            }
+        }
+    }
+
+    void BackedSparseMatrixOperator::take_columns_dense_csc_(
+        const arma::uvec& col_indices,
+        const arma::uvec& row_indices,
+        arma::mat& out) const {
+
+        const arma::uword n_sel_cols = col_indices.n_elem;
+        const bool all_rows = row_indices.is_empty();
+        const arma::uword n_sel_rows = all_rows ? n_obs_ : row_indices.n_elem;
+
+        out.zeros(n_sel_rows, n_sel_cols);
+
+        // Build row -> output-position lookup when row_indices is given.
+        std::vector<arma::uword> row_map;
+        if (!all_rows) {
+            row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                const arma::uword r = row_indices(i);
+                if (row_map[r] == n_sel_rows) {
+                    row_map[r] = i;
+                }
+            }
+        }
+
+        // CSC: iterate directly over the requested columns' indptr ranges.
+        for (arma::uword j = 0; j < n_sel_cols; ++j) {
+            const arma::uword c = col_indices(j);
+            const unsigned long long nnz_start = indptr_[c];
+            const unsigned long long nnz_end = indptr_[c + 1];
+            const unsigned long long nnz_count = nnz_end - nnz_start;
+            if (nnz_count == 0) continue;
+
+            std::vector<double> data;
+            std::vector<unsigned long long> indices;
+            read_data_indices_slice_(nnz_start, nnz_count, data, indices);
+
+            for (unsigned long long p = 0; p < nnz_count; ++p) {
+                const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
+                const arma::uword out_row = all_rows ? row : row_map[row];
+                if (out_row == n_sel_rows) continue;
+                out(out_row, j) = transform_value_(row, data[static_cast<size_t>(p)]);
+            }
+        }
+    }
+
+    arma::mat BackedSparseMatrixOperator::takeColumnsDense(
+        const arma::uvec& col_indices,
+        const arma::uvec& row_indices) const {
+
+        arma::mat out;
+        if (is_csr_) {
+            take_columns_dense_csr_(col_indices, row_indices, out);
+        } else {
+            take_columns_dense_csc_(col_indices, row_indices, out);
+        }
+        return out;
+    }
+
+    arma::sp_mat BackedSparseMatrixOperator::takeColumnsSparse(
+        const arma::uvec& col_indices,
+        const arma::uvec& row_indices) const {
+
+        const arma::uword n_sel_cols = col_indices.n_elem;
+        const bool all_rows = row_indices.is_empty();
+        const arma::uword n_sel_rows = all_rows ? n_obs_ : row_indices.n_elem;
+
+        // Collect triplets then batch-construct.
+        std::vector<arma::uword> trip_rows;
+        std::vector<arma::uword> trip_cols;
+        std::vector<double> trip_vals;
+
+        if (is_csr_) {
+            // col -> output-position lookup
+            std::vector<arma::uword> col_map(static_cast<size_t>(n_var_), n_sel_cols);
+            for (arma::uword j = 0; j < n_sel_cols; ++j) {
+                if (col_map[col_indices(j)] == n_sel_cols) {
+                    col_map[col_indices(j)] = j;
+                }
+            }
+
+            std::vector<arma::uword> row_map;
+            if (!all_rows) {
+                row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
+                for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                    if (row_map[row_indices(i)] == n_sel_rows) {
+                        row_map[row_indices(i)] = i;
+                    }
+                }
+            }
+
+            for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
+                const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+                const unsigned long long nnz_start_chunk = indptr_[row_start];
+                const unsigned long long nnz_end_chunk = indptr_[row_end];
+                const unsigned long long nnz_count = nnz_end_chunk - nnz_start_chunk;
+                if (nnz_count == 0) continue;
+
+                std::vector<double> data;
+                std::vector<unsigned long long> indices;
+                load_chunk_cached_(nnz_start_chunk, nnz_count, data, indices);
+
+                for (arma::uword r = row_start; r < row_end; ++r) {
+                    const arma::uword out_row = all_rows ? r : row_map[r];
+                    if (out_row == n_sel_rows) continue;
+
+                    const unsigned long long ls = indptr_[r] - nnz_start_chunk;
+                    const unsigned long long le = indptr_[r + 1] - nnz_start_chunk;
+                    for (unsigned long long p = ls; p < le; ++p) {
+                        const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
+                        const arma::uword out_col = col_map[col];
+                        if (out_col == n_sel_cols) continue;
+                        double v = transform_value_(r, data[static_cast<size_t>(p)]);
+                        if (v != 0.0) {
+                            trip_rows.push_back(out_row);
+                            trip_cols.push_back(out_col);
+                            trip_vals.push_back(v);
+                        }
+                    }
+                }
+            }
+
+            // Expand duplicate columns.
+            for (arma::uword j = 0; j < n_sel_cols; ++j) {
+                if (col_map[col_indices(j)] != j) {
+                    const arma::uword src_j = col_map[col_indices(j)];
+                    const size_t n = trip_rows.size();
+                    for (size_t t = 0; t < n; ++t) {
+                        if (trip_cols[t] == src_j) {
+                            trip_rows.push_back(trip_rows[t]);
+                            trip_cols.push_back(j);
+                            trip_vals.push_back(trip_vals[t]);
+                        }
+                    }
+                }
+            }
+        } else {
+            // CSC path
+            std::vector<arma::uword> row_map;
+            if (!all_rows) {
+                row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
+                for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                    if (row_map[row_indices(i)] == n_sel_rows) {
+                        row_map[row_indices(i)] = i;
+                    }
+                }
+            }
+
+            for (arma::uword j = 0; j < n_sel_cols; ++j) {
+                const arma::uword c = col_indices(j);
+                const unsigned long long nnz_start = indptr_[c];
+                const unsigned long long nnz_end = indptr_[c + 1];
+                const unsigned long long nnz_count = nnz_end - nnz_start;
+                if (nnz_count == 0) continue;
+
+                std::vector<double> data;
+                std::vector<unsigned long long> indices;
+                read_data_indices_slice_(nnz_start, nnz_count, data, indices);
+
+                for (unsigned long long p = 0; p < nnz_count; ++p) {
+                    const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
+                    const arma::uword out_row = all_rows ? row : row_map[row];
+                    if (out_row == n_sel_rows) continue;
+                    double v = transform_value_(row, data[static_cast<size_t>(p)]);
+                    if (v != 0.0) {
+                        trip_rows.push_back(out_row);
+                        trip_cols.push_back(j);
+                        trip_vals.push_back(v);
+                    }
+                }
+            }
+        }
+
+        if (trip_vals.empty()) {
+            return arma::sp_mat(n_sel_rows, n_sel_cols);
+        }
+
+        arma::umat locations(2, trip_vals.size());
+        for (size_t t = 0; t < trip_vals.size(); ++t) {
+            locations(0, t) = trip_rows[t];
+            locations(1, t) = trip_cols[t];
+        }
+        arma::vec values(trip_vals.data(), trip_vals.size(), /*copy_aux_mem=*/true);
+
+        return arma::sp_mat(/*add_values=*/true, locations, values,
+                            n_sel_rows, n_sel_cols, /*sort_locations=*/true);
+    }
+
 } // namespace actionet
