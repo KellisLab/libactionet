@@ -18,8 +18,6 @@ namespace actionet {
         double old_RSS = 0;
 
         for (int it = 0; it < max_it; it++) {
-            arma::mat C_old = C;
-            arma::mat H_old = H;
             double A_norm = arma::norm(A, "fro");
             H = actionet::runSimplexRegression(W, A, true);
 
