@@ -390,27 +390,10 @@ def compare(
     C_stacked_r  = r_get("obsm_C_stacked")
     C_merged_py  = py_get("obsm_C_merged")
     C_merged_r   = r_get("obsm_C_merged")
-    known_archetype_count_difference = (
-        H_stacked_py is not None and H_stacked_r is not None
-        and H_stacked_py.shape[1] != H_stacked_r.shape[1]
-    ) or (
-        H_merged_py is not None and H_merged_r is not None
-        and H_merged_py.shape[1] != H_merged_r.shape[1]
-    )
-
     if H_stacked_py is not None and H_stacked_r is not None:
-        if known_archetype_count_difference and H_stacked_py.shape != H_stacked_r.shape:
-            _report(
-                "obsm/H_stacked (cells x archetypes)",
-                "WARN",
-                float("nan"),
-                f"shape mismatch: Python={H_stacked_py.shape} R={H_stacked_r.shape} "
-                "(known stochastic pruning difference)",
-            )
-        else:
-            [H_stacked_py_c] = canonicalize_archetype_ordering(H_stacked_py)
-            [H_stacked_r_c]  = canonicalize_archetype_ordering(H_stacked_r)
-            _compare_dense("obsm/H_stacked (cells x archetypes)", H_stacked_py_c, H_stacked_r_c)
+        [H_stacked_py_c] = canonicalize_archetype_ordering(H_stacked_py)
+        [H_stacked_r_c]  = canonicalize_archetype_ordering(H_stacked_r)
+        _compare_dense("obsm/H_stacked (cells x archetypes)", H_stacked_py_c, H_stacked_r_c)
     else:
         if H_stacked_py is None:
             _report("obsm/H_stacked", False, float("nan"), "MISSING in Python")
@@ -418,18 +401,9 @@ def compare(
             _report("obsm/H_stacked", False, float("nan"), "MISSING in R")
 
     if H_merged_py is not None and H_merged_r is not None:
-        if known_archetype_count_difference and H_merged_py.shape != H_merged_r.shape:
-            _report(
-                "obsm/H_merged (cells x archetypes)",
-                "WARN",
-                float("nan"),
-                f"shape mismatch: Python={H_merged_py.shape} R={H_merged_r.shape} "
-                "(known stochastic pruning difference)",
-            )
-        else:
-            [H_merged_py_c] = canonicalize_archetype_ordering(H_merged_py)
-            [H_merged_r_c]  = canonicalize_archetype_ordering(H_merged_r)
-            _compare_dense("obsm/H_merged (cells x archetypes)", H_merged_py_c, H_merged_r_c)
+        [H_merged_py_c] = canonicalize_archetype_ordering(H_merged_py)
+        [H_merged_r_c]  = canonicalize_archetype_ordering(H_merged_r)
+        _compare_dense("obsm/H_merged (cells x archetypes)", H_merged_py_c, H_merged_r_c)
     else:
         missing_in = "Python" if H_merged_py is None else "R"
         _report("obsm/H_merged", False, float("nan"), f"MISSING in {missing_in}")
@@ -441,16 +415,7 @@ def compare(
         if both_present(py_key, r_key, slot):
             a = np.array(py_get(py_key))
             b = np.array(r_get(r_key))
-            if known_archetype_count_difference and a.shape != b.shape:
-                _report(
-                    slot,
-                    "WARN",
-                    float("nan"),
-                    f"shape mismatch: Python={a.shape} R={b.shape} "
-                    "(known stochastic pruning difference)",
-                )
-            else:
-                _compare_dense(slot, a, b)
+            _compare_dense(slot, a, b)
 
     # Archetype assignment (integer, check with 0/1-index offset tolerance)
     if both_present("obs_assigned_archetype", "obs_assigned_archetype", "obs/assigned_archetype"):
@@ -475,13 +440,8 @@ def compare(
                 aligned = a + 1
                 exact = int(np.sum(aligned != b))
                 max_dev = float(np.max(np.abs(aligned - b)))
-                status = "WARN" if known_archetype_count_difference else (exact == 0)
-                note = (
-                    f"{exact}/{len(a)} cells differ after 0/1 index alignment "
-                    "(follows from archetype count difference)"
-                    if exact > 0 and known_archetype_count_difference
-                    else (f"{exact}/{len(a)} cells differ" if exact > 0 else "")
-                )
+                status = (exact == 0)
+                note = f"{exact}/{len(a)} cells differ" if exact > 0 else ""
                 _report("obs/assigned_archetype", status, max_dev, note)
 
     # ------------------------------------------------------------------
@@ -503,30 +463,7 @@ def compare(
     if py_G_arr is not None and r_G_dense is not None:
         py_G_sp = sp.csr_matrix(py_G_arr)
         r_G_sp  = sp.csr_matrix(r_G_dense)
-        if known_archetype_count_difference:
-            py_csr = canonicalize_sparse_csr(py_G_sp)
-            r_csr = canonicalize_sparse_csr(r_G_sp)
-            idx_ok = (
-                np.array_equal(py_csr.indptr, r_csr.indptr)
-                and np.array_equal(py_csr.indices, r_csr.indices)
-            )
-            val_ok = idx_ok and bool(np.allclose(py_csr.data, r_csr.data, atol=ATOL, rtol=RTOL))
-            if val_ok:
-                max_dev = float(np.max(np.abs(py_csr.data - r_csr.data))) if py_csr.nnz > 0 else 0.0
-                _report("obsp/actionet (cells x cells sparse)", True, max_dev)
-            else:
-                py_dense = py_csr.toarray()
-                r_dense = r_csr.toarray()
-                max_dev = float(np.max(np.abs(py_dense - r_dense)))
-                _report(
-                    "obsp/actionet (cells x cells sparse)",
-                    "WARN",
-                    max_dev,
-                    f"sparse structure differs (Python nnz={py_csr.nnz}, R nnz={r_csr.nnz}) "
-                    "(follows from archetype count difference)",
-                )
-        else:
-            _compare_sparse("obsp/actionet (cells x cells sparse)", py_G_sp, r_G_sp)
+        _compare_sparse("obsp/actionet (cells x cells sparse)", py_G_sp, r_G_sp)
     else:
         missing = "Python" if py_G_arr is None else "R"
         _report("obsp/actionet", False, float("nan"), f"MISSING in {missing}")
@@ -544,16 +481,7 @@ def compare(
         if both_present(py_key, r_key, slot):
             a = np.array(py_get(py_key))
             b = np.array(r_get(r_key))
-            if known_archetype_count_difference and a.shape != b.shape:
-                _report(
-                    slot,
-                    "WARN",
-                    float("nan"),
-                    f"shape mismatch: Python={a.shape} R={b.shape} "
-                    "(follows from archetype count difference)",
-                )
-            else:
-                _compare_dense(slot, a, b)
+            _compare_dense(slot, a, b)
 
     # varm_specificity_profile is Python-only — document as known asymmetry
     if py_get("varm_specificity_profile") is not None:
@@ -575,16 +503,7 @@ def compare(
         if both_present(py_key, r_key, slot):
             a = np.array(py_get(py_key))
             b = np.array(r_get(r_key))
-            if known_archetype_count_difference and a.shape != b.shape:
-                _report(
-                    slot,
-                    "WARN",
-                    float("nan"),
-                    f"shape mismatch: Python={a.shape} R={b.shape} "
-                    "(follows from archetype count difference)",
-                )
-            else:
-                _compare_dense(slot, a, b)
+            _compare_dense(slot, a, b)
 
     # ------------------------------------------------------------------
     # Batch correction

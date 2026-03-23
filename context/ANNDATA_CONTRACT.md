@@ -87,28 +87,7 @@ conversion (without creating a CSR transpose intermediate).
 The following differences between R and Python are **expected and documented**,
 not regressions:
 
-### 1. ACTION archetype count (non-deterministic pruning)
-
-**Affected slots**: `H_stacked`, `H_merged`, `C_stacked`, `C_merged`,
-`obs["assigned_archetype"]`, `obsp["actionet"]`, all specificity slots.
-
-**Cause**: The ACTION pruning step removes trivial, non-specific, and
-unreproducible archetypes using thresholds. R and Python use slightly different
-default pruning stringency, resulting in different archetype counts:
-- Python (seed=42, fixture): 164 stacked / 15 merged
-- R (seed=42, fixture): 206 stacked / 16 merged
-
-The network and specificity results depend on archetype assignment and therefore
-also differ between languages.
-
-**Downstream impact**: The network `obsp["actionet"]`, cluster specificity, and
-archetype specificity all depend on the archetype assignment. These will differ
-between R and Python until the pruning defaults are unified (future work).
-
-**Not a regression**: This difference also existed in the pre-unification baseline.
-The orientation contract is correct; only the pruning parameters differ.
-
-### 2. `varm/specificity_profile` (Python-only)
+### 1. `varm/specificity_profile` (Python-only)
 
 The Python `compute_feature_specificity` stores the average feature profile
 in `varm["specificity_profile"]`. The R `computeFeatureSpecificity` function
@@ -116,11 +95,22 @@ returns this value but does not store it in the AnnData object by default.
 
 This is a known API asymmetry, not a regression.
 
-### 3. 0-vs-1 indexed archetype assignment
+### 2. 0-vs-1 indexed archetype assignment
 
 Python `obs["assigned_archetype"]` is 0-indexed.  
 R `adata$obs[["assigned_archetype"]]` is 1-indexed.  
 Difference of 1 for all cells is expected and correct.
+
+---
+
+## Resolved Parity Issue
+
+On 2026-03-22 we traced the previously documented archetype-count divergence to
+the Python frontend, not the C++ pruning core. `actionet-python` normalized the
+reduced matrix `obsm["action"]` along columns before calling `run_action()`,
+while the R frontend correctly normalized rows/cells. After changing Python to
+row-normalize `S_r`, the full parity fixture matches the R baseline across
+ACTION outputs, network, specificity, and batch-correction slots.
 
 ---
 
@@ -176,12 +166,12 @@ All parity checks were run with the parity fixture (500 cells × 2000 genes,
 seed=42) on 2026-03-22.
 
 ### Python `test_parity.py`
-- **34 PASS, 0 FAIL**
-- 10 documented WARNs (archetype count difference, see above)
+- **44 PASS, 0 FAIL**
+- **0 WARN**
 
 ### R `test_parity.R`
-- **39 PASS, 0 FAIL**
-- 10 documented WARNs (archetype count difference, see above)
+- **49 PASS, 0 FAIL**
+- **0 WARN**
 
 ### Python `test_storage_parity.py`
 - **17 PASS, 0 FAIL**

@@ -75,10 +75,13 @@ The contract breakage period ends when Plan 07 passes all parity checks.
 |  parity test suite (`test_parity.py`, `test_parity.R`, `test_storage_parity.py`),
 |  extended `compare_baselines.py` with a two-h5ad positional CLI mode, and wrote the
 |  `ANNDATA_CONTRACT.md` reference document.
-|  Results: Python 34 PASS / 0 FAIL, R 39 PASS / 0 FAIL, storage parity 17 PASS / 0 FAIL.
-|  Reduction, SVD, batch correction, and sigma slots agree cross-language to machine precision.
-|  Archetype counts differ between R and Python (known stochastic pruning difference,
-|  documented in ANNDATA_CONTRACT.md). The orientation unification is declared complete.
+|  Results after the 2026-03-22 parity repair: Python 44 PASS / 0 FAIL,
+|  R 49 PASS / 0 FAIL, storage parity 17 PASS / 0 FAIL, and
+|  `compare_baselines.py` 20 PASS / 0 WARN / 0 FAIL.
+|  The remaining cross-language differences are limited to the documented Python-only
+|  `varm["specificity_profile"]` slot and 0-vs-1 indexed archetype labels.
+|  The earlier archetype-count split was traced to Python column-normalizing `S_r`
+|  before `run_action()`; after restoring row normalization, exact parity was recovered.
 
 ## Agent Environment Guidance
 
