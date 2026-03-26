@@ -132,35 +132,26 @@ namespace actionet {
         hid_t file_space = H5Dget_space(dataset_id_);
         check_h5(file_space >= 0, "Failed to get dense dataset dataspace");
 
-        // Read column-by-column directly into the Armadillo column-major buffer.
-        // Each column of the slab is a contiguous block of obs_count doubles in
-        // Armadillo's memory.  We select a single-column hyperslab from the file
-        // for each variable and write it straight into slab.colptr(c).  This
-        // eliminates the temporary row-major buffer and the O(rows*cols)
-        // element-by-element transpose.
-        const hsize_t one_col_count[2] = {
-            static_cast<hsize_t>(obs_count), 1
-        };
-        hid_t mem_space = H5Screate_simple(1,
-            &one_col_count[0], nullptr);  // 1-D memory space of obs_count elements
-        check_h5(mem_space >= 0, "Failed to create column memory dataspace");
+        hsize_t offset[2] = {static_cast<hsize_t>(obs_start), 0};
+        hsize_t count[2] = {static_cast<hsize_t>(obs_count), static_cast<hsize_t>(n_var_)};
+        check_h5(H5Sselect_hyperslab(file_space, H5S_SELECT_SET, offset, nullptr, count, nullptr) >= 0,
+                 "Failed to select dense hyperslab");
 
-        for (arma::uword c = 0; c < n_var_; ++c) {
-            hsize_t col_offset[2] = {
-                static_cast<hsize_t>(obs_start),
-                static_cast<hsize_t>(c)
-            };
-            check_h5(
-                H5Sselect_hyperslab(file_space, H5S_SELECT_SET,
-                                    col_offset, nullptr,
-                                    one_col_count, nullptr) >= 0,
-                "Failed to select dense column hyperslab");
+        hid_t mem_space = H5Screate_simple(2, count, nullptr);
+        check_h5(mem_space >= 0, "Failed to create dense memory dataspace");
 
-            check_h5(
-                H5Dread(dataset_id_, H5T_NATIVE_DOUBLE,
-                        mem_space, file_space,
-                        H5P_DEFAULT, slab.colptr(c)) >= 0,
-                "Failed to read dense column slab");
+        // HDF5 reads in row-major order. Read the slab in one call and transpose
+        // into Armadillo's column-major storage to avoid per-column H5Dread calls.
+        std::vector<double> row_major_buf(static_cast<size_t>(obs_count) * static_cast<size_t>(n_var_));
+        check_h5(H5Dread(dataset_id_, H5T_NATIVE_DOUBLE, mem_space, file_space,
+                         H5P_DEFAULT, row_major_buf.data()) >= 0,
+                 "Failed to read dense slab");
+
+        for (arma::uword r = 0; r < obs_count; ++r) {
+            const double* row_ptr = row_major_buf.data() + static_cast<size_t>(r) * static_cast<size_t>(n_var_);
+            for (arma::uword c = 0; c < n_var_; ++c) {
+                slab(r, c) = row_ptr[c];
+            }
         }
 
         H5Sclose(mem_space);
