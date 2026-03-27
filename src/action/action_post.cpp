@@ -47,7 +47,10 @@ namespace actionet {
         // Weighted Networks" (Kalna)
         arma::vec transitivity = arma::zeros(total_archs);
         arma::vec s = arma::sum(backbone, 1); // strength of nodes
-        arma::vec d = arma::vec(arma::sum(arma::spones(arma::sp_mat(backbone)), 1));
+        arma::vec d(total_archs);
+        for (size_t k = 0; k < total_archs; k++) {
+            d(k) = arma::accu(backbone.row(k) > 0);
+        }
         for (size_t k = 0; k < total_archs; k++) {
             double sum = 0;
             for (size_t i = 0; i < total_archs; i++) {

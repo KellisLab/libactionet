@@ -159,10 +159,11 @@ namespace actionet {
     arma::vec computeArchetypeCentrality(arma::sp_mat& G, const arma::uvec& sample_assignments) {
         arma::vec conn = arma::zeros(G.n_cols);
 
-        for (int i = 0; i <= arma::max(sample_assignments); i++) {
+        arma::uword max_assign = arma::max(sample_assignments);
+        for (arma::uword i = 0; i <= max_assign; i++) {
             arma::uvec mask = arma::conv_to<arma::uvec>::from(sample_assignments == i);
 
-            if (sum(mask) == 0) {
+            if (arma::sum(mask) == 0) {
                 continue;
             }
             arma::uvec induced_coreness = compute_induced_core_number(G, mask);
