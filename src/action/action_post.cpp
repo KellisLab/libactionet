@@ -6,34 +6,37 @@
 #include "utils_internal/utils_stats.hpp"
 
 namespace actionet {
-    // TODO: Clean up potentially unused code.
     ResCollectArch collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace,
                                      double spec_th, int min_obs) {
-        arma::mat C_stacked;
-        arma::mat H_stacked;
         size_t depth = H_trace.size();
 
         ResCollectArch results;
 
-        // Vector contains an element for k==0, this have to -1
+        // Pre-scan to compute total archetype count and allocate once
         stdout_printf("Joining trace of C & H matrices (depth = %d) ... ", (int)depth - 1);
-        // Group H and C matrices for different values of k (#archs) into joint matrix
+        size_t n_samples = 0;
+        size_t total_archs = 0;
         for (size_t k = 0; k < depth; k++) {
             if (H_trace[k].n_rows == 0)
                 continue;
-
-            if (H_stacked.n_elem == 0) {
-                C_stacked = C_trace[k];
-                H_stacked = H_trace[k];
-            }
-            else {
-                C_stacked = arma::join_rows(C_stacked, C_trace[k]);
-                H_stacked = arma::join_cols(H_stacked, H_trace[k]);
-            }
+            if (n_samples == 0)
+                n_samples = H_trace[k].n_cols;
+            total_archs += H_trace[k].n_rows;
         }
-        size_t total_archs = H_stacked.n_rows;
 
-        stdout_printf("done (%d archetypes)\n", (int)C_stacked.n_cols);
+        arma::mat C_stacked(n_samples, total_archs);
+        arma::mat H_stacked(total_archs, n_samples);
+        size_t col_offset = 0;
+        for (size_t k = 0; k < depth; k++) {
+            if (H_trace[k].n_rows == 0)
+                continue;
+            size_t nk = H_trace[k].n_rows;
+            C_stacked.cols(col_offset, col_offset + nk - 1) = C_trace[k];
+            H_stacked.rows(col_offset, col_offset + nk - 1) = H_trace[k];
+            col_offset += nk;
+        }
+
+        stdout_printf("done (%d archetypes)\n", (int)total_archs);
         stdout_printf("Pruning archetypes:\n");
         FLUSH;
 
@@ -43,29 +46,38 @@ namespace actionet {
 
         arma::vec pruned = arma::zeros(total_archs);
 
-        // Barrat weighted transitivity: formulation from "Clustering Coefficients for
-        // Weighted Networks" (Kalna)
+        // Barrat weighted transitivity via matrix operations.
+        // For each node k: T(k) = sum_{i,j} [(w_ki + w_kj)/2] * [a_ik * a_kj * a_ji > 0] / [s(k)*(d(k)-1)]
+        // where a = (backbone > 0) is the adjacency matrix.
+        // The triangle indicator for node k over (i,j) is (A * A)(i,j) restricted to
+        // pairs where a_ik and a_kj are nonzero. The full sum equals:
+        //   sum_{i,j} w_ki * a_kj * t_ij  +  sum_{i,j} a_ki * w_kj * t_ij
+        // where t_ij = a_ij (triangle closing edge), divided by 2.
+        // This simplifies to: for each k, dot(backbone.row(k), (A * A).row(k)) * 2 / 2
+        // which is backbone.row(k) * A * A.row(k)^T ... but we need to be more careful.
+        //
+        // Expanding: for fixed k, sum_{i,j} (w_ki + w_kj)/2 * a_ik * a_kj * a_ji
+        //   = (1/2) * sum_{i,j} w_ki * a_ik * a_kj * a_ji  +  (1/2) * sum_{i,j} w_kj * a_ik * a_kj * a_ji
+        //   = (1/2) * sum_i [w_ki * a_ik * sum_j(a_kj * a_ji)]  +  (1/2) * sum_j [w_kj * a_kj * sum_i(a_ik * a_ji)]
+        //   = (1/2) * sum_i [w_ki * a_ik * (A * A^T)_{k,i}]      +  (1/2) * sum_j [w_kj * a_kj * (A^T * A)_{j,k}]
+        //  Since A is symmetric (backbone is symmetric): A = A^T, so (A*A)_{k,i} = (A*A^T)_{k,i}
+        //   = (1/2) * sum_i w_ki * a_ik * (A²)_{k,i}  +  (1/2) * sum_j w_kj * a_kj * (A²)_{j,k}
+        //  And since backbone is symmetric: w_ki = w_ik, a_ik = a_ki, (A²)_{k,i} = (A²)_{i,k}
+        //  Both terms are identical. So total = sum_i w_ki * a_ik * (A²)_{k,i}
+        //  = sum_i backbone(k,i) * (A²)(k,i)  [since a_ik = (backbone(k,i)>0), and backbone already has the weight]
+        //  But we need a_ik factor too. Since backbone(k,i) > 0 implies a_ik=1, and backbone(k,i)=0 implies the term vanishes:
+        //  = sum_i backbone(k,i) * (A²)(k,i)  =  dot(backbone.row(k), (A²).row(k))
+
+        arma::mat A_bin = arma::conv_to<arma::mat>::from(backbone > 0);
+        arma::mat A2 = A_bin * A_bin;
+
+        arma::vec s = arma::sum(backbone, 1);
+        arma::vec d = arma::sum(A_bin, 1);
         arma::vec transitivity = arma::zeros(total_archs);
-        arma::vec s = arma::sum(backbone, 1); // strength of nodes
-        arma::vec d(total_archs);
         for (size_t k = 0; k < total_archs; k++) {
-            d(k) = arma::accu(backbone.row(k) > 0);
-        }
-        for (size_t k = 0; k < total_archs; k++) {
-            double sum = 0;
-            for (size_t i = 0; i < total_archs; i++) {
-                double w_ki = backbone(k, i);
-                for (size_t j = 0; j < total_archs; j++) {
-                    double w_kj = backbone(k, j);
-
-                    double mean_weight = (w_ki + w_kj) / 2.0;
-                    double triangle_mask =
-                        backbone(i, k) * backbone(k, j) * backbone(j, i) > 0 ? 1 : 0;
-
-                    sum += mean_weight * triangle_mask;
-                }
-            }
-            transitivity(k) = sum / (s(k) * (d(k) - 1));
+            double denom = s(k) * (d(k) - 1);
+            if (denom > 0)
+                transitivity(k) = arma::dot(backbone.row(k), A2.row(k)) / denom;
         }
 
         arma::vec transitivity_z = zscore(transitivity);
