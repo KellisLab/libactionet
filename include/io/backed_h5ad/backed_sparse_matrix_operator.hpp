@@ -112,7 +112,7 @@ namespace actionet {
         void read_data_indices_slice_(unsigned long long start, unsigned long long count,
                                       std::vector<double>& data, std::vector<unsigned long long>& indices) const;
         void load_chunk_cached_(unsigned long long nnz_start, unsigned long long nnz_count,
-                                std::vector<double>& data, std::vector<unsigned long long>& indices) const;
+                                const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const;
         double transform_value_(arma::uword obs_index, double value) const;
         void close_handles_();
 
