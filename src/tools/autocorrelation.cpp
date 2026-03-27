@@ -2,7 +2,18 @@
 #include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
-// TODO: sum(sum()) to accu()
+#include <random>
+#include <numeric>
+
+// Thread-safe permutation using per-call seeded RNG
+static arma::uvec thread_safe_randperm(int n, unsigned int seed) {
+    std::vector<arma::uword> idx(n);
+    std::iota(idx.begin(), idx.end(), 0);
+    std::mt19937 rng(seed);
+    std::shuffle(idx.begin(), idx.end(), rng);
+    return arma::uvec(idx.data(), n);
+}
+
 namespace actionet {
     arma::field<arma::vec>
         autocorrelation_Moran_parametric(const arma::sp_mat& G, const arma::mat& scores, int normalization_method,
@@ -104,7 +115,7 @@ namespace actionet {
             threads_use = get_num_threads(perm_no, thread_no);
             #pragma omp parallel for num_threads(threads_use)
             for (unsigned int j = 0; j < perm_no; j++) {
-                arma::uvec perm = arma::randperm(nV);
+                arma::uvec perm = thread_safe_randperm(nV, j * 1000003u + 42u);
                 arma::mat score_permuted = normalized_scores.rows(perm);
 
                 arma::vec v = arma::zeros(scores_no);
@@ -172,7 +183,7 @@ namespace actionet {
             threads_use = get_num_threads(perm_no, thread_no);
             #pragma omp parallel for num_threads(threads_use)
             for (unsigned int j = 0; j < perm_no; j++) {
-                arma::uvec perm = arma::randperm(nV);
+                arma::uvec perm = thread_safe_randperm(nV, j * 1000003u + 137u);
                 arma::mat score_permuted = normalized_scores.rows(perm);
 
                 arma::vec v = arma::zeros(scores_no);

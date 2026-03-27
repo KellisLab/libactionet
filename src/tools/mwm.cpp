@@ -1,8 +1,19 @@
 #include "tools/mwm.hpp"
+#include <vector>
 
-double *l1, *l2, *w;
-int *match1, *match2, *v1, *v2;
-int *s, *tt, *deg, *offset, *list;
+struct MWMWorkspace {
+    std::vector<double> l1, l2, w;
+    std::vector<int> match1, match2, v1, v2;
+    std::vector<int> s, tt, deg, offset, list;
+
+    MWMWorkspace(int n, int m, int nedges_capacity) :
+        l1(n + m), l2(n + m), w(nedges_capacity + n + m),
+        match1(n + m), match2(n + m),
+        v1(nedges_capacity), v2(nedges_capacity),
+        s(n + m), tt(n + m),
+        deg(n + m), offset(n + m),
+        list(nedges_capacity + n + m) {}
+};
 
 /**
  * n the number of nodes
@@ -15,9 +26,22 @@ int *s, *tt, *deg, *offset, *list;
  * out2 is a vector of length at most min(n,m),
  * noutedges is the number of out edges
  */
+static double MWM_driver(MWMWorkspace& ws, int n, int m, int nedges,
+                          double *vv1, double *vv2, double *weight,
+                          double *out1, double *out2, int *noutedges) {
+    int* v1 = ws.v1.data();
+    int* v2 = ws.v2.data();
+    double* l1 = ws.l1.data();
+    double* l2 = ws.l2.data();
+    int* match1 = ws.match1.data();
+    int* match2 = ws.match2.data();
+    int* s = ws.s.data();
+    int* tt = ws.tt.data();
+    int* deg = ws.deg.data();
+    int* offset = ws.offset.data();
+    int* list = ws.list.data();
+    double* w = ws.w.data();
 
-double MWM_driver(int n, int m, int nedges, double *vv1, double *vv2, double *weight, double *out1, double *out2,
-                  int *noutedges) {
     double ret, al;
     int i, j, k, p, q, r, t1, t2;
 
@@ -107,10 +131,6 @@ double MWM_driver(int n, int m, int nedges, double *vv1, double *vv2, double *we
     }
     *noutedges = 0;
     for (i = 0; i < n; i++) {
-        if (match1[i] < m) (*noutedges)++;
-    }
-    *noutedges = 0;
-    for (i = 0; i < n; i++) {
         if (match1[i] < m) {
             out1[*noutedges] = i;
             out2[*noutedges] = match1[i];
@@ -126,19 +146,6 @@ namespace actionet {
     arma::mat MWM_hungarian(arma::mat &G) {
         int n = G.n_rows;
         int m = G.n_cols;
-        int N = m + n;
-        l1 = new double[N];
-        l2 = new double[N];
-        v1 = new int[m * n];
-        v2 = new int[m * n];
-        s = new int[N];
-        tt = new int[N];
-        match1 = new int[N];
-        match2 = new int[N];
-        offset = new int[N];
-        deg = new int[N];
-        list = new int[m * n + N];
-        w = new double[m * n + N];
 
         arma::mat G_matched = arma::zeros(arma::size(G));
 
@@ -147,9 +154,11 @@ namespace actionet {
 
         int nedges = idx.n_elem;
 
-        double *vv1 = new double[nedges];
-        double *vv2 = new double[nedges];
-        double *weight = new double[nedges];
+        MWMWorkspace ws(n, m, nedges);
+
+        std::vector<double> vv1(nedges);
+        std::vector<double> vv2(nedges);
+        std::vector<double> weight(nedges);
 
         arma::umat subs = arma::ind2sub(arma::size(G), idx);
         for (int i = 0; i < nedges; i++) {
@@ -159,36 +168,23 @@ namespace actionet {
         }
 
         int match_no = std::min(m, n);
-        double *ii = new double[match_no];
-        double *jj = new double[match_no];
+        std::vector<double> ii(match_no);
+        std::vector<double> jj(match_no);
 
         int matched_edge_no;
 
-        MWM_driver(n, m, nedges, vv1, vv2, weight, ii, jj, &matched_edge_no);
+        MWM_driver(ws, n, m, nedges, vv1.data(), vv2.data(), weight.data(),
+                   ii.data(), jj.data(), &matched_edge_no);
 
         for (int k = 0; k < matched_edge_no; k++) {
             G_matched(ii[k], jj[k]) = G(ii[k], jj[k]);
         }
-
-        delete[] l1;
-        delete[] l2;
-        delete[] v1;
-        delete[] v2;
-        delete[] s;
-        delete[] tt;
-        delete[] match1;
-        delete[] match2;
-        delete[] offset;
-        delete[] deg;
-        delete[] list;
-        delete[] w;
 
         return G_matched;
     }
 
     arma::umat MWM_rank1(const arma::vec& u, const arma::vec& v, double u_threshold, double v_threshold) {
 
-        // Rank-1 matching for each paired-archetypes
         arma::vec u_sorted = arma::sort(u, "descend");
         arma::uvec u_sorted_idx = arma::sort_index(u, "descend");
 
@@ -196,12 +192,11 @@ namespace actionet {
         arma::uvec v_sorted_idx = arma::sort_index(v, "descend");
 
         int top_rank = std::min(arma::sum(u > u_threshold),
-                                arma::sum(v > v_threshold));  // sum(uv_prod > threshold);
+                                arma::sum(v > v_threshold));
         arma::umat subs(2, top_rank);
 
         if (top_rank == 0) return subs;
 
-        // Rank-based matching
         arma::uvec rows = u_sorted_idx(arma::span(0, top_rank - 1));
         arma::uvec cols = v_sorted_idx(arma::span(0, top_rank - 1));
 
