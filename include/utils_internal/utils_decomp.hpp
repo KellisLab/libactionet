@@ -4,6 +4,8 @@
 #include "libactionet_config.hpp"
 #include "aarand/aarand.hpp"
 
+namespace actionet {
+
 /// @brief Orthogonalize X against Y using temporary storage.
 void orthog(double *X, double *Y, double *T, int xm, int xn, int yn);
 
@@ -20,10 +22,9 @@ arma::mat randNorm(int l, int m, int seed);
 /// @brief Compute SVD via eigendecomposition.
 arma::field<arma::mat> eigSVD(const arma::mat &A);
 
-/// @brief Orient SVD components for consistency.
-arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res);
+/// @brief Orient SVD components for sign consistency (modifies in-place).
+void orient_SVD(arma::field<arma::mat>& SVD_res);
 
-// Functions: inline
 /// @brief Fill a buffer with standard normal values.
 inline void StdNorm(double *v, int n, std::mt19937_64 engine) {
     for (int ii = 0; ii < n - 1; ii += 2) {
@@ -32,8 +33,9 @@ inline void StdNorm(double *v, int n, std::mt19937_64 engine) {
         v[ii + 1] = paired.second;
     }
     auto paired = aarand::standard_normal(engine);
-    // Final value if length(v) is odd. Overwrites last value otherwise.
     v[n - 1] = paired.first;
 }
+
+} // namespace actionet
 
 #endif //ACTIONET_UTILS_DECOMP_HPP

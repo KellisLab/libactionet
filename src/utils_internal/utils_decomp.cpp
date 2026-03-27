@@ -1,19 +1,18 @@
 #include "utils_internal/utils_decomp.hpp"
 #include "blas_deps.hpp"
 
+namespace actionet {
+
 void orthog(double *X, double *Y, double *T, int xm, int xn, int yn) {
     double a = 1, b = 1;
     int inc = 1;
     std::memset(T, 0, xn * yn * sizeof(double));
-    // T = t(X) * Y
     cblas_dgemv(CblasColMajor, CblasTrans, xm, xn, a, X, xm, Y, inc, b, T, inc);
-    // Y = Y - X * T
     a = -1.0;
     b = 1.0;
     cblas_dgemv(CblasColMajor, CblasNoTrans, xm, xn, a, X, xm, T, inc, b, Y, inc);
 }
 
-// Convergence test
 void convtests(int Bsz, int n, double tol, double svtol, double Smax, double *svratio, double *residuals, int *k,
                int *converged, double S) {
     int Len_res = 0;
@@ -79,14 +78,12 @@ arma::field<arma::mat> eigSVD(const arma::mat &A) {
     arma::eig_sym(d, V, B);
     d = sqrt(d);
 
-    // Compute U
     arma::sp_mat S(n, n);
     S.diag() = 1 / d;
     arma::mat U = (S * arma::trans(V)) * arma::trans(A);
     U = arma::trans(U);
 
     arma::field<arma::mat> out(3);
-
     out(0) = U;
     out(1) = d;
     out(2) = V;
@@ -94,55 +91,28 @@ arma::field<arma::mat> eigSVD(const arma::mat &A) {
     return (out);
 }
 
-arma::field<arma::mat> orient_SVD(arma::field<arma::mat> SVD_res) {
-    arma::mat U = SVD_res(0);
-    arma::vec sigma = SVD_res(1);
-    arma::mat V = SVD_res(2);
-
-    int dim = sigma.n_elem;
-    arma::uvec mask_idx;
+void orient_SVD(arma::field<arma::mat>& SVD_res) {
+    arma::mat& U = SVD_res(0);
+    arma::mat& V = SVD_res(2);
+    int dim = static_cast<int>(arma::vec(SVD_res(1)).n_elem);
 
     for (int i = 0; i < dim; i++) {
-        arma::vec u = U.col(i);
-        arma::vec v = V.col(i);
-
-        arma::vec up = u;
-        mask_idx = arma::find(u < 0);
-        if (mask_idx.n_elem > 0)
-            up(mask_idx).zeros();
-
-        arma::vec un = -u;
-        mask_idx = arma::find(u > 0);
-        if (mask_idx.n_elem > 0)
-            un(mask_idx).zeros();
-
-        arma::vec vp = v;
-        mask_idx = arma::find(v < 0);
-        if (mask_idx.n_elem > 0)
-            vp(mask_idx).zeros();
-
-        arma::vec vn = -v;
-        mask_idx = arma::find(v > 0);
-        if (mask_idx.n_elem > 0)
-            vn(mask_idx).zeros();
-
-        double n_up = arma::norm(up);
-        double n_un = arma::norm(un);
-        double n_vp = arma::norm(vp);
-        double n_vn = arma::norm(vn);
-
-        double termp = n_up * n_vp;
-        double termn = n_un * n_vn;
-        if (termp < termn) {
+        double n_up = 0, n_un = 0, n_vp = 0, n_vn = 0;
+        for (arma::uword r = 0; r < U.n_rows; r++) {
+            double val = U(r, i);
+            if (val > 0) n_up += val * val;
+            else         n_un += val * val;
+        }
+        for (arma::uword r = 0; r < V.n_rows; r++) {
+            double val = V(r, i);
+            if (val > 0) n_vp += val * val;
+            else         n_vn += val * val;
+        }
+        if (std::sqrt(n_up) * std::sqrt(n_vp) < std::sqrt(n_un) * std::sqrt(n_vn)) {
             U.col(i) *= -1;
             V.col(i) *= -1;
         }
     }
-
-    arma::field<arma::mat> out(3);
-    out(0) = U;
-    out(1) = sigma;
-    out(2) = V;
-
-    return (out);
 }
+
+} // namespace actionet

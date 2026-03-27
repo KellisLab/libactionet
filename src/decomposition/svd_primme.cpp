@@ -229,7 +229,8 @@ namespace {
 
         primme_svds_free(&primme_svds);
 
-        arma::field<arma::mat> oriented = orient_SVD(actionet::svdFieldFromResult(out));
+        arma::field<arma::mat> oriented = actionet::svdFieldFromResult(out);
+        actionet::orient_SVD(oriented);
         return actionet::svdResultFromField(oriented);
     }
 } // namespace

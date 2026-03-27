@@ -25,17 +25,17 @@ arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose
     }
 
     if (m < n) {
-        R = randNorm(l, static_cast<int>(m), seed);
+        R = actionet::randNorm(l, static_cast<int>(m), seed);
         Q = A.t() * R.t();
     }
     else {
-        R = randNorm(static_cast<int>(n), l, seed);
+        R = actionet::randNorm(static_cast<int>(n), l, seed);
         Q = A * R;
     }
 
     // Form a matrix Q whose columns constitute a well-conditioned basis for the
     // columns of the earlier Q.
-    gram_schmidt(Q);
+    actionet::gram_schmidt(Q);
 
     if (m < n) {
         // Conduct normalized power iterations.
@@ -46,10 +46,10 @@ arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose
             }
 
             Q = A * Q;
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
 
             Q = A.t() * Q;
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
         }
 
         X = arma::mat(A * Q);
@@ -65,10 +65,10 @@ arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose
             }
 
             Q = A.t() * Q;
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
 
             Q = A * Q; // Apply A to a random matrix, obtaining Q.
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
         }
 
         // SVD Q' applied to the centered A to obtain approximations to the
@@ -91,7 +91,8 @@ arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose
     out(1) = sigma;
     out(2) = V;
 
-    return (orient_SVD(out));
+    actionet::orient_SVD(out);
+    return out;
 }
 
 arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int iters,
@@ -122,15 +123,15 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
     }
 
     if (m < n) {
-        R = randNorm(l, m, seed);       // l x m
+        R = actionet::randNorm(l, m, seed);       // l x m
         A.rmatmat(R.t(), Q);            // n x l
     }
     else {
-        R = randNorm(n, l, seed);       // n x l
+        R = actionet::randNorm(n, l, seed);       // n x l
         A.matmat(R, Q);                 // m x l
     }
 
-    gram_schmidt(Q);
+    actionet::gram_schmidt(Q);
 
     if (m < n) {
         for (int it = 1; it <= iters; it++) {
@@ -142,12 +143,12 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
             arma::mat tmp_m;
             A.matmat(Q, tmp_m);         // m x l
             Q = std::move(tmp_m);
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
 
             arma::mat tmp_n;
             A.rmatmat(Q, tmp_n);        // n x l
             Q = std::move(tmp_n);
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
         }
 
         A.matmat(Q, X);                 // m x l
@@ -164,12 +165,12 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
             arma::mat tmp_n;
             A.rmatmat(Q, tmp_n);        // n x l
             Q = std::move(tmp_n);
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
 
             arma::mat tmp_m;
             A.matmat(Q, tmp_m);         // m x l
             Q = std::move(tmp_m);
-            gram_schmidt(Q);
+            actionet::gram_schmidt(Q);
         }
 
         arma::mat Xt;
@@ -191,7 +192,8 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
     out(0) = U;
     out(1) = sigma;
     out(2) = V;
-    return orient_SVD(out);
+    actionet::orient_SVD(out);
+    return out;
 }
 
 template arma::field<arma::mat> svdHalko<arma::mat>(arma::mat& A, int dim, int iters, int seed, bool verbose);
