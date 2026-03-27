@@ -29,7 +29,7 @@ namespace actionet {
     ///
     /// @return <code>ResACTION</code> with SPA selections and C/H traces.
     ResACTION
-        decompACTION(arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-6,
+        decompACTION(arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-16,
                   int thread_no = 0);
 } // namespace actionet
 
