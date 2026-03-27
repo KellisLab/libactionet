@@ -122,13 +122,12 @@ namespace actionet {
     // Graph pre-normalization for PageRank
     // norm_method 0/1 is standard unit normalization columns/rows with edge-cases.
     // norm_method 2 symmetrizes graph, i.e. colsums == rowsums.
-    arma::sp_mat normalizeGraph(arma::sp_mat& G, int norm_method) {
-        arma::sp_mat P = G;
+    arma::sp_mat normalizeGraph(arma::sp_mat G, int norm_method) {
         switch (norm_method) {
             case 0: // Column-normalize
             case 1: // Row-normalize
             {
-                P = normalize_matrix_internal(P, 1, norm_method, true, 1.0);
+                G = normalize_matrix_internal(G, 1, norm_method, true, 1.0);
             }
             break;
             case 2: // Symmetrize
@@ -147,7 +146,7 @@ namespace actionet {
                 row_sums.transform([](double val) { return (val == 0 ? 1 : val); });
                 col_sums.transform([](double val) { return (val == 0 ? 1 : val); });
 
-                for (it = P.begin(); it != P.end(); ++it) {
+                for (it = G.begin(); it != G.end(); ++it) {
                     double w = std::sqrt(row_sums[it.row()] * col_sums[it.col()]);
                     (*it) /= w;
                 }
@@ -157,7 +156,7 @@ namespace actionet {
                 throw std::invalid_argument("Invalid 'norm_method'");
         }
 
-        return (P);
+        return G;
     }
 
     // TODO: Rename and consolidate with above functions

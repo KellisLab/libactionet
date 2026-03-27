@@ -184,8 +184,8 @@ namespace actionet {
         support_obs.zeros(n_var, H_norm_t.n_cols);
         min_stored = 0.0;
 
-        std::vector<double> data;
-        std::vector<unsigned long long> indices;
+        const std::vector<double>* data;
+        const std::vector<unsigned long long>* indices;
 
         for (arma::uword row_start = 0; row_start < n_obs; row_start += cs) {
             const arma::uword row_end = std::min<arma::uword>(n_obs, row_start + cs);
@@ -203,8 +203,8 @@ namespace actionet {
 
                 for (unsigned long long p = p0; p < p1; ++p) {
                     const arma::uword c = static_cast<arma::uword>(
-                        indices[static_cast<size_t>(p)]);
-                    const double v = op.transform_value_(r, data[static_cast<size_t>(p)]);
+                        (*indices)[static_cast<size_t>(p)]);
+                    const double v = op.transform_value_(r, (*data)[static_cast<size_t>(p)]);
 
                     if (v < min_stored) {
                         min_stored = v;
@@ -248,8 +248,8 @@ namespace actionet {
         support_obs.zeros(n_var, H_norm_t.n_cols);
         min_stored = 0.0;
 
-        std::vector<double> data;
-        std::vector<unsigned long long> indices;
+        const std::vector<double>* data;
+        const std::vector<unsigned long long>* indices;
 
         for (arma::uword col_start = 0; col_start < n_var; col_start += cs) {
             const arma::uword col_end = std::min<arma::uword>(n_var, col_start + cs);
@@ -265,10 +265,10 @@ namespace actionet {
 
                 for (unsigned long long p = p0; p < p1; ++p) {
                     const arma::uword r = static_cast<arma::uword>(
-                        indices[static_cast<size_t>(p)]);
+                        (*indices)[static_cast<size_t>(p)]);
                     // In CSC, the stored row index is obs_row, and the column is var_col.
                     // transform_value_ requires obs_row as the first argument.
-                    const double v = op.transform_value_(r, data[static_cast<size_t>(p)]);
+                    const double v = op.transform_value_(r, (*data)[static_cast<size_t>(p)]);
 
                     if (v < min_stored) {
                         min_stored = v;

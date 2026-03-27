@@ -292,17 +292,14 @@ namespace actionet {
 
     void BackedSparseMatrixOperator::load_chunk_cached_(
         unsigned long long start, unsigned long long count,
-        std::vector<double>& data, std::vector<unsigned long long>& indices) const {
-        if (chunk_cache_.count == count && chunk_cache_.start == start && count > 0) {
-            data = chunk_cache_.data;
-            indices = chunk_cache_.indices;
-            return;
+        const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const {
+        if (!(chunk_cache_.count == count && chunk_cache_.start == start && count > 0)) {
+            read_data_indices_slice_(start, count, chunk_cache_.data, chunk_cache_.indices);
+            chunk_cache_.start = start;
+            chunk_cache_.count = count;
         }
-        read_data_indices_slice_(start, count, data, indices);
-        chunk_cache_.start = start;
-        chunk_cache_.count = count;
-        chunk_cache_.data = data;
-        chunk_cache_.indices = indices;
+        data = &chunk_cache_.data;
+        indices = &chunk_cache_.indices;
     }
 
     double BackedSparseMatrixOperator::transform_value_(arma::uword obs_index, double value) const {
@@ -372,8 +369,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword r = row_start; r < row_end; ++r) {
@@ -381,8 +378,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 const double xval = x(r);
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, data[static_cast<size_t>(p)]);
+                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                     y(col) += value * xval;
                 }
             }
@@ -398,8 +395,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword r = row_start; r < row_end; ++r) {
@@ -407,8 +404,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 double acc = 0.0;
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, data[static_cast<size_t>(p)]);
+                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                     acc += value * x(col);
                 }
                 y(r) = acc;
@@ -425,8 +422,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword r = row_start; r < row_end; ++r) {
@@ -434,8 +431,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 const arma::rowvec xrow = X.row(r);
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, data[static_cast<size_t>(p)]);
+                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                     Y.row(col) += value * xrow;
                 }
             }
@@ -451,8 +448,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword r = row_start; r < row_end; ++r) {
@@ -460,8 +457,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 arma::rowvec acc(X.n_cols, arma::fill::zeros);
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, data[static_cast<size_t>(p)]);
+                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                     acc += value * X.row(col);
                 }
                 Y.row(r) = acc;
@@ -478,8 +475,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword c = col_start; c < col_end; ++c) {
@@ -487,8 +484,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
                 double acc = 0.0;
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, data[static_cast<size_t>(p)]);
+                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
                     acc += value * x(row);
                 }
                 y(c) = acc;
@@ -505,8 +502,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword c = col_start; c < col_end; ++c) {
@@ -514,8 +511,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
                 const double xval = x(c);
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, data[static_cast<size_t>(p)]);
+                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
                     y(row) += value * xval;
                 }
             }
@@ -531,8 +528,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword c = col_start; c < col_end; ++c) {
@@ -540,8 +537,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
                 arma::rowvec acc(X.n_cols, arma::fill::zeros);
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, data[static_cast<size_t>(p)]);
+                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
                     acc += value * X.row(row);
                 }
                 Y.row(c) = acc;
@@ -558,8 +555,8 @@ namespace actionet {
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword c = col_start; c < col_end; ++c) {
@@ -567,8 +564,8 @@ namespace actionet {
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
                 const arma::rowvec xrow = X.row(c);
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, data[static_cast<size_t>(p)]);
+                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
                     Y.row(row) += value * xrow;
                 }
             }
@@ -616,8 +613,8 @@ namespace actionet {
             const unsigned long long nnz_count = nnz_end - nnz_start;
             if (nnz_count == 0) continue;
 
-            std::vector<double> data;
-            std::vector<unsigned long long> indices;
+            const std::vector<double>* data;
+            const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
             for (arma::uword r = row_start; r < row_end; ++r) {
@@ -627,10 +624,10 @@ namespace actionet {
                 const unsigned long long local_start = indptr_[r] - nnz_start;
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
+                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
                     const arma::uword out_col = col_map[col];
                     if (out_col == n_sel_cols) continue;
-                    out(out_row, out_col) = transform_value_(r, data[static_cast<size_t>(p)]);
+                    out(out_row, out_col) = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                 }
             }
         }
@@ -740,8 +737,8 @@ namespace actionet {
                 const unsigned long long nnz_count = nnz_end_chunk - nnz_start_chunk;
                 if (nnz_count == 0) continue;
 
-                std::vector<double> data;
-                std::vector<unsigned long long> indices;
+                const std::vector<double>* data;
+                const std::vector<unsigned long long>* indices;
                 load_chunk_cached_(nnz_start_chunk, nnz_count, data, indices);
 
                 for (arma::uword r = row_start; r < row_end; ++r) {
@@ -751,10 +748,10 @@ namespace actionet {
                     const unsigned long long ls = indptr_[r] - nnz_start_chunk;
                     const unsigned long long le = indptr_[r + 1] - nnz_start_chunk;
                     for (unsigned long long p = ls; p < le; ++p) {
-                        const arma::uword col = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
                         const arma::uword out_col = col_map[col];
                         if (out_col == n_sel_cols) continue;
-                        double v = transform_value_(r, data[static_cast<size_t>(p)]);
+                        double v = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                         if (v != 0.0) {
                             trip_rows.push_back(out_row);
                             trip_cols.push_back(out_col);
