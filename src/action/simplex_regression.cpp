@@ -17,13 +17,13 @@ namespace actionet {
         if (computeXtX) {
             double lam2sq = lambda2 * lambda2;
             arma::mat G = arma::trans(A) * A + lam2sq;
-            #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 64)
+            #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (int i = 0; i < ncols; i++) {
                 arma::vec b = B.col(i);
                 X.col(i) = activeSetS_arma(A, b, G, lambda2, epsilon);
             }
         } else {
-            #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 64)
+            #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (int i = 0; i < ncols; i++) {
                 arma::vec b = B.col(i);
                 X.col(i) = activeSet_arma(A, b, lambda2, epsilon);
