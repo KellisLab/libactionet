@@ -1,6 +1,7 @@
 // Simplex regression algorithm
 #include "action/simplex_regression.hpp"
 #include "utils_internal/utils_active_set.hpp"
+#include "utils_internal/utils_parallel.hpp"
 
 namespace actionet {
 
@@ -8,16 +9,22 @@ namespace actionet {
 
         double lambda2 = 1e-5, epsilon = 1e-5;
 
-        arma::mat X = arma::zeros(A.n_cols, B.n_cols);
+        int ncols = static_cast<int>(B.n_cols);
+        arma::mat X = arma::zeros(A.n_cols, ncols);
+
+        int nthreads = omp_in_parallel() ? 1 : get_num_threads(ncols);
+
         if (computeXtX) {
             double lam2sq = lambda2 * lambda2;
             arma::mat G = arma::trans(A) * A + lam2sq;
-            for (int i = 0; i < B.n_cols; i++) {
+            #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 64)
+            for (int i = 0; i < ncols; i++) {
                 arma::vec b = B.col(i);
                 X.col(i) = activeSetS_arma(A, b, G, lambda2, epsilon);
             }
         } else {
-            for (int i = 0; i < B.n_cols; i++) {
+            #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 64)
+            for (int i = 0; i < ncols; i++) {
                 arma::vec b = B.col(i);
                 X.col(i) = activeSet_arma(A, b, lambda2, epsilon);
             }
