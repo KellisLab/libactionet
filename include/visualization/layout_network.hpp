@@ -3,7 +3,8 @@
 #ifndef ACTIONET_LAYOUT_NETWORK_HPP
 #define ACTIONET_LAYOUT_NETWORK_HPP
 
-#include "libactionet.hpp"
+#include "libactionet_config.hpp"
+#include "visualization/OptimizerArgs.hpp"
 #include "UwotArgs.hpp"
 
 namespace actionet {
