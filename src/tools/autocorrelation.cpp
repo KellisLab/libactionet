@@ -27,7 +27,7 @@ namespace actionet {
 
         stdout_printf("Computing auto-correlation over network ... ");
 
-        double W = arma::sum(arma::sum(G));
+        double W = arma::accu(G);
         double Wsq = W * W;
 
         arma::vec norm_sq = arma::vec(arma::trans(arma::sum(arma::square(normalized_scores))));
@@ -51,7 +51,7 @@ namespace actionet {
         arma::vec mu = -arma::ones(scores_no) / (nV - 1);
 
         arma::sp_mat Gsym = (G + arma::trans(G));
-        double S1 = 0.5 * arma::sum(arma::sum(arma::square(Gsym)));
+        double S1 = 0.5 * arma::accu(arma::square(Gsym));
 
         arma::vec rs = arma::vec(arma::sum(G, 1));
         arma::vec cs = arma::vec(arma::trans(arma::sum(G, 0)));
@@ -91,7 +91,7 @@ namespace actionet {
         arma::mat normalized_scores = normalize_scores(scores, normalization_method, thread_no);
 
         stdout_printf("Computing auto-correlation over network ... ");
-        double W = arma::sum(arma::sum(G));
+        double W = arma::accu(G);
         arma::vec norm_sq = arma::vec(arma::trans(arma::sum(arma::square(normalized_scores))));
         arma::vec norm_factors = nV / (W * norm_sq);
         norm_factors.replace(arma::datum::nan, 0); // replace each NaN with 0
@@ -152,7 +152,7 @@ namespace actionet {
         arma::mat normalized_scores = normalize_scores(scores, normalization_method, thread_no);
 
         stdout_printf("Computing auto-correlation over network ... ");
-        double W = arma::sum(arma::sum(G));
+        double W = arma::accu(G);
         arma::vec norm_sq = arma::vec(arma::trans(arma::sum(arma::square(normalized_scores))));
         arma::vec norm_factors = (nV - 1) / ((2 * W) * norm_sq);
         norm_factors.replace(arma::datum::nan, 0); // replace each NaN with 0
