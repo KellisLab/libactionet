@@ -1,111 +1,144 @@
 // Network imputation using PageRank
-// Updated to use native Armadillo sparse operations
 #include "network/network_diffusion.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include <tools/matrix_transform.hpp>
 
-// PageRank diffusion using native Armadillo sparse operations
-arma::mat computeDiffusion(arma::sp_mat& G, arma::sp_mat X0, int norm_method, double alpha, int max_it, int thread_no) {
-    size_t n = G.n_rows;
+namespace {
+
+// PageRank power-iteration diffusion.
+// Operates directly on dense X0 (already L1-normalised column-wise by caller).
+arma::mat diffusionPowerIter(arma::sp_mat& G, const arma::mat& X0_norm,
+                              int norm_method, double alpha, int max_it, int thread_no) {
+    const size_t n = G.n_rows;
 
     arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_method);
 
-    arma::vec z = arma::ones(n);
     arma::vec cs = arma::vec(arma::trans(arma::sum(G, 0)));
-    arma::uvec nnz_idx = arma::find(cs > 0);
-    z(nnz_idx) = arma::ones(nnz_idx.n_elem) * (1.0 - alpha);
-    z = z / n;
+    arma::vec z = arma::ones(n);
+    z(arma::find(cs > 0)).fill(1.0 - alpha);
+    z /= n;
+    arma::rowvec zt = z.t();
 
-    X0 = arma::normalise(X0, 1, 0);
-    arma::mat X_out = arma::mat(X0);
-    X0 *= n;
-    arma::rowvec zt = arma::trans(z);
+    arma::mat X0_scaled = X0_norm * static_cast<double>(n);
+    arma::mat X_out = X0_norm;  // start from normalised input
 
     int threads_use = get_num_threads(X_out.n_cols, thread_no);
 
     for (int it = 0; it < max_it; it++) {
-        arma::mat Y = X_out;
-
-        #pragma omp parallel for num_threads(threads_use)
+        #pragma omp parallel for num_threads(threads_use) schedule(static)
         for (size_t i = 0; i < X_out.n_cols; i++) {
-            // Use native Armadillo sparse-dense multiply
-            Y.col(i) = P * X_out.col(i);
-            X_out.col(i) = Y.col(i) + X0.col(i) * (zt * X_out.col(i));
+            arma::vec y = P * X_out.col(i);
+            X_out.col(i) = y + X0_scaled.col(i) * arma::as_scalar(zt * X_out.col(i));
         }
     }
 
     return X_out;
 }
 
-// norm_method: 0 (pagerank), 2 (sym_pagerank)
-arma::mat computeDiffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_method, double alpha, int max_it,
-                                    double tol, int thread_no) {
-    // Traditional definition is to have alpha as weight of prior. Here, alpha is depth of diffusion
-    alpha = 1 - alpha;
+// Sparse-input variant: keeps X0 sparse for the initial sparse-dense multiply,
+// then switches to dense for iteration.
+arma::mat diffusionPowerIterSparse(arma::sp_mat& G, const arma::sp_mat& X0,
+                                    int norm_method, double alpha, int max_it, int thread_no) {
+    const size_t n = G.n_rows;
+
+    arma::sp_mat P = alpha * actionet::normalizeGraph(G, norm_method);
+
+    arma::vec cs = arma::vec(arma::trans(arma::sum(G, 0)));
+    arma::vec z = arma::ones(n);
+    z(arma::find(cs > 0)).fill(1.0 - alpha);
+    z /= n;
+    arma::rowvec zt = z.t();
+
+    arma::sp_mat X0_norm = arma::normalise(X0, 1, 0);
+    arma::mat X_out(X0_norm);
+    arma::sp_mat X0_scaled = X0_norm * static_cast<double>(n);
+
+    int threads_use = get_num_threads(X_out.n_cols, thread_no);
+
+    for (int it = 0; it < max_it; it++) {
+        #pragma omp parallel for num_threads(threads_use) schedule(static)
+        for (size_t i = 0; i < X_out.n_cols; i++) {
+            arma::vec y = P * X_out.col(i);
+            arma::vec x0_col(X0_scaled.col(i));
+            X_out.col(i) = y + x0_col * arma::as_scalar(zt * X_out.col(i));
+        }
+    }
+
+    return X_out;
+}
+
+// Chebyshev-accelerated approximate PageRank diffusion.
+arma::mat diffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_method,
+                              double alpha, int max_it, double tol, int thread_no) {
+    alpha = 1.0 - alpha;
 
     arma::sp_mat P = actionet::normalizeGraph(G, norm_method);
 
-    arma::mat mPPreviousScore = X0; // zeros(size(X0));
-    arma::mat mPreviousScore = (1 - alpha) * spmat_mat_product_parallel(P, mPPreviousScore, thread_no) + alpha * X0;
-    double muPPrevious = 1.0, muPrevious = 1 / (1 - alpha);
+    arma::mat prev_prev = X0;
+    arma::mat prev = (1.0 - alpha) * spmat_mat_product_parallel(P, prev_prev, thread_no) + alpha * X0;
+    double mu_pp = 1.0, mu_p = 1.0 / (1.0 - alpha);
 
-    if (max_it <= 0)
-        return (mPreviousScore);
+    if (max_it <= 0) return prev;
 
     arma::mat X_out;
     for (int i = 0; i < max_it; i++) {
-        double mu = 2.0 / (1.0 - alpha) * muPrevious - muPPrevious;
+        double mu = 2.0 / (1.0 - alpha) * mu_p - mu_pp;
 
-        X_out = 2 * (muPrevious / mu) * spmat_mat_product_parallel(P, mPreviousScore, thread_no) -
-            (muPPrevious / mu) * mPPreviousScore + (2 * muPrevious) / ((1 - alpha) * mu) * alpha * X0;
+        X_out = 2.0 * (mu_p / mu) * spmat_mat_product_parallel(P, prev, thread_no)
+              - (mu_pp / mu) * prev_prev
+              + (2.0 * mu_p) / ((1.0 - alpha) * mu) * alpha * X0;
 
-        double res = norm(X_out - mPreviousScore);
-        if (res < tol) {
-            break;
-        }
+        double res = arma::norm(X_out - prev, "fro");
+        if (res < tol) break;
 
-        // Change variables
-        muPPrevious = muPrevious;
-        muPrevious = mu;
-        mPPreviousScore = mPreviousScore;
-        mPreviousScore = X_out;
+        mu_pp = mu_p;
+        mu_p = mu;
+        prev_prev = std::move(prev);
+        prev = X_out;
     }
 
-    // Temporary fix. Sometimes diffusion values become small negative numbers
-    double m0 = arma::min(arma::min(X0));
-    if (0 <= m0) {
-        X_out = arma::clamp(X_out, 0, arma::max(arma::max(X_out)));
+    double m0 = X0.min();
+    if (m0 >= 0.0) {
+        X_out = arma::clamp(X_out, 0.0, X_out.max());
     }
 
-    return (X_out);
+    return X_out;
 }
 
+} // anon namespace
+
 namespace actionet {
-    template <typename T>
-    arma::mat computeNetworkDiffusion(arma::sp_mat& G, T& X0, double alpha, int max_it, int thread_no,
-                                      bool approx, int norm_method, double tol) {
-        if (alpha == 0) {
-            return arma::mat(X0);
-        }
-        if (alpha <= 0 || alpha > 1) {
+
+    // Dense input specialisation: no sparse conversion needed.
+    template <>
+    arma::mat computeNetworkDiffusion<arma::mat>(
+            arma::sp_mat& G, arma::mat& X0, double alpha, int max_it,
+            int thread_no, bool approx, int norm_method, double tol) {
+        if (alpha == 0.0) return X0;
+        if (alpha <= 0.0 || alpha > 1.0)
             throw std::invalid_argument("'alpha' must be in (0,1)");
-        }
 
-        arma::mat X_out(X0.n_rows, X0.n_cols);
-        if (approx) { // Fast approximate PageRank
-            X_out = computeDiffusionChebyshev(G, arma::mat(X0), norm_method, alpha, max_it, tol, thread_no);
+        if (approx) {
+            return diffusionChebyshev(G, X0, norm_method, alpha, max_it, tol, thread_no);
         }
-        else { // PageRank (iterative)
-            X_out = computeDiffusion(G, arma::sp_mat(X0), norm_method, alpha, max_it, thread_no);
+        arma::mat X0_norm = arma::normalise(X0, 1, 0);
+        return diffusionPowerIter(G, X0_norm, norm_method, alpha, max_it, thread_no);
+    }
+
+    // Sparse input specialisation: stays sparse through normalisation.
+    template <>
+    arma::mat computeNetworkDiffusion<arma::sp_mat>(
+            arma::sp_mat& G, arma::sp_mat& X0, double alpha, int max_it,
+            int thread_no, bool approx, int norm_method, double tol) {
+        if (alpha == 0.0) return arma::mat(X0);
+        if (alpha <= 0.0 || alpha > 1.0)
+            throw std::invalid_argument("'alpha' must be in (0,1)");
+
+        if (approx) {
+            return diffusionChebyshev(G, arma::mat(X0), norm_method, alpha, max_it, tol, thread_no);
         }
+        return diffusionPowerIterSparse(G, X0, norm_method, alpha, max_it, thread_no);
+    }
 
-        return (X_out);
-    };
-
-    template arma::mat computeNetworkDiffusion<arma::mat>(arma::sp_mat& G, arma::mat& X0, double alpha, int max_it,
-                                                          int thread_no, bool approx, int norm_method, double tol);
-    template arma::mat computeNetworkDiffusion<arma::sp_mat>(arma::sp_mat& G, arma::sp_mat& X0, double alpha,
-                                                             int max_it, int thread_no, bool approx, int norm_method,
-                                                             double tol);
 } // namespace actionet
