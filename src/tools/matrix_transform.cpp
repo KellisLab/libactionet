@@ -159,39 +159,31 @@ namespace actionet {
         return G;
     }
 
-    // TODO: Rename and consolidate with above functions
     arma::mat normalize_scores(arma::mat scores, int method, int thread_no) {
         arma::mat normalized_scores(size(scores));
         switch (method) {
-            case 0: //"none"
+            case 0: // none
             {
                 normalized_scores = scores;
                 break;
             }
-            case 1: //"zscore"
+            case 1: // zscore
             {
                 normalized_scores = zscore(scores, 0, thread_no);
                 break;
             }
-            case 2: //"RINT" (nonparametric)
-            {
-                stderr_printf("RINT remove. Returning mat.\n");
-                FLUSH;
-                normalized_scores = scores;
-                break;
-            }
-            case 3: //"robust_zscore" (kinda hack!)
+            case 2: // robust_zscore
             {
                 normalized_scores = robust_zscore(scores, 0, thread_no);
                 break;
             }
-            case 4: // mean centering
+            case 3: // mean centering
             {
                 normalized_scores = mean_center(scores);
                 break;
             }
             default:
-                stderr_printf("Unknown normalization method\n");
+                stderr_printf("Unknown normalization method (%d)\n", method);
                 FLUSH;
                 normalized_scores = scores;
         }

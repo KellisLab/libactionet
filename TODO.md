@@ -1,15 +1,12 @@
 ## Primary
-* Backed SVD
 * Backed network construction (??)
 * Document C++ interface
 * network_measures: Parallelize
 * * network_measures: argument and return types (uvec/vec)
 * Redo orthogonalization
-* buildNetwork() template accept dense and sparse `H`
 * Prohibit UMAP negative values
 
 ## Secondary
-* Template svdIRLB()??
 * uwot SGD opt probably doesn't work.
 * Compile to Windows x86
 * zscore is multithreaded???
@@ -72,3 +69,5 @@
 * Modular cmake
 * Standardize 'norm_type' vs. 'norm_method'
 * pybind 11 wrappers
+* Consolidate svdIRLB()
+* Backed SVD

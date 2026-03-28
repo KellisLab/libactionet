@@ -35,7 +35,7 @@ namespace actionet {
     /// @brief Normalize score matrix for downstream scoring.
     ///
     /// @param scores Input score matrix.
-    /// @param method Normalization method code.
+    /// @param method Normalization method: 0=none, 1=zscore, 2=robust_zscore, 3=mean_center.
     /// @param thread_no Number of threads (0 = auto).
     /// @return Normalized scores.
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);

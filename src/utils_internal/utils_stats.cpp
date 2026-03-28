@@ -1,70 +1,45 @@
 #include "utils_internal/utils_stats.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
+namespace {
+    enum class ZScoreStrategy { Standard, Robust };
+
+    arma::mat zscore_impl(arma::mat& A, int dim, int thread_no, ZScoreStrategy strategy) {
+        int N = (dim == 0) ? A.n_cols : A.n_rows;
+
+        int threads_use = get_num_threads(N, thread_no);
+        #pragma omp parallel for num_threads(threads_use)
+        for (size_t j = 0; j < N; j++) {
+            arma::vec v = (dim == 0) ? arma::vec(A.col(j)) : arma::vec(A.row(j));
+
+            double center, scale;
+            if (strategy == ZScoreStrategy::Standard) {
+                center = arma::mean(v);
+                scale  = arma::stddev(v);
+            } else {
+                center = arma::median(v);
+                scale  = arma::median(arma::abs(v - center));
+            }
+
+            arma::vec z = (v - center) / scale;
+            if (dim == 0) {
+                A.col(j) = z;
+            } else {
+                A.row(j) = z;
+            }
+        }
+
+        A.replace(arma::datum::nan, 0);
+        return A;
+    }
+} // anonymous namespace
+
 arma::mat zscore(arma::mat& A, int dim, int thread_no) {
-    int N = A.n_cols;
-    if (dim != 0) {
-        N = A.n_rows;
-    }
-
-    int threads_use = get_num_threads(N, thread_no);
-    #pragma omp parallel for num_threads(threads_use)
-    for (size_t j = 0; j < N; j++) {
-        arma::vec v = A.col(j);
-        if (dim == 0) {
-            v = A.col(j);
-        }
-        else {
-            v = A.row(j);
-        }
-        double mu = arma::mean(v);
-        double sigma = arma::stddev(v);
-
-        arma::vec z = (v - mu) / sigma;
-        if (dim == 0) {
-            A.col(j) = z;
-        }
-        else {
-            A.row(j) = z;
-        }
-    }
-
-    A.replace(arma::datum::nan, 0); // replace each NaN with 0
-
-    return A;
+    return zscore_impl(A, dim, thread_no, ZScoreStrategy::Standard);
 }
 
 arma::mat robust_zscore(arma::mat& A, int dim, int thread_no) {
-    int N = A.n_cols;
-    if (dim != 0) {
-        N = A.n_rows;
-    }
-
-    int threads_use = get_num_threads(N, thread_no);
-    #pragma omp parallel for num_threads(threads_use)
-    for (size_t j = 0; j < N; j++) {
-        arma::vec v = A.col(j);
-        if (dim == 0) {
-            v = A.col(j);
-        }
-        else {
-            v = A.row(j);
-        }
-        double med = arma::median(v);
-        double mad = arma::median(arma::abs(v - med));
-
-        arma::vec z = (v - med) / mad;
-        if (dim == 0) {
-            A.col(j) = z;
-        }
-        else {
-            A.row(j) = z;
-        }
-    }
-
-    A.replace(arma::datum::nan, 0); // replace each NaN with 0
-
-    return A;
+    return zscore_impl(A, dim, thread_no, ZScoreStrategy::Robust);
 }
 
 arma::mat tzscoret(arma::mat& A) {
