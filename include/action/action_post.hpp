@@ -50,7 +50,7 @@ namespace actionet {
 
     /// @brief Identify and merge redundant archetypes into a representative subset.
     ///
-    /// @param S_r Reduced data matrix (<em>vars</em> x <em>obs</em>).
+    /// @param S_r Reduced data matrix (<em>k</em> x <em>obs</em>).
     /// @param C_stacked Filtered C matrix from <code>collectArchetypes()</code>.
     /// @param H_stacked Filtered H matrix from <code>collectArchetypes()</code>.
     /// @param thread_no Number of CPU threads (0 = auto).
