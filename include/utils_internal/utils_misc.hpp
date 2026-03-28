@@ -4,6 +4,8 @@
 
 #include "libactionet_config.hpp"
 
+namespace actionet {
+
 /// @brief Convert a label vector to one-hot encoding.
 ///
 /// @param V Input label vector.
@@ -16,5 +18,7 @@ arma::mat one_hot_encoding(const arma::vec& V);
 /// @param method Ranking method code.
 /// @return Ranked vector.
 arma::vec rank_vec(arma::vec x, int method = 0);
+
+} // namespace actionet
 
 #endif //ACTIONET_UTILS_MISC_HPP

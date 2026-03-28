@@ -4,6 +4,8 @@
 
 // min(|| AX - B ||) s.t. simplex constraint
 
+namespace actionet {
+
 /* **************************
  * Active-Set Method with direct inversion, with update(matrix inversion lemma)
  * **************************/
@@ -485,3 +487,5 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
     }
     return (x);
 }
+
+} // namespace actionet

@@ -3,6 +3,8 @@
 
 #include "libactionet_config.hpp"
 
+namespace actionet {
+
 /// @brief Z-score normalize along a dimension.
 ///
 /// @param A Input matrix.
@@ -24,5 +26,7 @@ arma::mat tzscoret(arma::mat &A);
 
 /// @brief Mean-center a matrix by columns.
 arma::mat mean_center(const arma::mat &A);
+
+} // namespace actionet
 
 #endif //ACTIONET_UTILS_STATS_HPP

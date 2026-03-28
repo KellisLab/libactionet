@@ -1,6 +1,8 @@
 #include "decomposition/svd_halko.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
+namespace actionet {
+
 template <typename T>
 arma::field<arma::mat> svdHalko(const T& A, int dim, int iters, int seed, bool verbose) {
     arma::field<arma::mat> out(3); // out: U, sigma, V
@@ -95,7 +97,7 @@ arma::field<arma::mat> svdHalko(const T& A, int dim, int iters, int seed, bool v
     return out;
 }
 
-arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int iters,
+arma::field<arma::mat> svdHalko(const MatrixOperator& A, int dim, int iters,
                                 int seed, bool verbose) {
     arma::field<arma::mat> out(3); // out: U, sigma, V
 
@@ -199,3 +201,5 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
 template arma::field<arma::mat> svdHalko<arma::mat>(const arma::mat& A, int dim, int iters, int seed, bool verbose);
 
 template arma::field<arma::mat> svdHalko<arma::sp_mat>(const arma::sp_mat& A, int dim, int iters, int seed, bool verbose);
+
+} // namespace actionet

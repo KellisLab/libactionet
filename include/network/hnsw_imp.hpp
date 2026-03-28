@@ -43,6 +43,8 @@ struct HnswIndex {
 };
 
 // Allocate a SpaceInterface for the given metric and dimensionality.
+namespace actionet {
+
 inline hnswlib::SpaceInterface<float>*
 makeHnswSpace(const std::string& distance_metric, int dim) {
     if (distance_metric == "jsd")
@@ -65,6 +67,8 @@ makeHnswIndex(const std::string& distance_metric,
     idx.hnsw  = new hnswlib::HierarchicalNSW<float>(idx.space, max_elements, M, ef_construction);
     return idx;
 }
+
+} // namespace actionet
 
 
 #endif //ACTIONET_HNSW_IMP_HPP

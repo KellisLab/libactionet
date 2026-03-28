@@ -1,5 +1,7 @@
 #include "utils_internal/utils_misc.hpp"
 
+namespace actionet {
+
 arma::mat one_hot_encoding(const arma::vec& V) {
     int n = V.n_elem;
 
@@ -57,3 +59,5 @@ arma::vec rank_vec(arma::vec x, int method) {
 
     return ranks;
 }
+
+} // namespace actionet

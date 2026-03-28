@@ -7,7 +7,7 @@ namespace {
     arma::mat zscore_impl(arma::mat& A, int dim, int thread_no, ZScoreStrategy strategy) {
         int N = (dim == 0) ? A.n_cols : A.n_rows;
 
-        int threads_use = get_num_threads(N, thread_no);
+        int threads_use = actionet::get_num_threads(N, thread_no);
         #pragma omp parallel for num_threads(threads_use)
         for (size_t j = 0; j < N; j++) {
             arma::vec v = (dim == 0) ? arma::vec(A.col(j)) : arma::vec(A.row(j));
@@ -34,6 +34,8 @@ namespace {
     }
 } // anonymous namespace
 
+namespace actionet {
+
 arma::mat zscore(arma::mat& A, int dim, int thread_no) {
     return zscore_impl(A, dim, thread_no, ZScoreStrategy::Standard);
 }
@@ -56,3 +58,5 @@ arma::mat mean_center(const arma::mat& A) {
 
     return A_centered;
 }
+
+} // namespace actionet

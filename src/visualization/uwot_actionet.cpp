@@ -3,6 +3,8 @@
 #include "utils_internal/utils_parallel.hpp"
 #include "uwot/coords.h"
 
+namespace {
+
 struct EdgeVectors {
     std::vector<unsigned int> positive_head;
     std::vector<unsigned int> positive_tail;
@@ -106,6 +108,10 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
     return (EV);
 }
 
+} // anonymous namespace
+
+namespace actionet {
+
 arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, UwotArgs uwot_args) {
     if (G.n_cols != G.n_rows) {
         throw std::invalid_argument("'G' must be a square matrix");
@@ -154,3 +160,5 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
 
     return (coords_out);
 }
+
+} // namespace actionet

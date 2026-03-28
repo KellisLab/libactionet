@@ -4,11 +4,6 @@
 
 #include "libactionet_config.hpp"
 
-// Functions: private
-/// @brief Internal driver for maximum weight matching.
-double MWM_driver(int n, int m, int nedges, double* vv1, double* vv2, double* weight, double* out1, double* out2,
-                  int* noutedges);
-
 // Exported
 namespace actionet {
     /// @brief Maximum weight matching using the Hungarian algorithm.

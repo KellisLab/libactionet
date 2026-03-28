@@ -6,6 +6,8 @@
 #include "libactionet_config.hpp"
 #include "decomposition/matrix_operator.hpp"
 
+namespace actionet {
+
 /// @brief Truncated SVD using IRLBA (sparse).
 ///
 /// @param A Sparse input matrix.
@@ -41,7 +43,9 @@ arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters = 1000, in
 /// @param verbose Print progress messages.
 ///
 /// @return Field containing {U, S, V}.
-arma::field<arma::mat> svdIRLB(const actionet::MatrixOperator& A, int dim,
+arma::field<arma::mat> svdIRLB(const MatrixOperator& A, int dim,
                                 int iters = 1000, int seed = 0, bool verbose = true);
+
+} // namespace actionet
 
 #endif //ACTIONET_SVD_IRBLA_HPP

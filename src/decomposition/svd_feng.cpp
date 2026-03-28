@@ -2,6 +2,8 @@
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
+namespace actionet {
+
 template <typename T>
 arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool verbose) {
     int s = 5;
@@ -107,7 +109,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
     return out;
 }
 
-arma::field<arma::mat> svdFeng(const actionet::MatrixOperator& A, int dim, int max_it,
+arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
                                int seed, bool verbose) {
     const int s = 5;
     const int m = static_cast<int>(A.rows());
@@ -238,3 +240,5 @@ arma::field<arma::mat> svdFeng(const actionet::MatrixOperator& A, int dim, int m
 template arma::field<arma::mat> svdFeng<arma::mat>(const arma::mat& A, int dim, int max_it, int seed, bool verbose);
 
 template arma::field<arma::mat> svdFeng<arma::sp_mat>(const arma::sp_mat& A, int dim, int max_it, int seed, bool verbose);
+
+} // namespace actionet

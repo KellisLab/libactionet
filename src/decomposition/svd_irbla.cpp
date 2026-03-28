@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 
+namespace actionet {
 using MatvecFn = std::function<void(char transpose, const double* x, double* out)>;
 
 // Helper: sparse matrix-vector multiplication into raw buffer
@@ -36,7 +37,7 @@ static void dense_matvec(char transpose, const arma::mat& A, const double* x, do
 }
 
 // Helper: operator-backed matrix-vector multiplication into raw buffer
-static void operator_matvec(char transpose, const actionet::MatrixOperator& A,
+static void operator_matvec(char transpose, const MatrixOperator& A,
                              const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.cols(), false, true);
@@ -287,7 +288,7 @@ arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters, int seed,
     return svdIRLB_core(A.n_rows, A.n_cols, dim, iters, seed, verbose, "dense", mv);
 }
 
-arma::field<arma::mat> svdIRLB(const actionet::MatrixOperator& A, int dim,
+arma::field<arma::mat> svdIRLB(const MatrixOperator& A, int dim,
                                 int iters, int seed, bool verbose) {
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         operator_matvec(t, A, x, out);
@@ -295,3 +296,5 @@ arma::field<arma::mat> svdIRLB(const actionet::MatrixOperator& A, int dim,
     return svdIRLB_core(static_cast<int>(A.rows()), static_cast<int>(A.cols()),
                         dim, iters, seed, verbose, "operator", mv);
 }
+
+} // namespace actionet

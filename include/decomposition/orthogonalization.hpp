@@ -5,7 +5,8 @@
 #include "libactionet_config.hpp"
 #include "action/reduce_kernel.hpp"
 
-// Functions: internal
+namespace actionet {
+
 /// @brief Deflate a reduced representation using perturbation matrices.
 ///
 /// The field layout is the public reduction contract
@@ -23,7 +24,6 @@
 arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& reduction_results,
                                         const arma::mat& A, const arma::mat& B);
 
-namespace actionet {
     /// @brief Orthogonalize a reduced representation against a batch design matrix.
     ///
     /// AnnData-native orientation (Plan 02): S is cells × genes.

@@ -23,7 +23,7 @@ arma::mat diffusionPowerIter(arma::sp_mat& G, const arma::mat& X0_norm,
     arma::mat X0_scaled = X0_norm * static_cast<double>(n);
     arma::mat X_out = X0_norm;  // start from normalised input
 
-    int threads_use = get_num_threads(X_out.n_cols, thread_no);
+    int threads_use = actionet::get_num_threads(X_out.n_cols, thread_no);
 
     for (int it = 0; it < max_it; it++) {
         #pragma omp parallel for num_threads(threads_use) schedule(static)
@@ -54,7 +54,7 @@ arma::mat diffusionPowerIterSparse(arma::sp_mat& G, const arma::sp_mat& X0,
     arma::mat X_out(X0_norm);
     arma::sp_mat X0_scaled = X0_norm * static_cast<double>(n);
 
-    int threads_use = get_num_threads(X_out.n_cols, thread_no);
+    int threads_use = actionet::get_num_threads(X_out.n_cols, thread_no);
 
     for (int it = 0; it < max_it; it++) {
         #pragma omp parallel for num_threads(threads_use) schedule(static)
@@ -76,7 +76,7 @@ arma::mat diffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_meth
     arma::sp_mat P = actionet::normalizeGraph(G, norm_method);
 
     arma::mat prev_prev = X0;
-    arma::mat prev = (1.0 - alpha) * spmat_mat_product_parallel(P, prev_prev, thread_no) + alpha * X0;
+    arma::mat prev = (1.0 - alpha) * actionet::spmat_mat_product_parallel(P, prev_prev, thread_no) + alpha * X0;
     double mu_pp = 1.0, mu_p = 1.0 / (1.0 - alpha);
 
     if (max_it <= 0) return prev;
@@ -85,7 +85,7 @@ arma::mat diffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_meth
     for (int i = 0; i < max_it; i++) {
         double mu = 2.0 / (1.0 - alpha) * mu_p - mu_pp;
 
-        X_out = 2.0 * (mu_p / mu) * spmat_mat_product_parallel(P, prev, thread_no)
+        X_out = 2.0 * (mu_p / mu) * actionet::spmat_mat_product_parallel(P, prev, thread_no)
               - (mu_pp / mu) * prev_prev
               + (2.0 * mu_p) / ((1.0 - alpha) * mu) * alpha * X0;
 

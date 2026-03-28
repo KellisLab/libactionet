@@ -4,6 +4,8 @@
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_parallel.hpp"
 
+namespace actionet {
+
 // Sparse matrix-dense vector product: y = A*x
 arma::vec spmat_vec_product(const arma::sp_mat& A, const arma::vec& x) {
     return A * x;
@@ -29,3 +31,5 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, 
 
     return res;
 }
+
+} // namespace actionet

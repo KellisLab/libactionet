@@ -129,7 +129,7 @@ static void getProbsObs_sparse(const arma::sp_mat& S, const arma::mat& Ht, int t
     row_factor.replace(arma::datum::nan, 0.0);
     row_p = gene_nnz / n_rows;
     col_p = cell_nnz / n_cols;
-    Obs = spmat_mat_product_parallel(S.t(), Ht, thread_no);
+    Obs = actionet::spmat_mat_product_parallel(S.t(), Ht, thread_no);
 }
 
 namespace actionet {

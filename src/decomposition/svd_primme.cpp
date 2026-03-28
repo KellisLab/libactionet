@@ -235,8 +235,10 @@ namespace {
     }
 } // namespace
 
+namespace actionet {
+
 arma::field<arma::mat> svdPRIMME(const arma::sp_mat& A, int k, int max_it, int seed, bool verbose) {
-    PrimmeCallbackCtx ctx{&A, sparseDispatch, A.n_rows, A.n_cols, nullptr};
+    PrimmeCallbackCtx ctx{static_cast<void*>(const_cast<arma::sp_mat*>(&A)), sparseDispatch, A.n_rows, A.n_cols, nullptr};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
                                             k, max_it, seed, verbose, &ctx, "sparse",
                                             static_cast<unsigned long long>(A.n_nonzero));
@@ -244,17 +246,17 @@ arma::field<arma::mat> svdPRIMME(const arma::sp_mat& A, int k, int max_it, int s
 }
 
 arma::field<arma::mat> svdPRIMME(const arma::mat& A, int k, int max_it, int seed, bool verbose) {
-    PrimmeCallbackCtx ctx{&A, denseDispatch, A.n_rows, A.n_cols, nullptr};
+    PrimmeCallbackCtx ctx{static_cast<void*>(const_cast<arma::mat*>(&A)), denseDispatch, A.n_rows, A.n_cols, nullptr};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
                                             k, max_it, seed, verbose, &ctx, "dense");
     return actionet::svdFieldFromResult(svd);
 }
 
-namespace actionet {
-    SVDResult runSVD_PRIMME_Operator(const MatrixOperator& op, int k, int max_it, int seed, bool verbose) {
-        PrimmeOperatorCtx op_ctx{&op};
-        PrimmeCallbackCtx ctx{&op_ctx, operatorDispatch, op.rows(), op.cols(), &op};
-        return runPrimmeCore(static_cast<PRIMME_INT>(op.rows()), static_cast<PRIMME_INT>(op.cols()),
-                             k, max_it, seed, verbose, &ctx, "operator");
-    }
+SVDResult runSVD_PRIMME_Operator(const MatrixOperator& op, int k, int max_it, int seed, bool verbose) {
+    PrimmeOperatorCtx op_ctx{&op};
+    PrimmeCallbackCtx ctx{static_cast<void*>(&op_ctx), operatorDispatch, op.rows(), op.cols(), &op};
+    return runPrimmeCore(static_cast<PRIMME_INT>(op.rows()), static_cast<PRIMME_INT>(op.cols()),
+                         k, max_it, seed, verbose, &ctx, "operator");
+}
+
 } // namespace actionet

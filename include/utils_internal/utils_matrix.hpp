@@ -5,6 +5,8 @@
 
 #include "libactionet_config.hpp"
 
+namespace actionet {
+
 // Sparse matrix-dense vector product: y = A*x
 /// @brief Multiply sparse matrix by dense vector.
 ///
@@ -22,5 +24,6 @@ arma::vec spmat_vec_product(const arma::sp_mat& A, const arma::vec& x);
 /// @return Product matrix.
 arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, int thread_no);
 
+} // namespace actionet
 
 #endif //ACTIONET_UTILS_MATRIX_HPP

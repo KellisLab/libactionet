@@ -10,6 +10,8 @@ inline unsigned int get_max_threads() {
     return std::thread::hardware_concurrency();
 }
 
+namespace actionet {
+
 inline unsigned get_num_threads(unsigned int max_threads = 0, const unsigned int thread_no = 0) {
     const unsigned int hw = get_max_threads();
     max_threads = (max_threads > 0) ? std::min(max_threads, hw) : hw;
@@ -78,5 +80,7 @@ public:
         return counter.load();
     }
 };
+
+} // namespace actionet
 
 #endif //ACTIONET_UTILS_PARALLEL_HPP

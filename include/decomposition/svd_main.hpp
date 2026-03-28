@@ -42,6 +42,7 @@ namespace actionet {
     // templated runSVD, orient_SVD, orthogonalization paths).  New code should prefer the
     // typed structs directly.
 
+    /// @brief Unpack a 3-element arma::field {U, sigma, V} into an SVDResult struct.
     inline SVDResult svdResultFromField(const arma::field<arma::mat>& svd) {
         SVDResult out;
         out.U = svd(0);
@@ -50,6 +51,7 @@ namespace actionet {
         return out;
     }
 
+    /// @brief Pack an SVDResult struct into a 3-element arma::field {U, sigma, V}.
     inline arma::field<arma::mat> svdFieldFromResult(const SVDResult& svd) {
         arma::field<arma::mat> out(3);
         out(0) = svd.U;
@@ -85,14 +87,49 @@ namespace actionet {
                                      int seed = 0, bool verbose = true);
 
     /// @brief Compute truncated SVD with a matrix operator and explicit algorithm.
+    ///
+    /// Dispatches to the Halko or Feng operator overloads based on @p algorithm.
+    /// PRIMME is available via runSVD_PRIMME_Operator; IRLBA does not have an
+    /// operator-backed path.
+    ///
+    /// @param op        Matrix operator representing an m × n matrix.
+    /// @param k         Number of singular vectors/values to compute.
+    /// @param max_it    Maximum iterations (0 = auto).
+    /// @param seed      Random seed.
+    /// @param algorithm SVD algorithm code (ALG_HALKO or ALG_FENG).
+    /// @param verbose   Print progress messages if true.
+    ///
+    /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.
     SVDResult runSVD_Operator(const MatrixOperator& op, int k, int max_it = 0, int seed = 0,
                               int algorithm = ALG_HALKO, bool verbose = true);
 
-    /// @brief Compute truncated SVD using Halko with matrix operator callbacks.
+    /// @brief Compute truncated SVD using the Halko method via matrix operator callbacks.
+    ///
+    /// Thin wrapper around svdHalko(MatrixOperator) that returns a typed SVDResult
+    /// instead of an arma::field.
+    ///
+    /// @param op      Matrix operator representing an m × n matrix.
+    /// @param k       Number of singular vectors/values to compute.
+    /// @param iters   Number of power iterations (default 5).
+    /// @param seed    Random seed.
+    /// @param verbose Print progress messages if true.
+    ///
+    /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.
     SVDResult runSVD_Halko_Operator(const MatrixOperator& op, int k, int iters = 5,
                                     int seed = 0, bool verbose = true);
 
-    /// @brief Compute truncated SVD using Feng with matrix operator callbacks.
+    /// @brief Compute truncated SVD using the Feng method via matrix operator callbacks.
+    ///
+    /// Thin wrapper around svdFeng(MatrixOperator) that returns a typed SVDResult
+    /// instead of an arma::field.
+    ///
+    /// @param op      Matrix operator representing an m × n matrix.
+    /// @param k       Number of singular vectors/values to compute.
+    /// @param max_it  Maximum iterations (default 5).
+    /// @param seed    Random seed.
+    /// @param verbose Print progress messages if true.
+    ///
+    /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.
     SVDResult runSVD_Feng_Operator(const MatrixOperator& op, int k, int max_it = 5,
                                    int seed = 0, bool verbose = true);
 

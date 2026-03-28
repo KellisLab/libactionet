@@ -3,6 +3,8 @@
 
 #include "libactionet_config.hpp"
 
+namespace actionet {
+
 /// @brief Active-set method with direct inversion and update.
 ///
 /// @param M Constraint matrix.
@@ -21,5 +23,7 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2 
 /// @param epsilon Convergence tolerance.
 /// @return Solution vector.
 arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::mat &G, double lambda2 = 1e-5, double epsilon = 1e-5);
+
+} // namespace actionet
 
 #endif //ACTIONET_UTILS_ACTIVE_SET_HPP

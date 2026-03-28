@@ -97,7 +97,7 @@ inline int checked_hnsw_threads(std::size_t n_points, int thread_no) {
     const auto capped = static_cast<unsigned int>(
         std::min<std::size_t>(n_points, static_cast<std::size_t>(std::numeric_limits<unsigned int>::max()))
     );
-    return static_cast<int>(get_num_threads(capped, static_cast<unsigned int>(thread_no)));
+    return static_cast<int>(actionet::get_num_threads(capped, static_cast<unsigned int>(thread_no)));
 }
 
 inline std::size_t checked_product(std::size_t lhs, std::size_t rhs, const char* name) {
@@ -425,7 +425,7 @@ buildNetworkCore_KstarNN(const float*                        X,
     stdout_printf("\tBuilding index ... ");
     FLUSH;
 
-    auto idx_kstar = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(reader.dim()), p.M, ef_c);
+    auto idx_kstar = actionet::makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(reader.dim()), p.M, ef_c);
     idx_kstar.hnsw->setEf(ef_q);
 
     // Each thread uses its own row_buf scratch for load_row().
@@ -609,7 +609,7 @@ buildNetworkCore_KNN(const float*                        X,
     stdout_printf("\tBuilding index ... ");
     FLUSH;
 
-    auto idx_knn = makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(reader.dim()),
+    auto idx_knn = actionet::makeHnswIndex(p.distance_metric, n, checked_hnsw_dim(reader.dim()),
                                   p.M, p.ef_construction);
     idx_knn.hnsw->setEf(p.ef);
 
