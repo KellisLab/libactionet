@@ -1,4 +1,7 @@
 ## Primary
+* Legacy arma::field vs typed structs
+  * dual return system across frontends
+  * inconsistent return types
 * Backed network construction (??)
 * Document C++ interface
 * network_measures: Parallelize

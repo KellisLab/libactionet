@@ -11,7 +11,7 @@ namespace actionet {
     /// @param thread_no Number of threads (0 = auto).
     ///
     /// @return Log p-value matrix (cells x labels).
-    arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, arma::mat& scores, int thread_no = 1);
+    arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, const arma::mat& scores, int thread_no = 1);
 
     /// @brief Assess enrichment of scores against binary associations.
     ///
@@ -20,7 +20,7 @@ namespace actionet {
     /// @param thread_no Number of threads (0 = auto).
     ///
     /// @return Field containing logPvals and thresholds.
-    arma::field<arma::mat> assess_enrichment(arma::mat& scores, arma::sp_mat& associations, int thread_no = 1);
+    arma::field<arma::mat> assess_enrichment(const arma::mat& scores, arma::sp_mat& associations, int thread_no = 1);
 } // namespace actionet
 
 #endif //ACTIONET_ENRICHMENT_HPP

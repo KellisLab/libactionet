@@ -11,10 +11,12 @@
 #include "decomposition/matrix_operator.hpp"
 
 // SVD algorithm options
-#define ALG_IRLB 0
-#define ALG_HALKO 1
-#define ALG_FENG 2
-#define ALG_PRIMME 3  // PRIMME_SVDS (recommended for large sparse matrices >2^31 elements)
+namespace actionet {
+    constexpr int ALG_IRLB   = 0;
+    constexpr int ALG_HALKO  = 1;
+    constexpr int ALG_FENG   = 2;
+    constexpr int ALG_PRIMME = 3;  // PRIMME_SVDS (recommended for large sparse matrices >2^31 elements)
+}
 
 // Exported
 namespace actionet {
@@ -68,7 +70,7 @@ namespace actionet {
     ///
     /// @return Field containing {U, sigma, V}.
     template <typename T>
-    arma::field<arma::mat> runSVD(T& A, int k, int max_it = 0, int seed = 0, int algorithm = ALG_IRLB, bool verbose = true);
+    arma::field<arma::mat> runSVD(const T& A, int k, int max_it = 0, int seed = 0, int algorithm = ALG_IRLB, bool verbose = true);
 
     /// @brief Compute truncated SVD using PRIMME via matrix operator callbacks.
     ///

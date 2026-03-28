@@ -235,7 +235,7 @@ namespace {
     }
 } // namespace
 
-arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it, int seed, bool verbose) {
+arma::field<arma::mat> svdPRIMME(const arma::sp_mat& A, int k, int max_it, int seed, bool verbose) {
     PrimmeCallbackCtx ctx{&A, sparseDispatch, A.n_rows, A.n_cols, nullptr};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
                                             k, max_it, seed, verbose, &ctx, "sparse",
@@ -243,7 +243,7 @@ arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it, int seed, b
     return actionet::svdFieldFromResult(svd);
 }
 
-arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it, int seed, bool verbose) {
+arma::field<arma::mat> svdPRIMME(const arma::mat& A, int k, int max_it, int seed, bool verbose) {
     PrimmeCallbackCtx ctx{&A, denseDispatch, A.n_rows, A.n_cols, nullptr};
     actionet::SVDResult svd = runPrimmeCore(static_cast<PRIMME_INT>(A.n_rows), static_cast<PRIMME_INT>(A.n_cols),
                                             k, max_it, seed, verbose, &ctx, "dense");

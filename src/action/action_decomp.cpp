@@ -5,7 +5,7 @@
 
 namespace actionet {
     ResACTION
-        decompACTION(arma::mat& S_r, int k_min, int k_max, int max_it, double tol, int thread_no) {
+        decompACTION(const arma::mat& S_r, int k_min, int k_max, int max_it, double tol, int thread_no) {
         if (k_max == -1)
             k_max = (int)S_r.n_cols;
 

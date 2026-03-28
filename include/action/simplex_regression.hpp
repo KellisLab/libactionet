@@ -15,7 +15,7 @@ namespace actionet {
     /// @param computeXtX If true, return X^T X (implementation-dependent).
     ///
     /// @return Solution matrix X.
-    arma::mat runSimplexRegression(arma::mat& A, arma::mat& B, bool computeXtX = false);
+    arma::mat runSimplexRegression(const arma::mat& A, const arma::mat& B, bool computeXtX = false);
 } // namespace actionet
 
 #endif //ACTIONET_SIMPLEX_REGRESSION_HPP

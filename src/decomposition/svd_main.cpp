@@ -11,7 +11,7 @@
 
 namespace actionet {
     template <typename T>
-    arma::field<arma::mat> runSVD(T& A, int k, int max_it, int seed, const int algorithm, bool verbose) {
+    arma::field<arma::mat> runSVD(const T& A, int k, int max_it, int seed, const int algorithm, bool verbose) {
         // out: U, sigma, V
         arma::field<arma::mat> out(3);
 
@@ -59,9 +59,9 @@ namespace actionet {
         return out;
     }
 
-    template arma::field<arma::mat> runSVD<arma::mat>(arma::mat& A, int k, int max_it, int seed, int algorithm,
+    template arma::field<arma::mat> runSVD<arma::mat>(const arma::mat& A, int k, int max_it, int seed, int algorithm,
                                                       bool verbose);
-    template arma::field<arma::mat> runSVD<arma::sp_mat>(arma::sp_mat& A, int k, int max_it, int seed, int algorithm,
+    template arma::field<arma::mat> runSVD<arma::sp_mat>(const arma::sp_mat& A, int k, int max_it, int seed, int algorithm,
                                                          bool verbose);
 
     SVDResult runSVD_Halko_Operator(const MatrixOperator& op, int k, int iters, int seed, bool verbose) {

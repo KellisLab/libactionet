@@ -54,28 +54,26 @@ namespace actionet {
         return (out);
     }
 
-    arma::field<arma::mat> XICOR(arma::mat& X, arma::mat& Y, bool compute_pval, int seed, int thread_no) {
+    arma::field<arma::mat> XICOR(const arma::mat& X, const arma::mat& Y, bool compute_pval, int seed, int thread_no) {
         arma::field<arma::mat> out(2);
 
+        arma::mat X_ = X;
+        arma::mat Y_ = Y;
         bool swapped = false;
-        int n1 = X.n_cols, n2 = Y.n_cols;
-        if (n1 < n2) {
+        if (X_.n_cols < Y_.n_cols) {
             swapped = true;
-            arma::mat Z = X;
-            X = Y;
-            Y = Z;
+            std::swap(X_, Y_);
         }
 
-        arma::mat XI = arma::zeros(X.n_cols, Y.n_cols);
-        arma::mat XI_Z = arma::zeros(X.n_cols, Y.n_cols);
+        arma::mat XI = arma::zeros(X_.n_cols, Y_.n_cols);
+        arma::mat XI_Z = arma::zeros(X_.n_cols, Y_.n_cols);
 
-
-        int threads_use = get_num_threads(X.n_cols, thread_no);
+        int threads_use = get_num_threads(X_.n_cols, thread_no);
         #pragma omp parallel for num_threads(threads_use)
-        for (int i = 0; i < X.n_cols; i++) {
-            arma::vec x = X.col(i);
-            for (int j = 0; j < Y.n_cols; j++) {
-                arma::vec y = Y.col(j);
+        for (int i = 0; i < X_.n_cols; i++) {
+            arma::vec x = X_.col(i);
+            for (int j = 0; j < Y_.n_cols; j++) {
+                arma::vec y = Y_.col(j);
                 arma::vec xi_out = xicor(x, y, compute_pval, seed);
                 XI(i, j) = xi_out(0);
                 XI_Z(i, j) = xi_out(1);

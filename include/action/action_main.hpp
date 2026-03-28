@@ -31,7 +31,7 @@ namespace actionet {
     /// @param thread_no Number of CPU threads (0 = auto).
     ///
     /// @return Field of matrices containing stacked and merged C/H results.
-    arma::field<arma::mat> runACTION(arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-6,
+    arma::field<arma::mat> runACTION(const arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-6,
                                      double spec_th = -3, int min_obs = 3, int thread_no = 0);
 } // namespace actionet
 

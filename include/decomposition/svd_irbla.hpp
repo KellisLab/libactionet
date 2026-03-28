@@ -15,7 +15,7 @@
 /// @param verbose Print progress messages.
 ///
 /// @return Field containing {U, S, V}.
-arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters = 1000, int seed = 0, bool verbose = true);
+arma::field<arma::mat> svdIRLB(const arma::sp_mat& A, int dim, int iters = 1000, int seed = 0, bool verbose = true);
 
 /// @brief Truncated SVD using IRLBA (dense).
 ///
@@ -26,7 +26,7 @@ arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters = 1000, int s
 /// @param verbose Print progress messages.
 ///
 /// @return Field containing {U, S, V}.
-arma::field<arma::mat> svdIRLB(arma::mat& A, int dim, int iters = 1000, int seed = 0, bool verbose = true);
+arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters = 1000, int seed = 0, bool verbose = true);
 
 /// @brief Truncated SVD using IRLBA via abstract matrix operator.
 ///

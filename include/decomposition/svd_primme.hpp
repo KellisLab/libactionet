@@ -17,7 +17,7 @@
  * @param verbose Print progress messages
  * @return field<mat> [U, S, V] where A ≈ U * diag(S) * V'
  */
-arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it = 1000, int seed = 0, bool verbose = true);
+arma::field<arma::mat> svdPRIMME(const arma::sp_mat& A, int k, int max_it = 1000, int seed = 0, bool verbose = true);
 
 /**
  * @brief Compute SVD using PRIMME_SVDS (dense matrices)
@@ -29,6 +29,6 @@ arma::field<arma::mat> svdPRIMME(arma::sp_mat& A, int k, int max_it = 1000, int 
  * @param verbose Print progress messages
  * @return field<mat> [U, S, V] where A ≈ U * diag(S) * V'
  */
-arma::field<arma::mat> svdPRIMME(arma::mat& A, int k, int max_it = 1000, int seed = 0, bool verbose = true);
+arma::field<arma::mat> svdPRIMME(const arma::mat& A, int k, int max_it = 1000, int seed = 0, bool verbose = true);
 
 #endif // ACTIONET_SVD_PRIMME_HPP

@@ -7,15 +7,15 @@ namespace actionet {
 
     /// @brief Compute grouped sums along an axis.
     template <typename InputT, typename OutputT = arma::mat>
-    OutputT computeGroupedSums(InputT& S, arma::vec& sample_assignments, int axis = 0);
+    OutputT computeGroupedSums(const InputT& S, const arma::vec& sample_assignments, int axis = 0);
 
     /// @brief Compute grouped means along an axis.
     template <typename InputT, typename OutputT = arma::mat>
-    OutputT computeGroupedMeans(InputT& S, arma::vec& sample_assignments, int axis = 0);
+    OutputT computeGroupedMeans(const InputT& S, const arma::vec& sample_assignments, int axis = 0);
 
     /// @brief Compute grouped variances along an axis.
     template <typename InputT, typename OutputT = arma::mat>
-    OutputT computeGroupedVars(InputT& S, arma::vec& sample_assignments, int axis = 0);
+    OutputT computeGroupedVars(const InputT& S, const arma::vec& sample_assignments, int axis = 0);
 
 } // namespace actionet
 

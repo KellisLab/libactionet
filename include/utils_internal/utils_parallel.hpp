@@ -1,23 +1,18 @@
 #ifndef ACTIONET_UTILS_PARALLEL_HPP
 #define ACTIONET_UTILS_PARALLEL_HPP
 
-// #include <omp.h>
 #include <thread>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
-// #include <cstddef>
 
 inline unsigned int get_max_threads() {
-    const unsigned int coresDet = std::thread::hardware_concurrency();
-    return (coresDet);
+    return std::thread::hardware_concurrency();
 }
 
-const unsigned int SYS_THREADS_DEF = get_max_threads();
-
 inline unsigned get_num_threads(unsigned int max_threads = 0, const unsigned int thread_no = 0) {
-
-    max_threads = (max_threads > 0) ? std::min(max_threads, SYS_THREADS_DEF) : SYS_THREADS_DEF;
+    const unsigned int hw = get_max_threads();
+    max_threads = (max_threads > 0) ? std::min(max_threads, hw) : hw;
 
     unsigned int threads_use;
 

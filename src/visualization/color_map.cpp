@@ -12,7 +12,7 @@ namespace actionet {
         stdout_printf("Computing node colors ... ");
         FLUSH;
 
-        int threads_use = get_num_threads(SYS_THREADS_DEF, thread_no);
+        int threads_use = get_num_threads(0, thread_no);
         arma::mat U;
         arma::vec s;
         arma::mat V;

@@ -115,7 +115,7 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
         throw std::invalid_argument("Incompatible dimsensions (G.n_cols != initial_coordinates.n_rows)");
     }
 
-    uwot_args.n_threads = get_num_threads(SYS_THREADS_DEF, static_cast<int>(uwot_args.n_threads));
+    uwot_args.n_threads = get_num_threads(0, static_cast<int>(uwot_args.n_threads));
     if (uwot_args.n_epochs <= 0) {
         uwot_args.n_epochs = (initial_coordinates.n_rows <= 10000) ? 500 : 200; // uwot defaults
     }

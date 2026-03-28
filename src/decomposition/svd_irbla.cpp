@@ -273,14 +273,14 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
 
 // --- Public overloads: thin wrappers that construct the appropriate matvec ---
 
-arma::field<arma::mat> svdIRLB(arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {
+arma::field<arma::mat> svdIRLB(const arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         sparse_matvec(t, A, x, out);
     };
     return svdIRLB_core(A.n_rows, A.n_cols, dim, iters, seed, verbose, "sparse", mv);
 }
 
-arma::field<arma::mat> svdIRLB(arma::mat& A, int dim, int iters, int seed, bool verbose) {
+arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters, int seed, bool verbose) {
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         dense_matvec(t, A, x, out);
     };

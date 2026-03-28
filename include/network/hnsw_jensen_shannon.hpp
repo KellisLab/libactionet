@@ -4,9 +4,9 @@
 #include <cmath>
 #include "fastapprox/fastlog.h"
 
-#define LOGLEN 1000000
-
 namespace hnswlib {
+    static constexpr int LOGLEN = 1000000;
+
     static float computeJSDMetric(const void* pVect1_p, const void* pVect2_p,
                             const void* params) {
         float* log_vec = (float*)params;

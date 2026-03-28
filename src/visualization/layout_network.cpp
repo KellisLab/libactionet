@@ -11,7 +11,7 @@ namespace actionet {
                             bool pcg_rand, bool batch, unsigned int grain_size, int seed, int thread_no, bool verbose,
                             float a, float b, std::string opt_method, float alpha, float beta1, float beta2,
                             float eps) {
-        unsigned int n_threads = get_num_threads(SYS_THREADS_DEF, thread_no);
+        unsigned int n_threads = get_num_threads(0, thread_no);
 
         alpha = (alpha == -1) ? learning_rate : alpha;
         // beta1 = (beta1 == -1) ? ADAM_BETA1 : beta1;

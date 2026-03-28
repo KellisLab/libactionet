@@ -2,7 +2,7 @@
 #include "action/spa.hpp"
 
 namespace actionet {
-    ResSPA runSPA(arma::mat& A, int k) {
+    ResSPA runSPA(const arma::mat& A, int k) {
         ResSPA res;
 
         int n = A.n_cols;

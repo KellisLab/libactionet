@@ -23,7 +23,7 @@ namespace actionet {
     /// @param seed Random seed.
     /// @param thread_no Number of threads (0 = auto).
     /// @return Field with matrices of statistics.
-    arma::field<arma::mat> XICOR(arma::mat& X, arma::mat& Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
+    arma::field<arma::mat> XICOR(const arma::mat& X, const arma::mat& Y, bool compute_pval = true, int seed = 0, int thread_no = 0);
 } // namespace actionet
 
 #endif //ACTIONET_XICOR_HPP

@@ -3,7 +3,7 @@
 #include "utils_internal/utils_matrix.hpp"
 
 namespace actionet {
-    arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, arma::mat& scores, int thread_no) {
+    arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, const arma::mat& scores, int thread_no) {
         arma::mat Obs = spmat_mat_product_parallel(G, scores, thread_no);
 
         arma::rowvec p = arma::mean(scores, 0);
@@ -27,7 +27,7 @@ namespace actionet {
         return logPvals_upper;
     }
 
-    arma::field<arma::mat> assess_enrichment(arma::mat& scores, arma::sp_mat& associations, int thread_no) {
+    arma::field<arma::mat> assess_enrichment(const arma::mat& scores, arma::sp_mat& associations, int thread_no) {
         arma::field<arma::mat> res(3);
 
         if (scores.n_rows != associations.n_rows) {

@@ -3,7 +3,7 @@
 #include "action/action_post.hpp"
 
 namespace actionet {
-    arma::field<arma::mat> runACTION(arma::mat& S_r, int k_min, int k_max, int max_it, double tol, double spec_th,
+    arma::field<arma::mat> runACTION(const arma::mat& S_r, int k_min, int k_max, int max_it, double tol, double spec_th,
                                      int min_obs, int thread_no) {
         // Public contract (Plan 02): S_r is cells x k.
         // Internal pipeline (SPA, AA, simplex regression) is column-oriented and

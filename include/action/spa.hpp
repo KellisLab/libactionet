@@ -22,7 +22,7 @@ namespace actionet {
     /// @param k Number of candidate vertices to select.
     ///
     /// @return <code>ResSPA</code> with selected indices and norms.
-    ResSPA runSPA(arma::mat& A, int k);
+    ResSPA runSPA(const arma::mat& A, int k);
 } // namespace actionet
 
 #endif //ACTIONET_SPA_HPP

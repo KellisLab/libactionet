@@ -5,7 +5,7 @@
 
 namespace actionet {
 
-    arma::field<arma::mat> runAA(arma::mat &A, arma::mat &W0, int max_it, double tol) {
+    arma::field<arma::mat> runAA(const arma::mat &A, const arma::mat &W0, int max_it, double tol) {
         int sample_no = A.n_cols;
         int k = W0.n_cols; // AA components
 

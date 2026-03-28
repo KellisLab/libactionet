@@ -88,7 +88,7 @@ static arma::mat grouped_sums_dense(arma::mat& S, const GroupIndex& gi, int axis
 
 // Template instantiations for Sums
 template <>
-arma::mat computeGroupedSums<arma::sp_mat, arma::mat>(arma::sp_mat& S, arma::vec& sa, int axis) {
+arma::mat computeGroupedSums<arma::sp_mat, arma::mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -96,7 +96,7 @@ arma::mat computeGroupedSums<arma::sp_mat, arma::mat>(arma::sp_mat& S, arma::vec
 }
 
 template <>
-arma::sp_mat computeGroupedSums<arma::sp_mat, arma::sp_mat>(arma::sp_mat& S, arma::vec& sa, int axis) {
+arma::sp_mat computeGroupedSums<arma::sp_mat, arma::sp_mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -104,7 +104,7 @@ arma::sp_mat computeGroupedSums<arma::sp_mat, arma::sp_mat>(arma::sp_mat& S, arm
 }
 
 template <>
-arma::mat computeGroupedSums<arma::mat, arma::mat>(arma::mat& S, arma::vec& sa, int axis) {
+arma::mat computeGroupedSums<arma::mat, arma::mat>(const arma::mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -114,7 +114,7 @@ arma::mat computeGroupedSums<arma::mat, arma::mat>(arma::mat& S, arma::vec& sa, 
 // ---- Means ----
 
 template <>
-arma::mat computeGroupedMeans<arma::sp_mat, arma::mat>(arma::sp_mat& S, arma::vec& sa, int axis) {
+arma::mat computeGroupedMeans<arma::sp_mat, arma::mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -128,7 +128,7 @@ arma::mat computeGroupedMeans<arma::sp_mat, arma::mat>(arma::sp_mat& S, arma::ve
 }
 
 template <>
-arma::sp_mat computeGroupedMeans<arma::sp_mat, arma::sp_mat>(arma::sp_mat& S, arma::vec& sa, int axis) {
+arma::sp_mat computeGroupedMeans<arma::sp_mat, arma::sp_mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -142,7 +142,7 @@ arma::sp_mat computeGroupedMeans<arma::sp_mat, arma::sp_mat>(arma::sp_mat& S, ar
 }
 
 template <>
-arma::mat computeGroupedMeans<arma::mat, arma::mat>(arma::mat& S, arma::vec& sa, int axis) {
+arma::mat computeGroupedMeans<arma::mat, arma::mat>(const arma::mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -159,7 +159,7 @@ arma::mat computeGroupedMeans<arma::mat, arma::mat>(arma::mat& S, arma::vec& sa,
 
 // Sparse input: single-pass Welford-style using precomputed means
 template <typename OutputT>
-static OutputT grouped_vars_sparse(arma::sp_mat& S, const GroupIndex& gi, int axis) {
+static OutputT grouped_vars_sparse(const arma::sp_mat& S, const GroupIndex& gi, int axis) {
     // First compute means (as dense, always needed for variance calc)
     arma::mat pb_mu = grouped_sums_sparse<arma::mat>(S, gi, axis);
     for (int g = 0; g < gi.n_groups; ++g) {
@@ -210,7 +210,7 @@ static OutputT grouped_vars_sparse(arma::sp_mat& S, const GroupIndex& gi, int ax
 }
 
 // Dense input → dense output
-static arma::mat grouped_vars_dense(arma::mat& S, const GroupIndex& gi, int axis) {
+static arma::mat grouped_vars_dense(const arma::mat& S, const GroupIndex& gi, int axis) {
     if (axis == 0) {
         arma::mat pb = arma::zeros(S.n_rows, gi.n_groups);
         for (int g = 0; g < gi.n_groups; ++g) {
@@ -231,7 +231,7 @@ static arma::mat grouped_vars_dense(arma::mat& S, const GroupIndex& gi, int axis
 }
 
 template <>
-arma::mat computeGroupedVars<arma::sp_mat, arma::mat>(arma::sp_mat& S, arma::vec& sa, int axis) {
+arma::mat computeGroupedVars<arma::sp_mat, arma::mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -239,7 +239,7 @@ arma::mat computeGroupedVars<arma::sp_mat, arma::mat>(arma::sp_mat& S, arma::vec
 }
 
 template <>
-arma::sp_mat computeGroupedVars<arma::sp_mat, arma::sp_mat>(arma::sp_mat& S, arma::vec& sa, int axis) {
+arma::sp_mat computeGroupedVars<arma::sp_mat, arma::sp_mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);
@@ -247,7 +247,7 @@ arma::sp_mat computeGroupedVars<arma::sp_mat, arma::sp_mat>(arma::sp_mat& S, arm
 }
 
 template <>
-arma::mat computeGroupedVars<arma::mat, arma::mat>(arma::mat& S, arma::vec& sa, int axis) {
+arma::mat computeGroupedVars<arma::mat, arma::mat>(const arma::mat& S, const arma::vec& sa, int axis) {
     if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
         throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
     GroupIndex gi = build_group_index(sa);

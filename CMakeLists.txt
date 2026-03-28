@@ -153,7 +153,7 @@ else ()
 endif ()
 
 ## Additional (optional) compiler options
-target_compile_options(actionet PUBLIC -Wno-psabi -Wno-deprecated-declarations)# -ferror-limit=10)#-fmax-errors=10)
+target_compile_options(actionet PRIVATE -Wno-psabi -Wno-deprecated-declarations)# -ferror-limit=10)#-fmax-errors=10)
 #add_compile_options(-w)
 
 ## Export compile commands for IDE integration
