@@ -7,7 +7,7 @@
 /* **************************
  * Active-Set Method with direct inversion, with update(matrix inversion lemma)
  * **************************/
-arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsilon) {
+arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2, double epsilon) {
     int m = M.n_rows;
     int p = M.n_cols;
     int L = std::min(m, p) + 1;
@@ -19,7 +19,7 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsi
     double lam2sq = lambda2 * lambda2;
 
     arma::vec x(p);
-    double *pr_M = M.memptr();
+    const double *pr_M = M.memptr();
     // constraint matrix
     arma::vec A = arma::ones(L);
     double *pr_A = A.memptr();
@@ -249,12 +249,12 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2, double epsi
 
 // Active-Set Method with direct inversion, with update(matrix inversion lemma)
 // Memorize M.double* M + lam2sq = G
-arma::vec activeSetS_arma(arma::mat &M, arma::vec &b, arma::mat &G, double lambda2, double epsilon) {
+arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::mat &G, double lambda2, double epsilon) {
     int m = M.n_rows;
     int p = M.n_cols;
     int L = std::min(m, p) + 1;
     double lam2sq = lambda2 * lambda2;
-    double *pr_G = G.memptr();
+    const double *pr_G = G.memptr();
 
     /*
     mat Mt = trans(M);
@@ -265,7 +265,7 @@ arma::vec activeSetS_arma(arma::mat &M, arma::vec &b, arma::mat &G, double lambd
                 M.n_rows, b.memptr(), 1, 0, c.memptr(), 1);
 
     arma::vec x(p);
-    double *pr_M = M.memptr();
+    const double *pr_M = M.memptr();
     // constraint matrix
     arma::vec A = arma::ones(L);
     double *pr_A = A.memptr();;

@@ -37,7 +37,7 @@ GroupIndex build_group_index(const arma::vec& sample_assignments) {
 
 // Sparse input: iterate over nonzeros (works for both mat and sp_mat output)
 template <typename OutputT>
-static OutputT grouped_sums_sparse(arma::sp_mat& S, const GroupIndex& gi, int axis) {
+static OutputT grouped_sums_sparse(const arma::sp_mat& S, const GroupIndex& gi, int axis) {
     if (axis == 0) {
         OutputT pb(S.n_rows, gi.n_groups);
         pb.zeros();
@@ -58,7 +58,7 @@ static OutputT grouped_sums_sparse(arma::sp_mat& S, const GroupIndex& gi, int ax
 }
 
 // Dense input → dense output: use Armadillo column/row slicing
-static arma::mat grouped_sums_dense(arma::mat& S, const GroupIndex& gi, int axis) {
+static arma::mat grouped_sums_dense(const arma::mat& S, const GroupIndex& gi, int axis) {
     if (axis == 0) {
         arma::mat pb = arma::zeros(S.n_rows, gi.n_groups);
         for (int g = 0; g < gi.n_groups; ++g) {

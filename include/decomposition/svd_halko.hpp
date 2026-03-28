@@ -21,7 +21,7 @@
  * @return Field containing {U, S, V}.
  */
 template <typename T>
-arma::field<arma::mat> svdHalko(T& A, int dim, int iters = 5, int seed = 0, bool verbose = true);
+arma::field<arma::mat> svdHalko(const T& A, int dim, int iters = 5, int seed = 0, bool verbose = true);
 
 /// @brief Randomized SVD using Halko with a matrix operator backend.
 arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int iters = 5,

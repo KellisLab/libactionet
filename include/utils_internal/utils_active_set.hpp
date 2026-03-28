@@ -10,7 +10,7 @@
 /// @param lambda2 Regularization strength.
 /// @param epsilon Convergence tolerance.
 /// @return Solution vector.
-arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2 = double(1e-5), double epsilon = double(1e-5));
+arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2 = double(1e-5), double epsilon = double(1e-5));
 
 /// @brief Active-set method with cached Gram matrix.
 ///
@@ -20,6 +20,6 @@ arma::vec activeSet_arma(arma::mat &M, arma::vec &b, double lambda2 = double(1e-
 /// @param lambda2 Regularization strength.
 /// @param epsilon Convergence tolerance.
 /// @return Solution vector.
-arma::vec activeSetS_arma(arma::mat &M, arma::vec &b, arma::mat &G, double lambda2 = 1e-5, double epsilon = 1e-5);
+arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::mat &G, double lambda2 = 1e-5, double epsilon = 1e-5);
 
 #endif //ACTIONET_UTILS_ACTIVE_SET_HPP

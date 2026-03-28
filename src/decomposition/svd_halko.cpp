@@ -2,7 +2,7 @@
 #include "utils_internal/utils_decomp.hpp"
 
 template <typename T>
-arma::field<arma::mat> svdHalko(T& A, int dim, int iters, int seed, bool verbose) {
+arma::field<arma::mat> svdHalko(const T& A, int dim, int iters, int seed, bool verbose) {
     arma::field<arma::mat> out(3); // out: U, sigma, V
 
     arma::uword m = A.n_rows;
@@ -196,6 +196,6 @@ arma::field<arma::mat> svdHalko(const actionet::MatrixOperator& A, int dim, int 
     return out;
 }
 
-template arma::field<arma::mat> svdHalko<arma::mat>(arma::mat& A, int dim, int iters, int seed, bool verbose);
+template arma::field<arma::mat> svdHalko<arma::mat>(const arma::mat& A, int dim, int iters, int seed, bool verbose);
 
-template arma::field<arma::mat> svdHalko<arma::sp_mat>(arma::sp_mat& A, int dim, int iters, int seed, bool verbose);
+template arma::field<arma::mat> svdHalko<arma::sp_mat>(const arma::sp_mat& A, int dim, int iters, int seed, bool verbose);

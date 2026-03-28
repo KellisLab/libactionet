@@ -19,7 +19,7 @@
 ///
 /// @return Field containing {U, S, V}.
 template <typename T>
-arma::field<arma::mat> svdFeng(T& A, int dim, int max_it = 5, int seed = 0, bool verbose = true);
+arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it = 5, int seed = 0, bool verbose = true);
 
 /// @brief Randomized SVD using Feng with a matrix operator backend.
 arma::field<arma::mat> svdFeng(const actionet::MatrixOperator& A, int dim, int max_it = 5,
