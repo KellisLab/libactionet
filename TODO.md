@@ -1,16 +1,12 @@
 ## Primary
+* Update uwot
 * Legacy arma::field vs typed structs
   * dual return system across frontends
   * inconsistent return types
 * Backed network construction (??)
 * Document C++ interface
-* network_measures: Parallelize
-* * network_measures: argument and return types (uvec/vec)
-* Redo orthogonalization
-* Prohibit UMAP negative values
 
 ## Secondary
-* uwot SGD opt probably doesn't work.
 * Compile to Windows x86
 * zscore is multithreaded???
 
