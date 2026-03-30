@@ -77,6 +77,13 @@ namespace actionet {
                 Y.col(j) = col_out;
             }
         }
+
+        /// @brief Hint for operator-SVD dispatch when algorithm = IRLB.
+        ///
+        /// Backed operators can return true to request a block-capable solver
+        /// backend (currently PRIMME) for better I/O efficiency. In-memory and
+        /// generic operators should keep the default false.
+        virtual bool prefer_block_solver_for_irlb() const { return false; }
     };
 
     /// @brief MatrixOperator adapter for dense Armadillo matrices.

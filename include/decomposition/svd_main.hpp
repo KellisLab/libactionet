@@ -88,15 +88,15 @@ namespace actionet {
 
     /// @brief Compute truncated SVD with a matrix operator and explicit algorithm.
     ///
-    /// Dispatches to the Halko or Feng operator overloads based on @p algorithm.
-    /// PRIMME is available via runSVD_PRIMME_Operator; IRLBA does not have an
-    /// operator-backed path.
+    /// Dispatches to the Halko/Feng/PRIMME/IRLB operator overloads based on
+    /// @p algorithm. Backed operators may request an internal IRLB fast path
+    /// via a block-capable backend.
     ///
     /// @param op        Matrix operator representing an m × n matrix.
     /// @param k         Number of singular vectors/values to compute.
     /// @param max_it    Maximum iterations (0 = auto).
     /// @param seed      Random seed.
-    /// @param algorithm SVD algorithm code (ALG_HALKO or ALG_FENG).
+    /// @param algorithm SVD algorithm code (ALG_IRLB, ALG_HALKO, ALG_FENG, ALG_PRIMME).
     /// @param verbose   Print progress messages if true.
     ///
     /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.

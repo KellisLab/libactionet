@@ -103,6 +103,17 @@ namespace actionet {
 #endif
             case ALG_IRLB:
             default: {
+#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
+                // Backed HDF5 operators advertise this hint so explicit
+                // algorithm='irlb' can use the block-capable PRIMME backend.
+                if (op.prefer_block_solver_for_irlb()) {
+                    if (verbose) {
+                        stdout_printf("Operator IRLB fast path: dispatching to PRIMME backend\n");
+                        FLUSH;
+                    }
+                    return runSVD_PRIMME_Operator(op, k, max_it, seed, verbose);
+                }
+#endif
                 arma::field<arma::mat> result = svdIRLB(op, k, max_it, seed, verbose);
                 return svdResultFromField(result);
             }

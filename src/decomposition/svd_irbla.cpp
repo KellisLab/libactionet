@@ -4,6 +4,7 @@
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
 #include "blas_deps.hpp"
+#include <cstring>
 #include <vector>
 #include <functional>
 
@@ -14,12 +15,12 @@ using MatvecFn = std::function<void(char transpose, const double* x, double* out
 static void sparse_matvec(char transpose, const arma::sp_mat& A, const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.n_cols, false, true);
-        arma::vec result = A * x_vec;
-        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+        arma::vec out_vec(out, A.n_rows, false, true);
+        out_vec = A * x_vec;
     } else {
         arma::vec x_vec(const_cast<double*>(x), A.n_rows, false, true);
-        arma::vec result = A.t() * x_vec;
-        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+        arma::vec out_vec(out, A.n_cols, false, true);
+        out_vec = A.t() * x_vec;
     }
 }
 
@@ -27,12 +28,12 @@ static void sparse_matvec(char transpose, const arma::sp_mat& A, const double* x
 static void dense_matvec(char transpose, const arma::mat& A, const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.n_cols, false, true);
-        arma::vec result = A * x_vec;
-        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+        arma::vec out_vec(out, A.n_rows, false, true);
+        out_vec = A * x_vec;
     } else {
         arma::vec x_vec(const_cast<double*>(x), A.n_rows, false, true);
-        arma::vec result = A.t() * x_vec;
-        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+        arma::vec out_vec(out, A.n_cols, false, true);
+        out_vec = A.t() * x_vec;
     }
 }
 
@@ -41,14 +42,12 @@ static void operator_matvec(char transpose, const MatrixOperator& A,
                              const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.cols(), false, true);
-        arma::vec result(A.rows());
-        A.matvec(x_vec, result);
-        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+        arma::vec out_vec(out, A.rows(), false, true);
+        A.matvec(x_vec, out_vec);
     } else {
         arma::vec x_vec(const_cast<double*>(x), A.rows(), false, true);
-        arma::vec result(A.cols());
-        A.rmatvec(x_vec, result);
-        std::memcpy(out, result.memptr(), result.n_elem * sizeof(double));
+        arma::vec out_vec(out, A.cols(), false, true);
+        A.rmatvec(x_vec, out_vec);
     }
 }
 

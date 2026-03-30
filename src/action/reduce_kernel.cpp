@@ -40,10 +40,12 @@ namespace actionet {
             }
 
             arma::vec a1 = mu / mu_norm;                  // genes-length
-            arma::vec b1 = -(S * a1);                     // cells-length: (cells x genes)(genes x 1)
-
-            // Row means (cell means) — mean across columns (dim=1)
-            arma::vec c = arma::vec(arma::mean(S, 1));    // cells-length
+            arma::mat rhs(S.n_cols, 2);                   // genes x 2
+            rhs.col(0) = a1;
+            rhs.col(1).ones();
+            arma::mat projected = S * rhs;                // cells x 2
+            arma::vec b1 = -projected.col(0);             // cells-length
+            arma::vec c = projected.col(1) / static_cast<double>(S.n_cols);
             double a1_mean = arma::mean(a1);
             arma::vec a2 = arma::ones(S.n_cols);           // genes-length
             arma::vec b2 = -(a1_mean * b1 + c);
@@ -102,16 +104,13 @@ namespace actionet {
         }
 
         arma::vec a1 = mu / mu_norm;                       // genes-length
-        arma::vec b1_tmp(m);
-        S.matvec(a1, b1_tmp);                              // S * a1: (cells × genes)(genes × 1) → cells-length
-        arma::vec b1 = -b1_tmp;
-
-        // Row means (cell means) via matvec with all-ones over genes.
-        // matvec: S * ones_n = (cells × genes)(genes × 1) → cells-length
-        arma::vec ones_n = arma::ones<arma::vec>(n);
-        arma::vec c_sum(m);
-        S.matvec(ones_n, c_sum);
-        arma::vec c = c_sum / static_cast<double>(n);      // cell means, length = m
+        arma::mat rhs(n, 2);                               // genes x 2
+        rhs.col(0) = a1;
+        rhs.col(1).ones();
+        arma::mat projected;
+        S.matmat(rhs, projected);                          // cells x 2
+        arma::vec b1 = -projected.col(0);                 // cells-length
+        arma::vec c = projected.col(1) / static_cast<double>(n);
 
         double a1_mean = arma::mean(a1);
         arma::vec a2 = arma::ones<arma::vec>(n);           // genes-length

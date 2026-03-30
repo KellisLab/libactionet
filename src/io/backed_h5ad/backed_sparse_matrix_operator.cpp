@@ -100,12 +100,17 @@ namespace actionet {
         const std::string& group_path,
         arma::uword chunk_size,
         const std::vector<double>& row_scale_factors,
-        bool apply_log1p)
+        bool apply_log1p,
+        size_t io_target_chunk_bytes,
+        double io_target_chunk_fraction_of_cap)
         : file_path_(file_path),
           group_path_(group_path),
           is_csr_(true),
           apply_log1p_(apply_log1p),
+          has_row_scale_(!row_scale_factors.empty()),
+          no_transform_(row_scale_factors.empty() && !apply_log1p),
           chunk_size_(std::max<arma::uword>(1, chunk_size)),
+          target_chunk_nnz_(0),
           n_obs_(0),
           n_var_(0),
           file_id_(-1),
@@ -179,6 +184,27 @@ namespace actionet {
         const size_t expected = static_cast<size_t>((is_csr_ ? n_obs_ : n_var_) + 1);
         check_h5(indptr_.size() == expected, "indptr length does not match sparse shape");
 
+        const size_t bytes_per_nnz = sizeof(double) + sizeof(unsigned long long);
+        if (io_target_chunk_bytes > 0) {
+            target_chunk_nnz_ = static_cast<unsigned long long>(
+                std::max<size_t>(1, io_target_chunk_bytes / bytes_per_nnz));
+        } else {
+            check_h5(std::isfinite(io_target_chunk_fraction_of_cap) && io_target_chunk_fraction_of_cap > 0.0,
+                     "io_target_chunk_fraction_of_cap must be finite and > 0 when io_target_chunk_bytes == 0");
+            const unsigned long long total_nnz = indptr_.empty() ? 0ULL : indptr_.back();
+            const arma::uword axis_len = is_csr_ ? n_obs_ : n_var_;
+            if (total_nnz > 0ULL && axis_len > 0) {
+                const double mean_nnz_per_axis_entry =
+                    static_cast<double>(total_nnz) / static_cast<double>(axis_len);
+                const double estimated_full_chunk_nnz =
+                    static_cast<double>(chunk_size_) * mean_nnz_per_axis_entry;
+                const double auto_target_nnz =
+                    std::max<double>(1.0, std::ceil(
+                        io_target_chunk_fraction_of_cap * estimated_full_chunk_nnz));
+                target_chunk_nnz_ = static_cast<unsigned long long>(auto_target_nnz);
+            }
+        }
+
         if (!row_scale_factors.empty()) {
             check_h5(row_scale_factors.size() == static_cast<size_t>(n_obs_),
                      "row_scale_factors length must equal n_obs");
@@ -203,7 +229,10 @@ namespace actionet {
           group_path_(std::move(other.group_path_)),
           is_csr_(other.is_csr_),
           apply_log1p_(other.apply_log1p_),
+          has_row_scale_(other.has_row_scale_),
+          no_transform_(other.no_transform_),
           chunk_size_(other.chunk_size_),
+          target_chunk_nnz_(other.target_chunk_nnz_),
           n_obs_(other.n_obs_),
           n_var_(other.n_var_),
           row_scale_(std::move(other.row_scale_)),
@@ -228,7 +257,10 @@ namespace actionet {
             group_path_ = std::move(other.group_path_);
             is_csr_ = other.is_csr_;
             apply_log1p_ = other.apply_log1p_;
+            has_row_scale_ = other.has_row_scale_;
+            no_transform_ = other.no_transform_;
             chunk_size_ = other.chunk_size_;
+            target_chunk_nnz_ = other.target_chunk_nnz_;
             n_obs_ = other.n_obs_;
             n_var_ = other.n_var_;
             row_scale_ = std::move(other.row_scale_);
@@ -302,8 +334,29 @@ namespace actionet {
         indices = &chunk_cache_.indices;
     }
 
+    arma::uword BackedSparseMatrixOperator::next_block_end_(arma::uword start, arma::uword limit) const {
+        const arma::uword hard_end = std::min<arma::uword>(limit, start + chunk_size_);
+        if (target_chunk_nnz_ == 0 || hard_end <= start + 1) {
+            return hard_end;
+        }
+
+        const unsigned long long base = indptr_[start];
+        arma::uword end = start + 1;
+        while (end < hard_end) {
+            const unsigned long long nnz = indptr_[end] - base;
+            if (nnz >= target_chunk_nnz_) {
+                break;
+            }
+            ++end;
+        }
+        return std::max<arma::uword>(start + 1, end);
+    }
+
     double BackedSparseMatrixOperator::transform_value_(arma::uword obs_index, double value) const {
-        if (!row_scale_.is_empty()) {
+        if (no_transform_) {
+            return value;
+        }
+        if (has_row_scale_) {
             value *= row_scale_(obs_index);
         }
         if (apply_log1p_) {
@@ -362,9 +415,10 @@ namespace actionet {
 
     void BackedSparseMatrixOperator::matvec_csr_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_var_);
+        const bool no_transform = no_transform_;
 
-        for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
-            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+        for (arma::uword row_start = 0; row_start < n_obs_;) {
+            const arma::uword row_end = next_block_end_(row_start, n_obs_);
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -377,20 +431,30 @@ namespace actionet {
                 const unsigned long long local_start = indptr_[r] - nnz_start;
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 const double xval = x(r);
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
-                    y(col) += value * xval;
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        y(col) += value * xval;
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                        y(col) += value * xval;
+                    }
                 }
             }
+            row_start = row_end;
         }
     }
 
     void BackedSparseMatrixOperator::rmatvec_csr_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_obs_);
+        const bool no_transform = no_transform_;
 
-        for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
-            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+        for (arma::uword row_start = 0; row_start < n_obs_;) {
+            const arma::uword row_end = next_block_end_(row_start, n_obs_);
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -403,21 +467,38 @@ namespace actionet {
                 const unsigned long long local_start = indptr_[r] - nnz_start;
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
                 double acc = 0.0;
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
-                    acc += value * x(col);
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        acc += value * x(col);
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                        acc += value * x(col);
+                    }
                 }
                 y(r) = acc;
             }
+            row_start = row_end;
         }
     }
 
     void BackedSparseMatrixOperator::matmat_csr_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_var_, X.n_cols);
+        const bool no_transform = no_transform_;
+        const arma::uword q = X.n_cols;
+        std::vector<const double*> x_cols(q, nullptr);
+        std::vector<double*> y_cols(q, nullptr);
+        for (arma::uword j = 0; j < q; ++j) {
+            x_cols[j] = X.colptr(j);
+            y_cols[j] = Y.colptr(j);
+        }
 
-        for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
-            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+        for (arma::uword row_start = 0; row_start < n_obs_;) {
+            const arma::uword row_end = next_block_end_(row_start, n_obs_);
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -429,21 +510,41 @@ namespace actionet {
             for (arma::uword r = row_start; r < row_end; ++r) {
                 const unsigned long long local_start = indptr_[r] - nnz_start;
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
-                const arma::rowvec xrow = X.row(r);
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
-                    Y.row(col) += value * xrow;
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][col] += value * x_cols[j][r];
+                        }
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][col] += value * x_cols[j][r];
+                        }
+                    }
                 }
             }
+            row_start = row_end;
         }
     }
 
     void BackedSparseMatrixOperator::rmatmat_csr_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_obs_, X.n_cols);
+        const bool no_transform = no_transform_;
+        const arma::uword q = X.n_cols;
+        std::vector<const double*> x_cols(q, nullptr);
+        std::vector<double*> y_cols(q, nullptr);
+        for (arma::uword j = 0; j < q; ++j) {
+            x_cols[j] = X.colptr(j);
+            y_cols[j] = Y.colptr(j);
+        }
 
-        for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
-            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+        for (arma::uword row_start = 0; row_start < n_obs_;) {
+            const arma::uword row_end = next_block_end_(row_start, n_obs_);
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -455,22 +556,34 @@ namespace actionet {
             for (arma::uword r = row_start; r < row_end; ++r) {
                 const unsigned long long local_start = indptr_[r] - nnz_start;
                 const unsigned long long local_end = indptr_[r + 1] - nnz_start;
-                arma::rowvec acc(X.n_cols, arma::fill::zeros);
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
-                    acc += value * X.row(col);
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][r] += value * x_cols[j][col];
+                        }
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][r] += value * x_cols[j][col];
+                        }
+                    }
                 }
-                Y.row(r) = acc;
             }
+            row_start = row_end;
         }
     }
 
     void BackedSparseMatrixOperator::matvec_csc_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_var_);
+        const bool no_transform = no_transform_;
 
-        for (arma::uword col_start = 0; col_start < n_var_; col_start += chunk_size_) {
-            const arma::uword col_end = std::min<arma::uword>(n_var_, col_start + chunk_size_);
+        for (arma::uword col_start = 0; col_start < n_var_;) {
+            const arma::uword col_end = next_block_end_(col_start, n_var_);
             const unsigned long long nnz_start = indptr_[col_start];
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -483,21 +596,31 @@ namespace actionet {
                 const unsigned long long local_start = indptr_[c] - nnz_start;
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
                 double acc = 0.0;
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
-                    acc += value * x(row);
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        acc += value * x(row);
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
+                        acc += value * x(row);
+                    }
                 }
                 y(c) = acc;
             }
+            col_start = col_end;
         }
     }
 
     void BackedSparseMatrixOperator::rmatvec_csc_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_obs_);
+        const bool no_transform = no_transform_;
 
-        for (arma::uword col_start = 0; col_start < n_var_; col_start += chunk_size_) {
-            const arma::uword col_end = std::min<arma::uword>(n_var_, col_start + chunk_size_);
+        for (arma::uword col_start = 0; col_start < n_var_;) {
+            const arma::uword col_end = next_block_end_(col_start, n_var_);
             const unsigned long long nnz_start = indptr_[col_start];
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -510,20 +633,37 @@ namespace actionet {
                 const unsigned long long local_start = indptr_[c] - nnz_start;
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
                 const double xval = x(c);
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
-                    y(row) += value * xval;
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        y(row) += value * xval;
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
+                        y(row) += value * xval;
+                    }
                 }
             }
+            col_start = col_end;
         }
     }
 
     void BackedSparseMatrixOperator::matmat_csc_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_var_, X.n_cols);
+        const bool no_transform = no_transform_;
+        const arma::uword q = X.n_cols;
+        std::vector<const double*> x_cols(q, nullptr);
+        std::vector<double*> y_cols(q, nullptr);
+        for (arma::uword j = 0; j < q; ++j) {
+            x_cols[j] = X.colptr(j);
+            y_cols[j] = Y.colptr(j);
+        }
 
-        for (arma::uword col_start = 0; col_start < n_var_; col_start += chunk_size_) {
-            const arma::uword col_end = std::min<arma::uword>(n_var_, col_start + chunk_size_);
+        for (arma::uword col_start = 0; col_start < n_var_;) {
+            const arma::uword col_end = next_block_end_(col_start, n_var_);
             const unsigned long long nnz_start = indptr_[col_start];
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -535,22 +675,41 @@ namespace actionet {
             for (arma::uword c = col_start; c < col_end; ++c) {
                 const unsigned long long local_start = indptr_[c] - nnz_start;
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
-                arma::rowvec acc(X.n_cols, arma::fill::zeros);
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
-                    acc += value * X.row(row);
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][c] += value * x_cols[j][row];
+                        }
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][c] += value * x_cols[j][row];
+                        }
+                    }
                 }
-                Y.row(c) = acc;
             }
+            col_start = col_end;
         }
     }
 
     void BackedSparseMatrixOperator::rmatmat_csc_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_obs_, X.n_cols);
+        const bool no_transform = no_transform_;
+        const arma::uword q = X.n_cols;
+        std::vector<const double*> x_cols(q, nullptr);
+        std::vector<double*> y_cols(q, nullptr);
+        for (arma::uword j = 0; j < q; ++j) {
+            x_cols[j] = X.colptr(j);
+            y_cols[j] = Y.colptr(j);
+        }
 
-        for (arma::uword col_start = 0; col_start < n_var_; col_start += chunk_size_) {
-            const arma::uword col_end = std::min<arma::uword>(n_var_, col_start + chunk_size_);
+        for (arma::uword col_start = 0; col_start < n_var_;) {
+            const arma::uword col_end = next_block_end_(col_start, n_var_);
             const unsigned long long nnz_start = indptr_[col_start];
             const unsigned long long nnz_end = indptr_[col_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -562,13 +721,25 @@ namespace actionet {
             for (arma::uword c = col_start; c < col_end; ++c) {
                 const unsigned long long local_start = indptr_[c] - nnz_start;
                 const unsigned long long local_end = indptr_[c + 1] - nnz_start;
-                const arma::rowvec xrow = X.row(c);
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
-                    Y.row(row) += value * xrow;
+                if (no_transform) {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = (*data)[static_cast<size_t>(p)];
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][row] += value * x_cols[j][c];
+                        }
+                    }
+                } else {
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                        const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
+                        for (arma::uword j = 0; j < q; ++j) {
+                            y_cols[j][row] += value * x_cols[j][c];
+                        }
+                    }
                 }
             }
+            col_start = col_end;
         }
     }
 
@@ -606,12 +777,15 @@ namespace actionet {
             }
         }
 
-        for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
-            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+        for (arma::uword row_start = 0; row_start < n_obs_;) {
+            const arma::uword row_end = next_block_end_(row_start, n_obs_);
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
-            if (nnz_count == 0) continue;
+            if (nnz_count == 0) {
+                row_start = row_end;
+                continue;
+            }
 
             const std::vector<double>* data;
             const std::vector<unsigned long long>* indices;
@@ -630,6 +804,7 @@ namespace actionet {
                     out(out_row, out_col) = transform_value_(r, (*data)[static_cast<size_t>(p)]);
                 }
             }
+            row_start = row_end;
         }
 
         // Handle duplicate columns: copy first-match values.
@@ -730,12 +905,15 @@ namespace actionet {
                 }
             }
 
-            for (arma::uword row_start = 0; row_start < n_obs_; row_start += chunk_size_) {
-                const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+            for (arma::uword row_start = 0; row_start < n_obs_;) {
+                const arma::uword row_end = next_block_end_(row_start, n_obs_);
                 const unsigned long long nnz_start_chunk = indptr_[row_start];
                 const unsigned long long nnz_end_chunk = indptr_[row_end];
                 const unsigned long long nnz_count = nnz_end_chunk - nnz_start_chunk;
-                if (nnz_count == 0) continue;
+                if (nnz_count == 0) {
+                    row_start = row_end;
+                    continue;
+                }
 
                 const std::vector<double>* data;
                 const std::vector<unsigned long long>* indices;
@@ -759,6 +937,7 @@ namespace actionet {
                         }
                     }
                 }
+                row_start = row_end;
             }
 
             // Expand duplicate columns.

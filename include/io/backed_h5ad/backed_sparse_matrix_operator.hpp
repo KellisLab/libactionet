@@ -46,7 +46,28 @@ namespace actionet {
                                    const std::string& group_path = "/X",
                                    arma::uword chunk_size = 4096,
                                    const std::vector<double>& row_scale_factors = {},
-                                   bool apply_log1p = false);
+                                   bool apply_log1p = false,
+                                   // Per-read sparse I/O target in bytes. If non-zero, this
+                                   // is used directly for NNZ-targeted chunking.
+                                   size_t io_target_chunk_bytes = 0,
+                                   // Auto-target multiplier used only when
+                                   // io_target_chunk_bytes == 0.
+                                   //
+                                   // Let:
+                                   //   bytes_per_nnz = sizeof(double) + sizeof(uint64_t) = 16
+                                   //   mean_nnz_axis = total_nnz / axis_len
+                                   //   estimated_cap_nnz = chunk_size * mean_nnz_axis
+                                   //
+                                   // Then:
+                                   //   target_chunk_nnz =
+                                   //     ceil(io_target_chunk_fraction_of_cap * estimated_cap_nnz)
+                                   //   target_chunk_bytes =
+                                   //     ceil(target_chunk_nnz * bytes_per_nnz)
+                                   //
+                                   // The default (0.5) was chosen from coarse atlas-scale
+                                   // benchmarks to retain near-cap throughput while reducing
+                                   // peak RSS substantially versus full-cap behavior.
+                                   double io_target_chunk_fraction_of_cap = 0.5);
         ~BackedSparseMatrixOperator() override;
 
         BackedSparseMatrixOperator(const BackedSparseMatrixOperator&) = delete;
@@ -61,6 +82,7 @@ namespace actionet {
         void rmatvec(const arma::vec& x, arma::vec& y) const override;
         void matmat(const arma::mat& X, arma::mat& Y) const override;
         void rmatmat(const arma::mat& X, arma::mat& Y) const override;
+        bool prefer_block_solver_for_irlb() const override { return true; }
 
         const std::string& filePath() const { return file_path_; }
         const std::string& groupPath() const { return group_path_; }
@@ -113,6 +135,7 @@ namespace actionet {
                                       std::vector<double>& data, std::vector<unsigned long long>& indices) const;
         void load_chunk_cached_(unsigned long long nnz_start, unsigned long long nnz_count,
                                 const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const;
+        arma::uword next_block_end_(arma::uword start, arma::uword limit) const;
         double transform_value_(arma::uword obs_index, double value) const;
         void close_handles_();
 
@@ -137,7 +160,10 @@ namespace actionet {
         std::string group_path_;
         bool is_csr_;
         bool apply_log1p_;
+        bool has_row_scale_;
+        bool no_transform_;
         arma::uword chunk_size_;
+        unsigned long long target_chunk_nnz_;
         arma::uword n_obs_;
         arma::uword n_var_;
         arma::vec row_scale_;
