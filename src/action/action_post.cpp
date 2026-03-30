@@ -1,8 +1,6 @@
 #include "action/action_post.hpp"
 #include "action/spa.hpp"
 #include "action/simplex_regression.hpp"
-#include "tools/matrix_transform.hpp"
-#include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_stats.hpp"
 
 namespace actionet {
@@ -136,11 +134,15 @@ namespace actionet {
         ResMergeArch output;
 
         H_stacked = arma::normalise(H_stacked, 1, 0);
-        arma::sp_mat H_stacked_sp = arma::sp_mat(H_stacked);
-        arma::mat H_arch = spmat_mat_product_parallel(H_stacked_sp, C_stacked, thread_no);
+        // H_stacked is uniformly dense after column-wise L1 normalisation (every
+        // column sums to 1 with all non-negative values). Converting to sp_mat here
+        // would allocate an equally-sized sparse copy while the dense original stays
+        // live — doubling peak RSS for no algorithmic benefit. Use a plain dense matmul.
+        arma::mat H_arch = H_stacked * C_stacked;
         H_arch.replace(arma::datum::nan, 0); // replace each NaN with 0
 
         ResSPA SPA_out = runSPA(H_arch, (int)H_arch.n_cols);
+        H_arch.reset(); // H_arch no longer needed; free before simplex regression
         arma::uvec candidates = SPA_out.selected_cols;
         arma::vec scores = SPA_out.column_norms;
         double x1 = arma::sum(scores);
