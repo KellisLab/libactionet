@@ -2,6 +2,7 @@
 #define ACTIONET_BACKED_DENSE_MATRIX_OPERATOR_HPP
 
 #include "decomposition/matrix_operator.hpp"
+#include "utils_internal/utils_parallel.hpp"
 #include <hdf5.h>
 #include <memory>
 #include <string>
@@ -27,12 +28,14 @@ namespace actionet {
         /// @param row_scale_factors Per-observation scale factors (length n_obs, or empty).
         /// @param apply_log1p       Apply log1p transform to each element.
         /// @param slab_byte_budget  Maximum bytes per dense slab buffer (default 256 MiB).
+        /// @param n_threads         OpenMP thread count hint for compute loops (0 = auto, 1 = serial).
         BackedDenseMatrixOperator(const std::string& file_path,
                                   const std::string& group_path = "/X",
                                   arma::uword chunk_size = 4096,
                                   const std::vector<double>& row_scale_factors = {},
                                   bool apply_log1p = false,
-                                  size_t slab_byte_budget = 256ULL * 1024 * 1024);
+                                  size_t slab_byte_budget = 256ULL * 1024 * 1024,
+                                  int n_threads = 0);
         ~BackedDenseMatrixOperator() override;
 
         BackedDenseMatrixOperator(const BackedDenseMatrixOperator&) = delete;
@@ -96,6 +99,7 @@ namespace actionet {
         arma::uword n_obs_;
         arma::uword n_var_;
         arma::vec row_scale_;
+        unsigned int n_threads_;
 
         hid_t file_id_;
         hid_t dataset_id_;

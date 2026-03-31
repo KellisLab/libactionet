@@ -20,12 +20,20 @@ These parameters are currently exposed at the low-level `_core` interface. The
 high-level Python frontend functions are intentionally not wired to the new
 fraction knob yet.
 
+Thread control wiring:
+
+- High-level `run_svd(...)` and `reduce_kernel(...)` pass
+  `backed_n_threads -> _core.create_backed_operator(..., n_threads=...)`.
+- In-memory dense/sparse paths are unchanged and continue to rely on
+  BLAS/library threading behavior.
+
 ## Parameters
 
 For sparse-backed operators, the new controls are:
 
 - `io_target_chunk_bytes` (`size_t`, default `0`)
 - `io_target_chunk_fraction_of_cap` (`double`, default `0.5`)
+- `n_threads` (`int`, default `0`; `0` = auto, `1` = serial)
 
 Behavior:
 

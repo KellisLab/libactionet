@@ -102,7 +102,8 @@ namespace actionet {
         const std::vector<double>& row_scale_factors,
         bool apply_log1p,
         size_t io_target_chunk_bytes,
-        double io_target_chunk_fraction_of_cap)
+        double io_target_chunk_fraction_of_cap,
+        int n_threads)
         : file_path_(file_path),
           group_path_(group_path),
           is_csr_(true),
@@ -113,6 +114,7 @@ namespace actionet {
           target_chunk_nnz_(0),
           n_obs_(0),
           n_var_(0),
+          n_threads_(static_cast<unsigned int>(std::max(0, n_threads))),
           file_id_(-1),
           group_id_(-1),
           data_ds_(-1),
@@ -236,6 +238,7 @@ namespace actionet {
           n_obs_(other.n_obs_),
           n_var_(other.n_var_),
           row_scale_(std::move(other.row_scale_)),
+          n_threads_(other.n_threads_),
           file_id_(other.file_id_),
           group_id_(other.group_id_),
           data_ds_(other.data_ds_),
@@ -264,6 +267,7 @@ namespace actionet {
             n_obs_ = other.n_obs_;
             n_var_ = other.n_var_;
             row_scale_ = std::move(other.row_scale_);
+            n_threads_ = other.n_threads_;
             file_id_ = other.file_id_;
             group_id_ = other.group_id_;
             data_ds_ = other.data_ds_;
@@ -490,12 +494,7 @@ namespace actionet {
         Y.zeros(n_var_, X.n_cols);
         const bool no_transform = no_transform_;
         const arma::uword q = X.n_cols;
-        std::vector<const double*> x_cols(q, nullptr);
-        std::vector<double*> y_cols(q, nullptr);
-        for (arma::uword j = 0; j < q; ++j) {
-            x_cols[j] = X.colptr(j);
-            y_cols[j] = Y.colptr(j);
-        }
+        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
             const arma::uword row_end = next_block_end_(row_start, n_obs_);
@@ -507,23 +506,36 @@ namespace actionet {
             const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
-            for (arma::uword r = row_start; r < row_end; ++r) {
-                const unsigned long long local_start = indptr_[r] - nnz_start;
-                const unsigned long long local_end = indptr_[r + 1] - nnz_start;
-                if (no_transform) {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = (*data)[static_cast<size_t>(p)];
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][col] += value * x_cols[j][r];
+            if (no_transform) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword r = row_start; r < row_end; ++r) {
+                        const unsigned long long local_start = indptr_[r] - nnz_start;
+                        const unsigned long long local_end = indptr_[r + 1] - nnz_start;
+                        const double xval = x_col[r];
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            y_col[col] += (*data)[static_cast<size_t>(p)] * xval;
                         }
                     }
-                } else {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][col] += value * x_cols[j][r];
+                }
+            } else {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword r = row_start; r < row_end; ++r) {
+                        const unsigned long long local_start = indptr_[r] - nnz_start;
+                        const unsigned long long local_end = indptr_[r + 1] - nnz_start;
+                        const double xval = x_col[r];
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                            y_col[col] += value * xval;
                         }
                     }
                 }
@@ -536,12 +548,7 @@ namespace actionet {
         Y.zeros(n_obs_, X.n_cols);
         const bool no_transform = no_transform_;
         const arma::uword q = X.n_cols;
-        std::vector<const double*> x_cols(q, nullptr);
-        std::vector<double*> y_cols(q, nullptr);
-        for (arma::uword j = 0; j < q; ++j) {
-            x_cols[j] = X.colptr(j);
-            y_cols[j] = Y.colptr(j);
-        }
+        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
             const arma::uword row_end = next_block_end_(row_start, n_obs_);
@@ -553,24 +560,39 @@ namespace actionet {
             const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
-            for (arma::uword r = row_start; r < row_end; ++r) {
-                const unsigned long long local_start = indptr_[r] - nnz_start;
-                const unsigned long long local_end = indptr_[r + 1] - nnz_start;
-                if (no_transform) {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = (*data)[static_cast<size_t>(p)];
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][r] += value * x_cols[j][col];
+            if (no_transform) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword r = row_start; r < row_end; ++r) {
+                        const unsigned long long local_start = indptr_[r] - nnz_start;
+                        const unsigned long long local_end = indptr_[r + 1] - nnz_start;
+                        double acc = 0.0;
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            acc += (*data)[static_cast<size_t>(p)] * x_col[col];
                         }
+                        y_col[r] += acc;
                     }
-                } else {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][r] += value * x_cols[j][col];
+                }
+            } else {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword r = row_start; r < row_end; ++r) {
+                        const unsigned long long local_start = indptr_[r] - nnz_start;
+                        const unsigned long long local_end = indptr_[r + 1] - nnz_start;
+                        double acc = 0.0;
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            const double value = transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                            acc += value * x_col[col];
                         }
+                        y_col[r] += acc;
                     }
                 }
             }
@@ -655,12 +677,7 @@ namespace actionet {
         Y.zeros(n_var_, X.n_cols);
         const bool no_transform = no_transform_;
         const arma::uword q = X.n_cols;
-        std::vector<const double*> x_cols(q, nullptr);
-        std::vector<double*> y_cols(q, nullptr);
-        for (arma::uword j = 0; j < q; ++j) {
-            x_cols[j] = X.colptr(j);
-            y_cols[j] = Y.colptr(j);
-        }
+        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword col_start = 0; col_start < n_var_;) {
             const arma::uword col_end = next_block_end_(col_start, n_var_);
@@ -672,24 +689,39 @@ namespace actionet {
             const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
-            for (arma::uword c = col_start; c < col_end; ++c) {
-                const unsigned long long local_start = indptr_[c] - nnz_start;
-                const unsigned long long local_end = indptr_[c + 1] - nnz_start;
-                if (no_transform) {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = (*data)[static_cast<size_t>(p)];
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][c] += value * x_cols[j][row];
+            if (no_transform) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword c = col_start; c < col_end; ++c) {
+                        const unsigned long long local_start = indptr_[c] - nnz_start;
+                        const unsigned long long local_end = indptr_[c + 1] - nnz_start;
+                        double acc = 0.0;
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            acc += (*data)[static_cast<size_t>(p)] * x_col[row];
                         }
+                        y_col[c] += acc;
                     }
-                } else {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][c] += value * x_cols[j][row];
+                }
+            } else {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword c = col_start; c < col_end; ++c) {
+                        const unsigned long long local_start = indptr_[c] - nnz_start;
+                        const unsigned long long local_end = indptr_[c + 1] - nnz_start;
+                        double acc = 0.0;
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
+                            acc += value * x_col[row];
                         }
+                        y_col[c] += acc;
                     }
                 }
             }
@@ -701,12 +733,7 @@ namespace actionet {
         Y.zeros(n_obs_, X.n_cols);
         const bool no_transform = no_transform_;
         const arma::uword q = X.n_cols;
-        std::vector<const double*> x_cols(q, nullptr);
-        std::vector<double*> y_cols(q, nullptr);
-        for (arma::uword j = 0; j < q; ++j) {
-            x_cols[j] = X.colptr(j);
-            y_cols[j] = Y.colptr(j);
-        }
+        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword col_start = 0; col_start < n_var_;) {
             const arma::uword col_end = next_block_end_(col_start, n_var_);
@@ -718,23 +745,36 @@ namespace actionet {
             const std::vector<unsigned long long>* indices;
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
-            for (arma::uword c = col_start; c < col_end; ++c) {
-                const unsigned long long local_start = indptr_[c] - nnz_start;
-                const unsigned long long local_end = indptr_[c + 1] - nnz_start;
-                if (no_transform) {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = (*data)[static_cast<size_t>(p)];
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][row] += value * x_cols[j][c];
+            if (no_transform) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword c = col_start; c < col_end; ++c) {
+                        const unsigned long long local_start = indptr_[c] - nnz_start;
+                        const unsigned long long local_end = indptr_[c + 1] - nnz_start;
+                        const double xval = x_col[c];
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            y_col[row] += (*data)[static_cast<size_t>(p)] * xval;
                         }
                     }
-                } else {
-                    for (unsigned long long p = local_start; p < local_end; ++p) {
-                        const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
-                        for (arma::uword j = 0; j < q; ++j) {
-                            y_cols[j][row] += value * x_cols[j][c];
+                }
+            } else {
+                #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && q > 1)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(q); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* x_col = X.colptr(j);
+                    double* y_col = Y.colptr(j);
+                    for (arma::uword c = col_start; c < col_end; ++c) {
+                        const unsigned long long local_start = indptr_[c] - nnz_start;
+                        const unsigned long long local_end = indptr_[c + 1] - nnz_start;
+                        const double xval = x_col[c];
+                        for (unsigned long long p = local_start; p < local_end; ++p) {
+                            const arma::uword row = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
+                            const double value = transform_value_(row, (*data)[static_cast<size_t>(p)]);
+                            y_col[row] += value * xval;
                         }
                     }
                 }

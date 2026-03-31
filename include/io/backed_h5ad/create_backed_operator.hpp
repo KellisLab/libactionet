@@ -24,6 +24,8 @@ namespace actionet {
     ///                              Set 0 to enable automatic NNZ-targeted chunking.
     /// @param io_target_chunk_fraction_of_cap Auto-target multiplier used when
     ///                              io_target_chunk_bytes == 0.
+    /// @param n_threads         OpenMP thread count hint for backed operator compute
+    ///                          loops (0 = auto, 1 = serial).
     ///
     /// Auto-target math for sparse inputs:
     ///   bytes_per_nnz = sizeof(double) + sizeof(uint64_t) = 16
@@ -43,7 +45,8 @@ namespace actionet {
         const std::vector<double>& row_scale_factors = {},
         bool apply_log1p = false,
         size_t io_target_chunk_bytes = 0,
-        double io_target_chunk_fraction_of_cap = 0.5);
+        double io_target_chunk_fraction_of_cap = 0.5,
+        int n_threads = 0);
 
 } // namespace actionet
 

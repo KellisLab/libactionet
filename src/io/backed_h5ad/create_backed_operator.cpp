@@ -14,7 +14,8 @@ namespace actionet {
         const std::vector<double>& row_scale_factors,
         bool apply_log1p,
         size_t io_target_chunk_bytes,
-        double io_target_chunk_fraction_of_cap) {
+        double io_target_chunk_fraction_of_cap,
+        int n_threads) {
 
         hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
         if (fapl < 0) {
@@ -49,13 +50,14 @@ namespace actionet {
                 row_scale_factors,
                 apply_log1p,
                 io_target_chunk_bytes,
-                io_target_chunk_fraction_of_cap);
+                io_target_chunk_fraction_of_cap,
+                n_threads);
         } else if (obj_type == H5O_TYPE_DATASET) {
             const size_t slab_budget = io_target_chunk_bytes > 0
                 ? io_target_chunk_bytes
                 : 256ULL * 1024 * 1024;
             return std::make_shared<BackedDenseMatrixOperator>(
-                file_path, group_path, chunk_size, row_scale_factors, apply_log1p, slab_budget);
+                file_path, group_path, chunk_size, row_scale_factors, apply_log1p, slab_budget, n_threads);
         } else {
             throw std::runtime_error(
                 "createBackedOperator: HDF5 object at '" + group_path +

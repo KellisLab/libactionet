@@ -35,7 +35,8 @@ namespace actionet {
         arma::uword chunk_size,
         const std::vector<double>& row_scale_factors,
         bool apply_log1p,
-        size_t slab_byte_budget)
+        size_t slab_byte_budget,
+        int n_threads)
         : file_path_(file_path),
           group_path_(group_path),
           apply_log1p_(apply_log1p),
@@ -43,6 +44,7 @@ namespace actionet {
           effective_chunk_size_(0),
           n_obs_(0),
           n_var_(0),
+          n_threads_(static_cast<unsigned int>(std::max(0, n_threads))),
           file_id_(-1),
           dataset_id_(-1) {
 
@@ -98,6 +100,7 @@ namespace actionet {
           n_obs_(other.n_obs_),
           n_var_(other.n_var_),
           row_scale_(std::move(other.row_scale_)),
+          n_threads_(other.n_threads_),
           file_id_(other.file_id_),
           dataset_id_(other.dataset_id_) {
         other.file_id_ = -1;
@@ -115,6 +118,7 @@ namespace actionet {
             n_obs_ = other.n_obs_;
             n_var_ = other.n_var_;
             row_scale_ = std::move(other.row_scale_);
+            n_threads_ = other.n_threads_;
             file_id_ = other.file_id_;
             dataset_id_ = other.dataset_id_;
             other.file_id_ = -1;
@@ -163,10 +167,13 @@ namespace actionet {
 
         const arma::uword nrows = slab.n_rows;
         const bool has_scale = !row_scale_.is_empty();
+        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(nrows), n_threads_);
 
         if (!has_scale && !apply_log1p_) return;
 
-        for (arma::uword r = 0; r < nrows; ++r) {
+        #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && nrows > 1)
+        for (arma::sword rs = 0; rs < static_cast<arma::sword>(nrows); ++rs) {
+            const arma::uword r = static_cast<arma::uword>(rs);
             const arma::uword obs_idx = obs_start + r;
             if (has_scale) {
                 slab.row(r) *= row_scale_(obs_idx);

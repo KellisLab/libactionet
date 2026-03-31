@@ -2,6 +2,7 @@
 #define ACTIONET_BACKED_SPARSE_MATRIX_OPERATOR_HPP
 
 #include "decomposition/matrix_operator.hpp"
+#include "utils_internal/utils_parallel.hpp"
 #include <hdf5.h>
 #include <memory>
 #include <string>
@@ -67,7 +68,8 @@ namespace actionet {
                                    // The default (0.5) was chosen from coarse atlas-scale
                                    // benchmarks to retain near-cap throughput while reducing
                                    // peak RSS substantially versus full-cap behavior.
-                                   double io_target_chunk_fraction_of_cap = 0.5);
+                                   double io_target_chunk_fraction_of_cap = 0.5,
+                                   int n_threads = 0);
         ~BackedSparseMatrixOperator() override;
 
         BackedSparseMatrixOperator(const BackedSparseMatrixOperator&) = delete;
@@ -167,6 +169,7 @@ namespace actionet {
         arma::uword n_obs_;
         arma::uword n_var_;
         arma::vec row_scale_;
+        unsigned int n_threads_;
 
         hid_t file_id_;
         hid_t group_id_;
