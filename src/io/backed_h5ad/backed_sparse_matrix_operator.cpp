@@ -101,6 +101,7 @@ namespace actionet {
         arma::uword chunk_size,
         const std::vector<double>& row_scale_factors,
         bool apply_log1p,
+        double log_scale,
         size_t io_target_chunk_bytes,
         double io_target_chunk_fraction_of_cap,
         int n_threads)
@@ -108,6 +109,7 @@ namespace actionet {
           group_path_(group_path),
           is_csr_(true),
           apply_log1p_(apply_log1p),
+          log_scale_(log_scale),
           has_row_scale_(!row_scale_factors.empty()),
           no_transform_(row_scale_factors.empty() && !apply_log1p),
           chunk_size_(std::max<arma::uword>(1, chunk_size)),
@@ -212,6 +214,8 @@ namespace actionet {
                      "row_scale_factors length must equal n_obs");
             row_scale_ = arma::vec(row_scale_factors);
         }
+        check_h5(std::isfinite(log_scale_) && log_scale_ > 0.0,
+                 "log_scale must be finite and > 0");
     }
 
     void BackedSparseMatrixOperator::close_handles_() {
@@ -231,6 +235,7 @@ namespace actionet {
           group_path_(std::move(other.group_path_)),
           is_csr_(other.is_csr_),
           apply_log1p_(other.apply_log1p_),
+          log_scale_(other.log_scale_),
           has_row_scale_(other.has_row_scale_),
           no_transform_(other.no_transform_),
           chunk_size_(other.chunk_size_),
@@ -260,6 +265,7 @@ namespace actionet {
             group_path_ = std::move(other.group_path_);
             is_csr_ = other.is_csr_;
             apply_log1p_ = other.apply_log1p_;
+            log_scale_ = other.log_scale_;
             has_row_scale_ = other.has_row_scale_;
             no_transform_ = other.no_transform_;
             chunk_size_ = other.chunk_size_;
@@ -365,6 +371,9 @@ namespace actionet {
         }
         if (apply_log1p_) {
             value = std::log1p(value);
+            if (log_scale_ != 1.0) {
+                value *= log_scale_;
+            }
         }
         return value;
     }

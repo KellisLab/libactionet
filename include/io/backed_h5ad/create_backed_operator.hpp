@@ -19,6 +19,8 @@ namespace actionet {
     /// @param chunk_size        Upper bound on rows per slab / chunk.
     /// @param row_scale_factors Per-observation scale factors (or empty).
     /// @param apply_log1p       Apply log1p element-wise.
+    /// @param log_scale         Scalar multiplier applied after log1p transform.
+    ///                          Defaults to 1.0 (natural log behavior).
     /// @param io_target_chunk_bytes Approximate target bytes per sparse read chunk.
     ///                              Set >0 to force an explicit byte target.
     ///                              Set 0 to enable automatic NNZ-targeted chunking.
@@ -44,6 +46,7 @@ namespace actionet {
         arma::uword chunk_size = 4096,
         const std::vector<double>& row_scale_factors = {},
         bool apply_log1p = false,
+        double log_scale = 1.0,
         size_t io_target_chunk_bytes = 0,
         double io_target_chunk_fraction_of_cap = 0.5,
         int n_threads = 0);

@@ -35,11 +35,13 @@ namespace actionet {
         arma::uword chunk_size,
         const std::vector<double>& row_scale_factors,
         bool apply_log1p,
+        double log_scale,
         size_t slab_byte_budget,
         int n_threads)
         : file_path_(file_path),
           group_path_(group_path),
           apply_log1p_(apply_log1p),
+          log_scale_(log_scale),
           chunk_size_(std::max<arma::uword>(1, chunk_size)),
           effective_chunk_size_(0),
           n_obs_(0),
@@ -80,6 +82,8 @@ namespace actionet {
                      "row_scale_factors length must equal n_obs");
             row_scale_ = arma::vec(row_scale_factors);
         }
+        check_h5(std::isfinite(log_scale_) && log_scale_ > 0.0,
+                 "log_scale must be finite and > 0");
     }
 
     void BackedDenseMatrixOperator::close_handles_() {
@@ -95,6 +99,7 @@ namespace actionet {
         : file_path_(std::move(other.file_path_)),
           group_path_(std::move(other.group_path_)),
           apply_log1p_(other.apply_log1p_),
+          log_scale_(other.log_scale_),
           chunk_size_(other.chunk_size_),
           effective_chunk_size_(other.effective_chunk_size_),
           n_obs_(other.n_obs_),
@@ -113,6 +118,7 @@ namespace actionet {
             file_path_ = std::move(other.file_path_);
             group_path_ = std::move(other.group_path_);
             apply_log1p_ = other.apply_log1p_;
+            log_scale_ = other.log_scale_;
             chunk_size_ = other.chunk_size_;
             effective_chunk_size_ = other.effective_chunk_size_;
             n_obs_ = other.n_obs_;
@@ -167,6 +173,7 @@ namespace actionet {
 
         const arma::uword nrows = slab.n_rows;
         const bool has_scale = !row_scale_.is_empty();
+        const bool apply_log_scale = apply_log1p_ && std::abs(log_scale_ - 1.0) > 0.0;
         const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(nrows), n_threads_);
 
         if (!has_scale && !apply_log1p_) return;
@@ -180,7 +187,11 @@ namespace actionet {
             }
             if (apply_log1p_) {
                 for (arma::uword c = 0; c < slab.n_cols; ++c) {
-                    slab(r, c) = std::log1p(slab(r, c));
+                    double val = std::log1p(slab(r, c));
+                    if (apply_log_scale) {
+                        val *= log_scale_;
+                    }
+                    slab(r, c) = val;
                 }
             }
         }

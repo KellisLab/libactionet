@@ -27,6 +27,8 @@ namespace actionet {
         /// @param chunk_size       Upper bound on observation rows per slab.
         /// @param row_scale_factors Per-observation scale factors (length n_obs, or empty).
         /// @param apply_log1p       Apply log1p transform to each element.
+        /// @param log_scale         Scalar multiplier applied after log1p.
+        ///                          Defaults to 1.0.
         /// @param slab_byte_budget  Maximum bytes per dense slab buffer (default 256 MiB).
         /// @param n_threads         OpenMP thread count hint for compute loops (0 = auto, 1 = serial).
         BackedDenseMatrixOperator(const std::string& file_path,
@@ -34,6 +36,7 @@ namespace actionet {
                                   arma::uword chunk_size = 4096,
                                   const std::vector<double>& row_scale_factors = {},
                                   bool apply_log1p = false,
+                                  double log_scale = 1.0,
                                   size_t slab_byte_budget = 256ULL * 1024 * 1024,
                                   int n_threads = 0);
         ~BackedDenseMatrixOperator() override;
@@ -94,6 +97,7 @@ namespace actionet {
         std::string file_path_;
         std::string group_path_;
         bool apply_log1p_;
+        double log_scale_;
         arma::uword chunk_size_;
         arma::uword effective_chunk_size_;
         arma::uword n_obs_;

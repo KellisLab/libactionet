@@ -13,6 +13,7 @@ namespace actionet {
         arma::uword chunk_size,
         const std::vector<double>& row_scale_factors,
         bool apply_log1p,
+        double log_scale,
         size_t io_target_chunk_bytes,
         double io_target_chunk_fraction_of_cap,
         int n_threads) {
@@ -49,6 +50,7 @@ namespace actionet {
                 chunk_size,
                 row_scale_factors,
                 apply_log1p,
+                log_scale,
                 io_target_chunk_bytes,
                 io_target_chunk_fraction_of_cap,
                 n_threads);
@@ -57,7 +59,14 @@ namespace actionet {
                 ? io_target_chunk_bytes
                 : 256ULL * 1024 * 1024;
             return std::make_shared<BackedDenseMatrixOperator>(
-                file_path, group_path, chunk_size, row_scale_factors, apply_log1p, slab_budget, n_threads);
+                file_path,
+                group_path,
+                chunk_size,
+                row_scale_factors,
+                apply_log1p,
+                log_scale,
+                slab_budget,
+                n_threads);
         } else {
             throw std::runtime_error(
                 "createBackedOperator: HDF5 object at '" + group_path +

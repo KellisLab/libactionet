@@ -48,6 +48,7 @@ namespace actionet {
                                    arma::uword chunk_size = 4096,
                                    const std::vector<double>& row_scale_factors = {},
                                    bool apply_log1p = false,
+                                   double log_scale = 1.0,
                                    // Per-read sparse I/O target in bytes. If non-zero, this
                                    // is used directly for NNZ-targeted chunking.
                                    size_t io_target_chunk_bytes = 0,
@@ -162,6 +163,7 @@ namespace actionet {
         std::string group_path_;
         bool is_csr_;
         bool apply_log1p_;
+        double log_scale_;
         bool has_row_scale_;
         bool no_transform_;
         arma::uword chunk_size_;
