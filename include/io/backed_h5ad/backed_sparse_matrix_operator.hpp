@@ -3,6 +3,7 @@
 
 #include "decomposition/matrix_operator.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include "fastapprox/fastlog.h"
 #include <cmath>
 #include <hdf5.h>
 #include <memory>
@@ -147,7 +148,7 @@ namespace actionet {
             if (no_transform_) return value;
             if (has_row_scale_) value *= row_scale_(obs_index);
             if (apply_log1p_) {
-                value = std::log1p(value);
+                value = static_cast<double>(fastlog(1.0f + static_cast<float>(value)));
                 if (log_scale_ != 1.0) value *= log_scale_;
             }
             return value;
@@ -157,7 +158,7 @@ namespace actionet {
         }
         inline double transform_scaled_(double value) const {
             if (apply_log1p_) {
-                value = std::log1p(value);
+                value = static_cast<double>(fastlog(1.0f + static_cast<float>(value)));
                 if (log_scale_ != 1.0) value *= log_scale_;
             }
             return value;

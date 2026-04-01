@@ -1,5 +1,6 @@
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 
+#include "fastapprox/fastlog.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -187,7 +188,7 @@ namespace actionet {
             }
             if (apply_log1p_) {
                 for (arma::uword c = 0; c < slab.n_cols; ++c) {
-                    double val = std::log1p(slab(r, c));
+                    double val = static_cast<double>(fastlog(1.0f + static_cast<float>(slab(r, c))));
                     if (apply_log_scale) {
                         val *= log_scale_;
                     }
