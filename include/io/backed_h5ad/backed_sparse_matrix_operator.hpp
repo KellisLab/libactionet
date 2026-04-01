@@ -43,6 +43,15 @@ namespace actionet {
     /// The underlying h5ad matrix is stored as obs x var (cells x genes).
     /// This operator exposes the native obs x var shape (cells x genes),
     /// matching the AnnData-native orientation contract (Plan 02).
+    ///
+    /// @par Log-transform approximation
+    /// When @c apply_log1p is true, elements are transformed using the
+    /// Paul Mineiro @c fastlog() approximation (float precision) instead of
+    /// @c std::log1p().  This yields ~0.3% peak relative error over the
+    /// typical count-data range and avoids the cost of a libm call per NNZ.
+    /// Because the computation is performed in @c float, values above ~16M
+    /// lose integer precision after the cast; for standard library-size
+    /// normalized single-cell data this is not a concern.
     class BackedSparseMatrixOperator final : public MatrixOperator {
     public:
         BackedSparseMatrixOperator(const std::string& file_path,

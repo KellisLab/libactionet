@@ -20,6 +20,15 @@ namespace actionet {
     /// is treated as an upper bound on rows-per-slab; the actual slab height is
     /// internally clamped to a byte budget (default 256 MiB) to keep peak memory
     /// bounded regardless of the number of features.
+    ///
+    /// @par Log-transform approximation
+    /// When @c apply_log1p is true, elements are transformed using the
+    /// Paul Mineiro @c fastlog() approximation (float precision) instead of
+    /// @c std::log1p().  This yields ~0.3% peak relative error over the
+    /// typical count-data range and avoids the cost of a libm call per NNZ.
+    /// Because the computation is performed in @c float, values above ~16M
+    /// lose integer precision after the cast; for standard library-size
+    /// normalized single-cell data this is not a concern.
     class BackedDenseMatrixOperator final : public MatrixOperator {
     public:
         /// @param file_path        Path to the .h5ad file.
