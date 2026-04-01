@@ -110,6 +110,7 @@ namespace actionet {
           is_csr_(true),
           apply_log1p_(apply_log1p),
           log_scale_(log_scale),
+          apply_log_scale_(apply_log1p && std::abs(log_scale - 1.0) > 0.0),
           has_row_scale_(!row_scale_factors.empty()),
           no_transform_(row_scale_factors.empty() && !apply_log1p),
           chunk_size_(std::max<arma::uword>(1, chunk_size)),
@@ -236,6 +237,7 @@ namespace actionet {
           is_csr_(other.is_csr_),
           apply_log1p_(other.apply_log1p_),
           log_scale_(other.log_scale_),
+          apply_log_scale_(other.apply_log_scale_),
           has_row_scale_(other.has_row_scale_),
           no_transform_(other.no_transform_),
           chunk_size_(other.chunk_size_),
@@ -266,6 +268,7 @@ namespace actionet {
             is_csr_ = other.is_csr_;
             apply_log1p_ = other.apply_log1p_;
             log_scale_ = other.log_scale_;
+            apply_log_scale_ = other.apply_log_scale_;
             has_row_scale_ = other.has_row_scale_;
             no_transform_ = other.no_transform_;
             chunk_size_ = other.chunk_size_;

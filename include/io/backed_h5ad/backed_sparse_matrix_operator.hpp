@@ -149,7 +149,7 @@ namespace actionet {
             if (has_row_scale_) value *= row_scale_(obs_index);
             if (apply_log1p_) {
                 value = static_cast<double>(fastlog(1.0f + static_cast<float>(value)));
-                if (log_scale_ != 1.0) value *= log_scale_;
+                if (apply_log_scale_) value *= log_scale_;
             }
             return value;
         }
@@ -159,7 +159,7 @@ namespace actionet {
         inline double transform_scaled_(double value) const {
             if (apply_log1p_) {
                 value = static_cast<double>(fastlog(1.0f + static_cast<float>(value)));
-                if (log_scale_ != 1.0) value *= log_scale_;
+                if (apply_log_scale_) value *= log_scale_;
             }
             return value;
         }
@@ -187,6 +187,7 @@ namespace actionet {
         bool is_csr_;
         bool apply_log1p_;
         double log_scale_;
+        bool apply_log_scale_;
         bool has_row_scale_;
         bool no_transform_;
         arma::uword chunk_size_;
