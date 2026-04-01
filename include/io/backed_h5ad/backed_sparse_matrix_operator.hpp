@@ -139,10 +139,23 @@ namespace actionet {
                                       std::vector<double>& data, std::vector<unsigned long long>& indices) const;
         void load_chunk_cached_(unsigned long long nnz_start, unsigned long long nnz_count,
                                 const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const;
+        void ensure_chunk_transformed_csr_(arma::uword row_start, arma::uword row_end,
+                                           unsigned long long nnz_start) const;
+        void ensure_chunk_transformed_csc_() const;
         arma::uword next_block_end_(arma::uword start, arma::uword limit) const;
         inline double transform_value_(arma::uword obs_index, double value) const {
             if (no_transform_) return value;
             if (has_row_scale_) value *= row_scale_(obs_index);
+            if (apply_log1p_) {
+                value = std::log1p(value);
+                if (log_scale_ != 1.0) value *= log_scale_;
+            }
+            return value;
+        }
+        inline double row_scale_for_(arma::uword obs_index) const {
+            return has_row_scale_ ? row_scale_(obs_index) : 1.0;
+        }
+        inline double transform_scaled_(double value) const {
             if (apply_log1p_) {
                 value = std::log1p(value);
                 if (log_scale_ != 1.0) value *= log_scale_;
@@ -195,6 +208,7 @@ namespace actionet {
         struct ChunkCache {
             unsigned long long start = 0;
             unsigned long long count = 0;
+            bool transformed = false;
             std::vector<double> data;
             std::vector<unsigned long long> indices;
         };
