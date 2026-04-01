@@ -3,6 +3,7 @@
 
 #include "decomposition/matrix_operator.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include <cmath>
 #include <hdf5.h>
 #include <memory>
 #include <string>
@@ -139,7 +140,15 @@ namespace actionet {
         void load_chunk_cached_(unsigned long long nnz_start, unsigned long long nnz_count,
                                 const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const;
         arma::uword next_block_end_(arma::uword start, arma::uword limit) const;
-        double transform_value_(arma::uword obs_index, double value) const;
+        inline double transform_value_(arma::uword obs_index, double value) const {
+            if (no_transform_) return value;
+            if (has_row_scale_) value *= row_scale_(obs_index);
+            if (apply_log1p_) {
+                value = std::log1p(value);
+                if (log_scale_ != 1.0) value *= log_scale_;
+            }
+            return value;
+        }
         void close_handles_();
 
         void matvec_csr_(const arma::vec& x, arma::vec& y) const;

@@ -362,22 +362,6 @@ namespace actionet {
         return std::max<arma::uword>(start + 1, end);
     }
 
-    double BackedSparseMatrixOperator::transform_value_(arma::uword obs_index, double value) const {
-        if (no_transform_) {
-            return value;
-        }
-        if (has_row_scale_) {
-            value *= row_scale_(obs_index);
-        }
-        if (apply_log1p_) {
-            value = std::log1p(value);
-            if (log_scale_ != 1.0) {
-                value *= log_scale_;
-            }
-        }
-        return value;
-    }
-
     void BackedSparseMatrixOperator::matvec(const arma::vec& x, arma::vec& y) const {
         // S is cells × genes.  matvec: y = S * x, x is gene-length, y is cell-length.
         if (x.n_elem != n_var_) {
