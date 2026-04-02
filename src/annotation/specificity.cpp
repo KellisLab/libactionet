@@ -1,6 +1,9 @@
 #include "annotation/specificity.hpp"
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "utils_internal/utils_matrix.hpp"
+#include "utils_internal/utils_parallel.hpp"
+#include <algorithm>
+#include <cmath>
 
 namespace {
 
@@ -19,35 +22,71 @@ arma::field<arma::mat> bernstein_tail_bounds(
         const arma::vec& row_factor,
         const arma::vec& col_p,
         const arma::mat& H_norm,
-        arma::uword n_obs) {
+        arma::uword n_obs,
+        int thread_no) {
 
     const arma::uword k = H_norm.n_cols;
     const double rho = arma::mean(col_p);
+    const double log10_e = std::log(10.0);
     arma::vec beta = (rho == 0.0) ? arma::zeros(n_obs) : arma::vec(col_p / rho);
 
-    arma::mat Gamma = H_norm;
-    arma::vec a(k);
-    for (arma::uword j = 0; j < k; ++j) {
-        Gamma.col(j) %= beta;
-        a(j) = arma::max(Gamma.col(j));
+    // Compute per-group Gamma summary statistics without materialising Gamma.
+    // This avoids an additional n_obs x k dense matrix allocation.
+    arma::rowvec gamma_sum(k, arma::fill::zeros);
+    arma::rowvec gamma_sq_sum(k, arma::fill::zeros);
+    arma::rowvec a(k, arma::fill::zeros);
+
+    const unsigned int threads_use_gamma = actionet::get_num_threads(
+        static_cast<unsigned int>(k), static_cast<unsigned int>(std::max(thread_no, 0)));
+    #pragma omp parallel for schedule(static) num_threads(threads_use_gamma) if(threads_use_gamma > 1 && k > 1)
+    for (arma::sword js = 0; js < static_cast<arma::sword>(k); ++js) {
+        const arma::uword j = static_cast<arma::uword>(js);
+        const arma::vec h_col = H_norm.col(j);
+        const arma::vec g_col = h_col % beta;
+        gamma_sum(j) = arma::accu(g_col);
+        gamma_sq_sum(j) = arma::dot(g_col, g_col);
+        a(j) = g_col.max();
     }
 
-    arma::mat Exp    = (row_p % row_factor) * arma::sum(Gamma, 0);
-    arma::mat Nu     = (row_p % arma::square(row_factor)) * arma::sum(arma::square(Gamma), 0);
-    arma::mat A      = row_factor * arma::trans(a);
-    arma::mat Lambda = Obs - Exp;
+    const arma::vec rp_rf = row_p % row_factor;
+    const arma::vec rp_rf2 = row_p % arma::square(row_factor);
 
-    arma::mat logPvals_lower = arma::square(Lambda) / (2.0 * Nu);
-    logPvals_lower(arma::find(Lambda >= 0)).zeros();
-    logPvals_lower.replace(arma::datum::nan, 0.0);
+    arma::mat logPvals_upper(Obs.n_rows, Obs.n_cols, arma::fill::zeros);
+    arma::mat logPvals_lower(Obs.n_rows, Obs.n_cols, arma::fill::zeros);
 
-    arma::mat logPvals_upper = arma::square(Lambda) / (2.0 * (Nu + (Lambda % A / 3.0)));
-    logPvals_upper(arma::find(Lambda <= 0)).zeros();
-    logPvals_upper.replace(arma::datum::nan, 0.0);
+    const unsigned int threads_use_tail = actionet::get_num_threads(
+        static_cast<unsigned int>(k), static_cast<unsigned int>(std::max(thread_no, 0)));
+    #pragma omp parallel for schedule(static) num_threads(threads_use_tail) if(threads_use_tail > 1 && k > 1)
+    for (arma::sword js = 0; js < static_cast<arma::sword>(k); ++js) {
+        const arma::uword j = static_cast<arma::uword>(js);
+        const double gs = gamma_sum(j);
+        const double gs2 = gamma_sq_sum(j);
+        const double aj = a(j);
 
-    const double log10_e = std::log(10.0);
-    logPvals_lower /= log10_e;
-    logPvals_upper /= log10_e;
+        for (arma::uword i = 0; i < Obs.n_rows; ++i) {
+            const double exp_ij = rp_rf(i) * gs;
+            const double nu_ij = rp_rf2(i) * gs2;
+            const double lambda_ij = Obs(i, j) - exp_ij;
+
+            if (lambda_ij < 0.0 && nu_ij > 0.0) {
+                const double lower = (lambda_ij * lambda_ij) / (2.0 * nu_ij);
+                if (std::isfinite(lower)) {
+                    logPvals_lower(i, j) = lower / log10_e;
+                }
+            }
+
+            if (lambda_ij > 0.0) {
+                const double A_ij = row_factor(i) * aj;
+                const double denom = 2.0 * (nu_ij + (lambda_ij * A_ij / 3.0));
+                if (denom > 0.0) {
+                    const double upper = (lambda_ij * lambda_ij) / denom;
+                    if (std::isfinite(upper)) {
+                        logPvals_upper(i, j) = upper / log10_e;
+                    }
+                }
+            }
+        }
+    }
 
     arma::field<arma::mat> res(3);
     res(0) = Obs / static_cast<double>(n_obs);
@@ -98,12 +137,12 @@ static void getProbsObs_dense(const arma::mat& S, const arma::mat& Ht,
 }
 
 // Sparse getProbsObs: iterate nonzeros only (no copy, no densification).
-// Also accumulates support_obs(g, j) = sum of Ht(r, j) over stored nonzeros
-// for gene g, needed for per-gene analytical shift correction.
+// Optionally accumulates support_obs(g, j) = sum of Ht(r, j) over stored
+// nonzeros for gene g, needed only when min-shift correction is required.
 static void getProbsObs_sparse(const arma::sp_mat& S, const arma::mat& Ht, int thread_no,
                                 arma::vec& row_factor, arma::vec& row_p,
                                 arma::vec& col_p, arma::mat& Obs,
-                                arma::mat& support_obs) {
+                                arma::mat* support_obs) {
     const arma::uword n_rows = S.n_rows;
     const arma::uword n_cols = S.n_cols;
     const arma::uword k = Ht.n_cols;
@@ -111,7 +150,9 @@ static void getProbsObs_sparse(const arma::sp_mat& S, const arma::mat& Ht, int t
     arma::vec gene_nnz = arma::zeros(n_cols);
     arma::vec cell_nnz = arma::zeros(n_rows);
     arma::vec gene_sum = arma::zeros(n_cols);
-    support_obs.zeros(n_cols, k);
+    if (support_obs != nullptr) {
+        support_obs->zeros(n_cols, k);
+    }
 
     for (auto it = S.begin(); it != S.end(); ++it) {
         double v = (*it);
@@ -122,7 +163,9 @@ static void getProbsObs_sparse(const arma::sp_mat& S, const arma::mat& Ht, int t
             cell_nnz(r) += 1.0;
         }
         gene_sum(c) += v;
-        support_obs.row(c) += Ht.row(r);
+        if (support_obs != nullptr) {
+            support_obs->row(c) += Ht.row(r);
+        }
     }
 
     row_factor = gene_sum / gene_nnz;
@@ -166,7 +209,7 @@ namespace actionet {
 
         stdout_printf("done\n");
         FLUSH;
-        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, S.n_rows);
+        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, S.n_rows, thread_no);
     }
 
     // In-memory sparse path: no copy, no densification.
@@ -181,8 +224,13 @@ namespace actionet {
 
         arma::vec row_factor, row_p, col_p;
         arma::mat Obs, support_obs;
+        arma::mat* support_obs_ptr = nullptr;
 
-        getProbsObs_sparse(S, H_norm, thread_no, row_factor, row_p, col_p, Obs, support_obs);
+        if (min_val < 0.0) {
+            support_obs_ptr = &support_obs;
+        }
+
+        getProbsObs_sparse(S, H_norm, thread_no, row_factor, row_p, col_p, Obs, support_obs_ptr);
 
         if (min_val < 0.0) {
             double shift = -min_val;
@@ -194,7 +242,7 @@ namespace actionet {
 
         stdout_printf("done\n");
         FLUSH;
-        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, S.n_rows);
+        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, S.n_rows, thread_no);
     }
 
     // Label-based overloads: build H from labels and delegate.
@@ -229,7 +277,6 @@ namespace actionet {
         arma::vec& col_count,
         arma::vec& row_factor_sum_orig,
         arma::mat& obs_orig,
-        arma::mat& support_obs,
         double& min_stored)
     {
         const arma::uword n_obs = op.n_obs_;
@@ -240,7 +287,6 @@ namespace actionet {
         col_count.zeros(n_obs);
         row_factor_sum_orig.zeros(n_var);
         obs_orig.zeros(n_var, H_norm_t.n_cols);
-        support_obs.zeros(n_var, H_norm_t.n_cols);
         min_stored = 0.0;
 
         const std::vector<double>* data;
@@ -272,7 +318,6 @@ namespace actionet {
                     }
                     row_factor_sum_orig(c) += v;
                     obs_orig.row(c)        += v * h_row;
-                    support_obs.row(c)     += h_row;
                 }
             }
         }
@@ -285,7 +330,6 @@ namespace actionet {
         arma::vec& col_count,
         arma::vec& row_factor_sum_orig,
         arma::mat& obs_orig,
-        arma::mat& support_obs,
         double& min_stored)
     {
         const arma::uword n_obs = op.n_obs_;
@@ -296,7 +340,6 @@ namespace actionet {
         col_count.zeros(n_obs);
         row_factor_sum_orig.zeros(n_var);
         obs_orig.zeros(n_var, H_norm_t.n_cols);
-        support_obs.zeros(n_var, H_norm_t.n_cols);
         min_stored = 0.0;
 
         const std::vector<double>* data;
@@ -328,14 +371,84 @@ namespace actionet {
 
                     const arma::rowvec h_row = H_norm_t.row(r);
                     obs_orig.row(c)    += v * h_row;
+                }
+            }
+        }
+    }
+
+    void backed_specificity_support_csr_(
+        const BackedSparseMatrixOperator& op,
+        const arma::mat& H_norm_t,
+        arma::mat& support_obs)
+    {
+        const arma::uword n_obs = op.n_obs_;
+        const arma::uword n_var = op.n_var_;
+        const arma::uword cs    = op.chunk_size_;
+
+        support_obs.zeros(n_var, H_norm_t.n_cols);
+
+        const std::vector<double>* data;
+        const std::vector<unsigned long long>* indices;
+
+        for (arma::uword row_start = 0; row_start < n_obs; row_start += cs) {
+            const arma::uword row_end = std::min<arma::uword>(n_obs, row_start + cs);
+            const unsigned long long nnz_start = op.indptr_[row_start];
+            const unsigned long long nnz_end   = op.indptr_[row_end];
+            const unsigned long long nnz_count  = nnz_end - nnz_start;
+
+            op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
+
+            for (arma::uword r = row_start; r < row_end; ++r) {
+                const unsigned long long p0 = op.indptr_[r]     - nnz_start;
+                const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
+                const arma::rowvec h_row = H_norm_t.row(r);
+
+                for (unsigned long long p = p0; p < p1; ++p) {
+                    const arma::uword c = static_cast<arma::uword>(
+                        (*indices)[static_cast<size_t>(p)]);
                     support_obs.row(c) += h_row;
                 }
             }
         }
     }
 
+    void backed_specificity_support_csc_(
+        const BackedSparseMatrixOperator& op,
+        const arma::mat& H_norm_t,
+        arma::mat& support_obs)
+    {
+        const arma::uword n_obs = op.n_obs_;
+        const arma::uword n_var = op.n_var_;
+        const arma::uword cs    = op.chunk_size_;
+
+        support_obs.zeros(n_var, H_norm_t.n_cols);
+
+        const std::vector<double>* data;
+        const std::vector<unsigned long long>* indices;
+
+        for (arma::uword col_start = 0; col_start < n_var; col_start += cs) {
+            const arma::uword col_end = std::min<arma::uword>(n_var, col_start + cs);
+            const unsigned long long nnz_start = op.indptr_[col_start];
+            const unsigned long long nnz_end   = op.indptr_[col_end];
+            const unsigned long long nnz_count  = nnz_end - nnz_start;
+
+            op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
+
+            for (arma::uword c = col_start; c < col_end; ++c) {
+                const unsigned long long p0 = op.indptr_[c]     - nnz_start;
+                const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+
+                for (unsigned long long p = p0; p < p1; ++p) {
+                    const arma::uword r = static_cast<arma::uword>(
+                        (*indices)[static_cast<size_t>(p)]);
+                    support_obs.row(c) += H_norm_t.row(r);
+                }
+            }
+        }
+    }
+
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     const arma::mat& H, int /*thread_no*/) {
+                                                     const arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity (backed sparse) ... ");
 
         const arma::uword n_obs = op.n_obs_;
@@ -344,20 +457,30 @@ namespace actionet {
         arma::mat H_norm = normalise_H(H);
 
         arma::vec row_count, col_count, row_factor_sum_orig;
-        arma::mat obs_orig, support_obs;
+        arma::mat obs_orig;
         double min_stored;
 
         if (op.is_csr_) {
             backed_specificity_scan_csr_(op, H_norm, row_count, col_count,
-                                         row_factor_sum_orig, obs_orig, support_obs, min_stored);
+                                         row_factor_sum_orig, obs_orig, min_stored);
         } else {
             backed_specificity_scan_csc_(op, H_norm, row_count, col_count,
-                                         row_factor_sum_orig, obs_orig, support_obs, min_stored);
+                                         row_factor_sum_orig, obs_orig, min_stored);
         }
 
         const double shift = (min_stored < 0.0) ? -min_stored : 0.0;
         arma::vec row_factor_sum = row_factor_sum_orig + shift * row_count;
-        arma::mat Obs = obs_orig + shift * support_obs;
+        arma::mat Obs = obs_orig;
+
+        if (shift > 0.0) {
+            arma::mat support_obs;
+            if (op.is_csr_) {
+                backed_specificity_support_csr_(op, H_norm, support_obs);
+            } else {
+                backed_specificity_support_csc_(op, H_norm, support_obs);
+            }
+            Obs += shift * support_obs;
+        }
 
         arma::vec row_factor = arma::zeros(n_var);
         for (arma::uword i = 0; i < n_var; ++i) {
@@ -368,7 +491,7 @@ namespace actionet {
 
         stdout_printf("done\n");
         FLUSH;
-        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, n_obs);
+        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, n_obs, thread_no);
     }
 
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
@@ -403,6 +526,8 @@ namespace actionet {
 
         row_factor_sum.zeros(n_var);
         global_min = std::numeric_limits<double>::infinity();
+        row_count.zeros(n_var);
+        col_count.zeros(n_obs);
 
         arma::mat slab;
         for (arma::uword obs_start = 0; obs_start < n_obs; obs_start += cs) {
@@ -410,17 +535,33 @@ namespace actionet {
             op.readSlab(obs_start, obs_count, slab);
             const double chunk_min = slab.min();
             if (chunk_min < global_min) global_min = chunk_min;
-        }
-        if (!std::isfinite(global_min)) global_min = 0.0;
 
-        row_count.zeros(n_var);
-        col_count.zeros(n_obs);
+            row_factor_sum += arma::sum(slab, 0).t();
+
+            for (arma::uword r = 0; r < obs_count; ++r) {
+                for (arma::uword c = 0; c < n_var; ++c) {
+                    if (slab(r, c) > 0.0) {
+                        row_count(c) += 1.0;
+                        col_count(obs_start + r) += 1.0;
+                    }
+                }
+            }
+        }
+
+        if (!std::isfinite(global_min)) global_min = 0.0;
+        if (global_min == 0.0) {
+            return;
+        }
+
+        // Non-zero shift: recompute shifted row counts/sums exactly.
+        row_factor_sum.zeros();
+        row_count.zeros();
+        col_count.zeros();
 
         for (arma::uword obs_start = 0; obs_start < n_obs; obs_start += cs) {
             const arma::uword obs_count = std::min(cs, n_obs - obs_start);
             op.readSlab(obs_start, obs_count, slab);
-
-            if (global_min != 0.0) slab -= global_min;
+            slab -= global_min;
 
             row_factor_sum += arma::sum(slab, 0).t();
 
@@ -465,7 +606,7 @@ namespace actionet {
 
         stdout_printf("done\n");
         FLUSH;
-        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, n_obs);
+        return bernstein_tail_bounds(Obs, row_p, row_factor, col_p, H_norm, n_obs, thread_no);
     }
 
     arma::field<arma::mat> computeFeatureSpecificity(BackedDenseMatrixOperator& op,

@@ -65,7 +65,7 @@ namespace actionet {
     ///
     /// @param op        Backed sparse matrix operator (obs × var, i.e. cells × genes).
     /// @param H         Group membership / archetype weight matrix (cells × k).
-    /// @param thread_no Reserved for future use; currently ignored.
+    /// @param thread_no Thread hint for internal OpenMP loops (0 = auto).
     ///
     /// @return Same field layout as the in-memory overloads.
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
@@ -78,7 +78,7 @@ namespace actionet {
     ///
     /// @param op        Backed sparse matrix operator (obs × var, i.e. cells × genes).
     /// @param labels    Cluster labels (1-based, length = n_cells).
-    /// @param thread_no Reserved for future use; currently ignored.
+    /// @param thread_no Thread hint for internal OpenMP loops (0 = auto).
     ///
     /// @return Same field layout as the in-memory overloads.
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
@@ -99,7 +99,7 @@ namespace actionet {
     ///
     /// @param op        Backed dense matrix operator (obs × var, i.e. cells × genes).
     /// @param H         Group membership / archetype weight matrix (cells × k).
-    /// @param thread_no Reserved for future use; currently ignored.
+    /// @param thread_no Thread hint for internal OpenMP loops (0 = auto).
     ///
     /// @return Same field layout as the in-memory overloads.
     arma::field<arma::mat> computeFeatureSpecificity(BackedDenseMatrixOperator& op,
@@ -112,7 +112,7 @@ namespace actionet {
     ///
     /// @param op        Backed dense matrix operator (obs × var, i.e. cells × genes).
     /// @param labels    Cluster labels (1-based, length = n_cells).
-    /// @param thread_no Reserved for future use; currently ignored.
+    /// @param thread_no Thread hint for internal OpenMP loops (0 = auto).
     ///
     /// @return Same field layout as the in-memory overloads.
     arma::field<arma::mat> computeFeatureSpecificity(BackedDenseMatrixOperator& op,

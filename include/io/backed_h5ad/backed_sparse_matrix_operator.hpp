@@ -27,7 +27,6 @@ namespace actionet {
                                       arma::vec& col_count,
                                       arma::vec& row_factor_sum_orig,
                                       arma::mat& obs_orig,
-                                      arma::mat& support_obs,
                                       double& min_stored);
     void backed_specificity_scan_csc_(const BackedSparseMatrixOperator& op,
                                       const arma::mat& H_norm_t,
@@ -35,8 +34,13 @@ namespace actionet {
                                       arma::vec& col_count,
                                       arma::vec& row_factor_sum_orig,
                                       arma::mat& obs_orig,
-                                      arma::mat& support_obs,
                                       double& min_stored);
+    void backed_specificity_support_csr_(const BackedSparseMatrixOperator& op,
+                                         const arma::mat& H_norm_t,
+                                         arma::mat& support_obs);
+    void backed_specificity_support_csc_(const BackedSparseMatrixOperator& op,
+                                         const arma::mat& H_norm_t,
+                                         arma::mat& support_obs);
 
     /// @brief MatrixOperator implementation backed by sparse AnnData h5ad storage.
     ///
@@ -132,7 +136,6 @@ namespace actionet {
                                                  arma::vec& col_count,
                                                  arma::vec& row_factor_sum_orig,
                                                  arma::mat& obs_orig,
-                                                 arma::mat& support_obs,
                                                  double& min_stored);
         friend void backed_specificity_scan_csc_(const BackedSparseMatrixOperator& op,
                                                  const arma::mat& H_norm_t,
@@ -140,8 +143,13 @@ namespace actionet {
                                                  arma::vec& col_count,
                                                  arma::vec& row_factor_sum_orig,
                                                  arma::mat& obs_orig,
-                                                 arma::mat& support_obs,
                                                  double& min_stored);
+        friend void backed_specificity_support_csr_(const BackedSparseMatrixOperator& op,
+                                                    const arma::mat& H_norm_t,
+                                                    arma::mat& support_obs);
+        friend void backed_specificity_support_csc_(const BackedSparseMatrixOperator& op,
+                                                    const arma::mat& H_norm_t,
+                                                    arma::mat& support_obs);
         static std::string read_string_attribute_(hid_t object_id, const char* name);
         static std::vector<long long> read_shape_attribute_(hid_t object_id, const char* name);
 
