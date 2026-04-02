@@ -146,12 +146,22 @@ namespace actionet {
         arma::vec row_factor, row_p, col_p;
         arma::mat Obs;
 
-        if (min_val == 0.0) {
-            getProbsObs_dense(S, H_norm, row_factor, row_p, col_p, Obs);
-        } else {
-            arma::mat S_shifted = S;
-            S_shifted -= min_val;
-            getProbsObs_dense(S_shifted, H_norm, row_factor, row_p, col_p, Obs);
+        getProbsObs_dense(S, H_norm, row_factor, row_p, col_p, Obs);
+
+        // Apply min-shift analytically: for a dense matrix every cell contributes
+        // to every gene's support, so support_obs == sum(H_norm, 0) broadcast over
+        // genes.  This avoids a full O(n_cells * n_genes) matrix copy.
+        if (min_val != 0.0) {
+            const double shift = -min_val;
+            // Obs correction: each gene gets shift * (sum of H_norm rows) = shift * H_norm_colsums
+            arma::rowvec H_norm_colsums = arma::sum(H_norm, 0);
+            Obs += shift * arma::ones(S.n_cols, 1) * H_norm_colsums;
+            // row_factor = mean nonzero value; after shift all values > 0, so
+            // row_factor_new = (gene_sum + shift * n_rows) / n_rows = old_mean + shift
+            // (gene_nnz becomes n_rows and gene_sum increases by shift * n_rows)
+            row_factor += shift;
+            row_p.ones();
+            col_p.ones();
         }
 
         stdout_printf("done\n");
@@ -188,14 +198,13 @@ namespace actionet {
     }
 
     // Label-based overloads: build H from labels and delegate.
+    // Single O(n_cells) scatter: avoids k full scans via arma::find.
     template <typename T>
     arma::field<arma::mat> computeFeatureSpecificity(const T& S, const arma::uvec& labels, int thread_no) {
-        arma::mat H(S.n_rows, arma::max(labels), arma::fill::zeros);
-        for (arma::uword i = 1; i <= arma::max(labels); i++) {
-            arma::uvec idx = arma::find(labels == i);
-            for (arma::uword j : idx) {
-                H(j, i - 1) = 1.0;
-            }
+        const arma::uword max_label = arma::max(labels);
+        arma::mat H(S.n_rows, max_label, arma::fill::zeros);
+        for (arma::uword j = 0; j < S.n_rows; ++j) {
+            if (labels(j) > 0) H(j, labels(j) - 1) = 1.0;
         }
         return computeFeatureSpecificity(S, H, thread_no);
     }
@@ -366,9 +375,8 @@ namespace actionet {
                                                      const arma::uvec& labels, int thread_no) {
         const arma::uword max_label = arma::max(labels);
         arma::mat H(op.n_obs_, max_label, arma::fill::zeros);
-        for (arma::uword i = 1; i <= max_label; ++i) {
-            arma::uvec idx = arma::find(labels == i);
-            for (arma::uword j : idx) H(j, i - 1) = 1.0;
+        for (arma::uword j = 0; j < op.n_obs_; ++j) {
+            if (labels(j) > 0) H(j, labels(j) - 1) = 1.0;
         }
         return computeFeatureSpecificity(op, H, thread_no);
     }
@@ -464,9 +472,8 @@ namespace actionet {
                                                      const arma::uvec& labels, int thread_no) {
         const arma::uword max_label = arma::max(labels);
         arma::mat H(op.rows(), max_label, arma::fill::zeros);
-        for (arma::uword i = 1; i <= max_label; ++i) {
-            arma::uvec idx = arma::find(labels == i);
-            for (arma::uword j : idx) H(j, i - 1) = 1.0;
+        for (arma::uword j = 0; j < op.rows(); ++j) {
+            if (labels(j) > 0) H(j, labels(j) - 1) = 1.0;
         }
         return computeFeatureSpecificity(op, H, thread_no);
     }
