@@ -235,4 +235,34 @@ namespace actionet {
                                               norm_method, alpha, max_it, approx, thread_no);
     }
 
+    // ------------------------------------------------------------------
+    // Pre-computed stats entry point
+    // ------------------------------------------------------------------
+
+    arma::mat computeFeatureStatsVisionFromStats(
+        arma::sp_mat& G,
+        arma::mat& stats,
+        arma::vec& mu,
+        arma::vec& sigma_sq,
+        arma::sp_mat& X,
+        int norm_method, double alpha, int max_it,
+        bool approx, int thread_no) {
+
+        if (stats.n_rows != G.n_rows) {
+            throw std::invalid_argument("Incompatible dimensions (stats.n_rows != G.n_rows)");
+        }
+        if (stats.n_cols != X.n_cols) {
+            throw std::invalid_argument("Incompatible dimensions (stats.n_cols != X.n_cols)");
+        }
+        if (mu.n_elem != stats.n_rows) {
+            throw std::invalid_argument("Incompatible dimensions (mu.n_elem != stats.n_rows)");
+        }
+        if (sigma_sq.n_elem != stats.n_rows) {
+            throw std::invalid_argument("Incompatible dimensions (sigma_sq.n_elem != stats.n_rows)");
+        }
+
+        return vision_standardize_and_smooth_(stats, mu, sigma_sq, X, G,
+                                              norm_method, alpha, max_it, approx, thread_no);
+    }
+
 } // namespace actionet
