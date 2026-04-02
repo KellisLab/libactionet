@@ -277,16 +277,20 @@ namespace actionet {
         arma::vec& col_count,
         arma::vec& row_factor_sum_orig,
         arma::mat& obs_orig,
-        double& min_stored)
+        double& min_stored,
+        int thread_no)
     {
         const arma::uword n_obs = op.n_obs_;
         const arma::uword n_var = op.n_var_;
+        const arma::uword k     = H_norm_t.n_cols;
         const arma::uword cs    = op.chunk_size_;
+        const unsigned int threads_use_obs = actionet::get_num_threads(
+            static_cast<unsigned int>(k), static_cast<unsigned int>(std::max(thread_no, 0)));
 
         row_count.zeros(n_var);
         col_count.zeros(n_obs);
         row_factor_sum_orig.zeros(n_var);
-        obs_orig.zeros(n_var, H_norm_t.n_cols);
+        obs_orig.zeros(n_var, k);
         min_stored = 0.0;
 
         const std::vector<double>* data;
@@ -299,25 +303,64 @@ namespace actionet {
             const unsigned long long nnz_count  = nnz_end - nnz_start;
 
             op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
+            op.ensure_chunk_transformed_csr_(row_start, row_end, nnz_start);
 
+            // Pass 1: scalar scan for support counts/sums and min.
             for (arma::uword r = row_start; r < row_end; ++r) {
                 const unsigned long long p0 = op.indptr_[r]     - nnz_start;
                 const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
-
-                const arma::rowvec h_row = H_norm_t.row(r);
+                double row_pos = 0.0;
 
                 for (unsigned long long p = p0; p < p1; ++p) {
                     const arma::uword c = static_cast<arma::uword>(
                         (*indices)[static_cast<size_t>(p)]);
-                    const double v = op.transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                    const double v = (*data)[static_cast<size_t>(p)];
 
                     if (v < min_stored) min_stored = v;
                     if (v > 0.0) {
                         row_count(c) += 1.0;
-                        col_count(r) += 1.0;
+                        row_pos += 1.0;
                     }
                     row_factor_sum_orig(c) += v;
-                    obs_orig.row(c)        += v * h_row;
+                }
+                col_count(r) = row_pos;
+            }
+
+            // Pass 2: Obs accumulation parallelized across specificity columns.
+            if (threads_use_obs > 1 && k > 1) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use_obs)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(k); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* h_col = H_norm_t.colptr(j);
+                    double* obs_col = obs_orig.colptr(j);
+
+                    for (arma::uword r = row_start; r < row_end; ++r) {
+                        const double h = h_col[r];
+                        if (h == 0.0) continue;
+
+                        const unsigned long long p0 = op.indptr_[r]     - nnz_start;
+                        const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
+                        for (unsigned long long p = p0; p < p1; ++p) {
+                            const arma::uword c = static_cast<arma::uword>(
+                                (*indices)[static_cast<size_t>(p)]);
+                            obs_col[c] += (*data)[static_cast<size_t>(p)] * h;
+                        }
+                    }
+                }
+            } else {
+                for (arma::uword r = row_start; r < row_end; ++r) {
+                    const unsigned long long p0 = op.indptr_[r]     - nnz_start;
+                    const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
+
+                    for (unsigned long long p = p0; p < p1; ++p) {
+                        const arma::uword c = static_cast<arma::uword>(
+                            (*indices)[static_cast<size_t>(p)]);
+                        const double v = (*data)[static_cast<size_t>(p)];
+                        double* obs_base = obs_orig.memptr() + c;
+                        for (arma::uword j = 0; j < k; ++j) {
+                            obs_base[j * n_var] += v * H_norm_t(r, j);
+                        }
+                    }
                 }
             }
         }
@@ -330,16 +373,20 @@ namespace actionet {
         arma::vec& col_count,
         arma::vec& row_factor_sum_orig,
         arma::mat& obs_orig,
-        double& min_stored)
+        double& min_stored,
+        int thread_no)
     {
         const arma::uword n_obs = op.n_obs_;
         const arma::uword n_var = op.n_var_;
+        const arma::uword k     = H_norm_t.n_cols;
         const arma::uword cs    = op.chunk_size_;
+        const unsigned int threads_use_obs = actionet::get_num_threads(
+            static_cast<unsigned int>(k), static_cast<unsigned int>(std::max(thread_no, 0)));
 
         row_count.zeros(n_var);
         col_count.zeros(n_obs);
         row_factor_sum_orig.zeros(n_var);
-        obs_orig.zeros(n_var, H_norm_t.n_cols);
+        obs_orig.zeros(n_var, k);
         min_stored = 0.0;
 
         const std::vector<double>* data;
@@ -352,7 +399,9 @@ namespace actionet {
             const unsigned long long nnz_count  = nnz_end - nnz_start;
 
             op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
+            op.ensure_chunk_transformed_csc_();
 
+            // Pass 1: scalar scan for support counts/sums and min.
             for (arma::uword c = col_start; c < col_end; ++c) {
                 const unsigned long long p0 = op.indptr_[c]     - nnz_start;
                 const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
@@ -360,7 +409,7 @@ namespace actionet {
                 for (unsigned long long p = p0; p < p1; ++p) {
                     const arma::uword r = static_cast<arma::uword>(
                         (*indices)[static_cast<size_t>(p)]);
-                    const double v = op.transform_value_(r, (*data)[static_cast<size_t>(p)]);
+                    const double v = (*data)[static_cast<size_t>(p)];
 
                     if (v < min_stored) min_stored = v;
                     if (v > 0.0) {
@@ -368,9 +417,42 @@ namespace actionet {
                         col_count(r) += 1.0;
                     }
                     row_factor_sum_orig(c) += v;
+                }
+            }
 
-                    const arma::rowvec h_row = H_norm_t.row(r);
-                    obs_orig.row(c)    += v * h_row;
+            // Pass 2: Obs accumulation parallelized across specificity columns.
+            if (threads_use_obs > 1 && k > 1) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use_obs)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(k); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* h_col = H_norm_t.colptr(j);
+                    double* obs_col = obs_orig.colptr(j);
+                    for (arma::uword c = col_start; c < col_end; ++c) {
+                        const unsigned long long p0 = op.indptr_[c]     - nnz_start;
+                        const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+                        double acc = 0.0;
+                        for (unsigned long long p = p0; p < p1; ++p) {
+                            const arma::uword r = static_cast<arma::uword>(
+                                (*indices)[static_cast<size_t>(p)]);
+                            acc += (*data)[static_cast<size_t>(p)] * h_col[r];
+                        }
+                        obs_col[c] += acc;
+                    }
+                }
+            } else {
+                for (arma::uword c = col_start; c < col_end; ++c) {
+                    const unsigned long long p0 = op.indptr_[c]     - nnz_start;
+                    const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+
+                    for (unsigned long long p = p0; p < p1; ++p) {
+                        const arma::uword r = static_cast<arma::uword>(
+                            (*indices)[static_cast<size_t>(p)]);
+                        const double v = (*data)[static_cast<size_t>(p)];
+                        double* obs_base = obs_orig.memptr() + c;
+                        for (arma::uword j = 0; j < k; ++j) {
+                            obs_base[j * n_var] += v * H_norm_t(r, j);
+                        }
+                    }
                 }
             }
         }
@@ -379,13 +461,18 @@ namespace actionet {
     void backed_specificity_support_csr_(
         const BackedSparseMatrixOperator& op,
         const arma::mat& H_norm_t,
-        arma::mat& support_obs)
+        arma::mat& obs_out,
+        double shift,
+        int thread_no)
     {
         const arma::uword n_obs = op.n_obs_;
         const arma::uword n_var = op.n_var_;
+        const arma::uword k     = H_norm_t.n_cols;
         const arma::uword cs    = op.chunk_size_;
+        const unsigned int threads_use_obs = actionet::get_num_threads(
+            static_cast<unsigned int>(k), static_cast<unsigned int>(std::max(thread_no, 0)));
 
-        support_obs.zeros(n_var, H_norm_t.n_cols);
+        if (shift == 0.0) return;
 
         const std::vector<double>* data;
         const std::vector<unsigned long long>* indices;
@@ -398,15 +485,37 @@ namespace actionet {
 
             op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
-            for (arma::uword r = row_start; r < row_end; ++r) {
-                const unsigned long long p0 = op.indptr_[r]     - nnz_start;
-                const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
-                const arma::rowvec h_row = H_norm_t.row(r);
+            if (threads_use_obs > 1 && k > 1) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use_obs)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(k); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* h_col = H_norm_t.colptr(j);
+                    double* obs_col = obs_out.colptr(j);
+                    for (arma::uword r = row_start; r < row_end; ++r) {
+                        const double scaled_h = shift * h_col[r];
+                        if (scaled_h == 0.0) continue;
+                        const unsigned long long p0 = op.indptr_[r]     - nnz_start;
+                        const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
+                        for (unsigned long long p = p0; p < p1; ++p) {
+                            const arma::uword c = static_cast<arma::uword>(
+                                (*indices)[static_cast<size_t>(p)]);
+                            obs_col[c] += scaled_h;
+                        }
+                    }
+                }
+            } else {
+                for (arma::uword r = row_start; r < row_end; ++r) {
+                    const unsigned long long p0 = op.indptr_[r]     - nnz_start;
+                    const unsigned long long p1 = op.indptr_[r + 1] - nnz_start;
 
-                for (unsigned long long p = p0; p < p1; ++p) {
-                    const arma::uword c = static_cast<arma::uword>(
-                        (*indices)[static_cast<size_t>(p)]);
-                    support_obs.row(c) += h_row;
+                    for (unsigned long long p = p0; p < p1; ++p) {
+                        const arma::uword c = static_cast<arma::uword>(
+                            (*indices)[static_cast<size_t>(p)]);
+                        double* obs_base = obs_out.memptr() + c;
+                        for (arma::uword j = 0; j < k; ++j) {
+                            obs_base[j * n_var] += shift * H_norm_t(r, j);
+                        }
+                    }
                 }
             }
         }
@@ -415,13 +524,18 @@ namespace actionet {
     void backed_specificity_support_csc_(
         const BackedSparseMatrixOperator& op,
         const arma::mat& H_norm_t,
-        arma::mat& support_obs)
+        arma::mat& obs_out,
+        double shift,
+        int thread_no)
     {
         const arma::uword n_obs = op.n_obs_;
         const arma::uword n_var = op.n_var_;
+        const arma::uword k     = H_norm_t.n_cols;
         const arma::uword cs    = op.chunk_size_;
+        const unsigned int threads_use_obs = actionet::get_num_threads(
+            static_cast<unsigned int>(k), static_cast<unsigned int>(std::max(thread_no, 0)));
 
-        support_obs.zeros(n_var, H_norm_t.n_cols);
+        if (shift == 0.0) return;
 
         const std::vector<double>* data;
         const std::vector<unsigned long long>* indices;
@@ -434,14 +548,38 @@ namespace actionet {
 
             op.load_chunk_cached_(nnz_start, nnz_count, data, indices);
 
-            for (arma::uword c = col_start; c < col_end; ++c) {
-                const unsigned long long p0 = op.indptr_[c]     - nnz_start;
-                const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+            if (threads_use_obs > 1 && k > 1) {
+                #pragma omp parallel for schedule(static) num_threads(threads_use_obs)
+                for (arma::sword js = 0; js < static_cast<arma::sword>(k); ++js) {
+                    const arma::uword j = static_cast<arma::uword>(js);
+                    const double* h_col = H_norm_t.colptr(j);
+                    double* obs_col = obs_out.colptr(j);
 
-                for (unsigned long long p = p0; p < p1; ++p) {
-                    const arma::uword r = static_cast<arma::uword>(
-                        (*indices)[static_cast<size_t>(p)]);
-                    support_obs.row(c) += H_norm_t.row(r);
+                    for (arma::uword c = col_start; c < col_end; ++c) {
+                        const unsigned long long p0 = op.indptr_[c]     - nnz_start;
+                        const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+                        double acc = 0.0;
+                        for (unsigned long long p = p0; p < p1; ++p) {
+                            const arma::uword r = static_cast<arma::uword>(
+                                (*indices)[static_cast<size_t>(p)]);
+                            acc += h_col[r];
+                        }
+                        obs_col[c] += shift * acc;
+                    }
+                }
+            } else {
+                for (arma::uword c = col_start; c < col_end; ++c) {
+                    const unsigned long long p0 = op.indptr_[c]     - nnz_start;
+                    const unsigned long long p1 = op.indptr_[c + 1] - nnz_start;
+
+                    for (unsigned long long p = p0; p < p1; ++p) {
+                        const arma::uword r = static_cast<arma::uword>(
+                            (*indices)[static_cast<size_t>(p)]);
+                        double* obs_base = obs_out.memptr() + c;
+                        for (arma::uword j = 0; j < k; ++j) {
+                            obs_base[j * n_var] += shift * H_norm_t(r, j);
+                        }
+                    }
                 }
             }
         }
@@ -462,10 +600,10 @@ namespace actionet {
 
         if (op.is_csr_) {
             backed_specificity_scan_csr_(op, H_norm, row_count, col_count,
-                                         row_factor_sum_orig, obs_orig, min_stored);
+                                         row_factor_sum_orig, obs_orig, min_stored, thread_no);
         } else {
             backed_specificity_scan_csc_(op, H_norm, row_count, col_count,
-                                         row_factor_sum_orig, obs_orig, min_stored);
+                                         row_factor_sum_orig, obs_orig, min_stored, thread_no);
         }
 
         const double shift = (min_stored < 0.0) ? -min_stored : 0.0;
@@ -473,13 +611,11 @@ namespace actionet {
         arma::mat Obs = obs_orig;
 
         if (shift > 0.0) {
-            arma::mat support_obs;
             if (op.is_csr_) {
-                backed_specificity_support_csr_(op, H_norm, support_obs);
+                backed_specificity_support_csr_(op, H_norm, Obs, shift, thread_no);
             } else {
-                backed_specificity_support_csc_(op, H_norm, support_obs);
+                backed_specificity_support_csc_(op, H_norm, Obs, shift, thread_no);
             }
-            Obs += shift * support_obs;
         }
 
         arma::vec row_factor = arma::zeros(n_var);

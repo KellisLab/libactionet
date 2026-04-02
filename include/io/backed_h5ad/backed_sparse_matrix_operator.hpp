@@ -27,20 +27,26 @@ namespace actionet {
                                       arma::vec& col_count,
                                       arma::vec& row_factor_sum_orig,
                                       arma::mat& obs_orig,
-                                      double& min_stored);
+                                      double& min_stored,
+                                      int thread_no);
     void backed_specificity_scan_csc_(const BackedSparseMatrixOperator& op,
                                       const arma::mat& H_norm_t,
                                       arma::vec& row_count,
                                       arma::vec& col_count,
                                       arma::vec& row_factor_sum_orig,
                                       arma::mat& obs_orig,
-                                      double& min_stored);
+                                      double& min_stored,
+                                      int thread_no);
     void backed_specificity_support_csr_(const BackedSparseMatrixOperator& op,
                                          const arma::mat& H_norm_t,
-                                         arma::mat& support_obs);
+                                         arma::mat& obs_out,
+                                         double shift,
+                                         int thread_no);
     void backed_specificity_support_csc_(const BackedSparseMatrixOperator& op,
                                          const arma::mat& H_norm_t,
-                                         arma::mat& support_obs);
+                                         arma::mat& obs_out,
+                                         double shift,
+                                         int thread_no);
 
     /// @brief MatrixOperator implementation backed by sparse AnnData h5ad storage.
     ///
@@ -136,20 +142,26 @@ namespace actionet {
                                                  arma::vec& col_count,
                                                  arma::vec& row_factor_sum_orig,
                                                  arma::mat& obs_orig,
-                                                 double& min_stored);
+                                                 double& min_stored,
+                                                 int thread_no);
         friend void backed_specificity_scan_csc_(const BackedSparseMatrixOperator& op,
                                                  const arma::mat& H_norm_t,
                                                  arma::vec& row_count,
                                                  arma::vec& col_count,
                                                  arma::vec& row_factor_sum_orig,
                                                  arma::mat& obs_orig,
-                                                 double& min_stored);
+                                                 double& min_stored,
+                                                 int thread_no);
         friend void backed_specificity_support_csr_(const BackedSparseMatrixOperator& op,
                                                     const arma::mat& H_norm_t,
-                                                    arma::mat& support_obs);
+                                                    arma::mat& obs_out,
+                                                    double shift,
+                                                    int thread_no);
         friend void backed_specificity_support_csc_(const BackedSparseMatrixOperator& op,
                                                     const arma::mat& H_norm_t,
-                                                    arma::mat& support_obs);
+                                                    arma::mat& obs_out,
+                                                    double shift,
+                                                    int thread_no);
         static std::string read_string_attribute_(hid_t object_id, const char* name);
         static std::vector<long long> read_shape_attribute_(hid_t object_id, const char* name);
 
