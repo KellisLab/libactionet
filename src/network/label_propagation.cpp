@@ -13,7 +13,8 @@ namespace actionet {
         arma::sp_mat H = G;
         H.diag().ones();
         H.diag() *= lambda; // add "inertia"
-        H = n * normalizeGraph(H, 1); // row-normalize to n
+        normalizeGraph(H, 1); // row-normalize in-place
+        H *= n;
 
         int it;
         for (it = 0; it < iters; it++) {

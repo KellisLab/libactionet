@@ -2,7 +2,8 @@
 #include "utils_internal/utils_stats.hpp"
 
 // Additional arma::sp_mat-only parameters for normalizeGraph(): fill_diag_if_empty, fill_val
-arma::sp_mat normalize_matrix_internal(arma::sp_mat X, const unsigned int p, const unsigned int dim,
+// Return type is a reference, MODIFIES IN PLACE
+arma::sp_mat& normalize_matrix_internal(arma::sp_mat& X, const unsigned int p, const unsigned int dim,
                                        const bool fill_diag_if_empty = false, const double fill_val = 1.0) {
     if (p > 1) {
         stderr_printf("`p` ignored for sparse input");
@@ -44,7 +45,7 @@ arma::sp_mat normalize_matrix_internal(arma::sp_mat X, const unsigned int p, con
         }
     }
 
-    return (X);
+    return X;
 }
 
 arma::mat normalize_matrix_internal(arma::mat X, unsigned int p, unsigned int dim) {
@@ -122,12 +123,12 @@ namespace actionet {
     // Graph pre-normalization for PageRank
     // norm_method 0/1 is standard unit normalization columns/rows with edge-cases.
     // norm_method 2 symmetrizes graph, i.e. colsums == rowsums.
-    arma::sp_mat normalizeGraph(arma::sp_mat G, int norm_method) {
+    void normalizeGraph(arma::sp_mat& G, int norm_method) {
         switch (norm_method) {
             case 0: // Column-normalize
             case 1: // Row-normalize
             {
-                G = normalize_matrix_internal(G, 1, norm_method, true, 1.0);
+                normalize_matrix_internal(G, 1, norm_method, true, 1.0);
             }
             break;
             case 2: // Symmetrize
@@ -155,8 +156,6 @@ namespace actionet {
             default:
                 throw std::invalid_argument("Invalid 'norm_method'");
         }
-
-        return G;
     }
 
     arma::mat normalize_scores(arma::mat scores, int method, int thread_no) {

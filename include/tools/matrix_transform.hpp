@@ -24,12 +24,11 @@ namespace actionet {
     template <typename T>
     T scaleMatrix(T& X, arma::vec& v, unsigned int dim = 0);
 
-    /// @brief Normalize a graph adjacency matrix.
+    /// @brief Normalize a graph adjacency matrix in-place.
     ///
-    /// @param G Graph adjacency matrix.
+    /// @param G Graph adjacency matrix (modified in-place).
     /// @param norm_method 0 = column (pagerank), 1 = row, 2 = sym_pagerank.
-    /// @return Normalized adjacency matrix.
-    arma::sp_mat normalizeGraph(arma::sp_mat G, int norm_method = 1);
+    void normalizeGraph(arma::sp_mat& G, int norm_method = 1);
 
 
     /// @brief Normalize score matrix for downstream scoring.
