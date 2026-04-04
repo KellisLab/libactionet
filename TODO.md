@@ -5,6 +5,8 @@
   * inconsistent return types
 * Backed network construction (??)
 * Document C++ interface
+* Speed up AA and SPA
+  * Reduce memory footprint
 
 ## Secondary
 * Compile to Windows x86

@@ -13,13 +13,14 @@ namespace actionet {
 
         ResACTION trace = decompACTION(S_r_internal, k_min, k_max, max_it, tol, thread_no);
 
-        ResCollectArch pruned = collectArchetypes(trace.C, trace.H, spec_th, min_obs);
-        // Free the per-k C/H fields from decompACTION immediately after stacking.
-        // Each field entry is a (k x n_cells) or (n_cells x k) dense matrix;
-        // together they occupy the same memory as C_stacked + H_stacked.
-        // Releasing them before mergeArchetypes halves the peak RSS at the merge step.
-        trace.C.reset();
-        trace.H.reset();
+        arma::mat C_stacked = std::move(trace.C_stacked);
+        arma::mat H_stacked = std::move(trace.H_stacked);
+
+        ResCollectArch pruned = collectArchetypes(C_stacked, H_stacked, spec_th, min_obs);
+        // collectArchetypes is done with the full stacked buffers; free them now so
+        // mergeArchetypes doesn't peak alongside both the full-T and retained-R copies.
+        C_stacked.reset();
+        H_stacked.reset();
 
         ResMergeArch merged = mergeArchetypes(S_r_internal, pruned.C_stacked, pruned.H_stacked, thread_no);
         // mergeArchetypes is done with C_stacked and H_stacked; free them now so

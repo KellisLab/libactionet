@@ -38,14 +38,14 @@ namespace actionet {
 
     /// @brief Filter and aggregate multi-level archetypes.
     ///
-    /// @param C_trace Field of C matrices from <code>runACTION()</code>.
-    /// @param H_trace Field of H matrices from <code>runACTION()</code>.
+    /// @param C_stacked Pre-stacked C matrix from <code>decompACTION()</code> (n_cells x T).
+    /// @param H_stacked Pre-stacked H matrix from <code>decompACTION()</code> (T x n_cells).
     /// @param spec_th Specificity threshold (z-score).
     /// @param min_obs Minimum observations per archetype.
     ///
-    /// @return <code>ResCollectArch</code> with stacked C/H and selected indices.
+    /// @return <code>ResCollectArch</code> with pruned C/H and selected indices.
     ResCollectArch
-        collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace, double spec_th = -3,
+        collectArchetypes(arma::mat& C_stacked, arma::mat& H_stacked, double spec_th = -3,
                           int min_obs = 3);
 
     /// @brief Identify and merge redundant archetypes into a representative subset.

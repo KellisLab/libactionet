@@ -4,38 +4,13 @@
 #include "utils_internal/utils_stats.hpp"
 
 namespace actionet {
-    ResCollectArch collectArchetypes(arma::field<arma::mat>& C_trace, arma::field<arma::mat>& H_trace,
+    ResCollectArch collectArchetypes(arma::mat& C_stacked, arma::mat& H_stacked,
                                      double spec_th, int min_obs) {
-        size_t depth = H_trace.size();
+        size_t total_archs = H_stacked.n_rows;
 
         ResCollectArch results;
 
-        // Pre-scan to compute total archetype count and allocate once
-        stdout_printf("Joining trace of C & H matrices (depth = %d) ... ", (int)depth - 1);
-        size_t n_samples = 0;
-        size_t total_archs = 0;
-        for (size_t k = 0; k < depth; k++) {
-            if (H_trace[k].n_rows == 0)
-                continue;
-            if (n_samples == 0)
-                n_samples = H_trace[k].n_cols;
-            total_archs += H_trace[k].n_rows;
-        }
-
-        arma::mat C_stacked(n_samples, total_archs);
-        arma::mat H_stacked(total_archs, n_samples);
-        size_t col_offset = 0;
-        for (size_t k = 0; k < depth; k++) {
-            if (H_trace[k].n_rows == 0)
-                continue;
-            size_t nk = H_trace[k].n_rows;
-            C_stacked.cols(col_offset, col_offset + nk - 1) = C_trace[k];
-            H_stacked.rows(col_offset, col_offset + nk - 1) = H_trace[k];
-            col_offset += nk;
-        }
-
-        stdout_printf("done (%d archetypes)\n", (int)total_archs);
-        stdout_printf("Pruning archetypes:\n");
+        stdout_printf("Pruning %d archetypes:\n", (int)total_archs);
         FLUSH;
 
         arma::mat backbone = arma::cor(arma::trans(H_stacked));

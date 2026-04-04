@@ -11,11 +11,14 @@ namespace actionet {
     ///
     /// Contains the following members:
     /// - <b>selected_cols</b>: Selected columns from <code>runSPA()</code> for each k.
-    /// - <b>C</b>, <b>H</b>: C/H matrices from <code>runAA()</code> for each k.
+    /// - <b>C_stacked</b>: All per-k C matrices column-stacked into a single dense matrix
+    ///   (n_cells x T, where T = sum(k_min..k_max)).
+    /// - <b>H_stacked</b>: All per-k H matrices row-stacked into a single dense matrix
+    ///   (T x n_cells).
     struct ResACTION {
         arma::field<arma::uvec> selected_cols;
-        arma::field<arma::mat> C;
-        arma::field<arma::mat> H;
+        arma::mat C_stacked; // n_cells × T
+        arma::mat H_stacked; // T × n_cells
     };
 
     /// @brief Run ACTION decomposition across a k-range without post-processing.
@@ -27,7 +30,7 @@ namespace actionet {
     /// @param tol Convergence tolerance for AA.
     /// @param thread_no Number of CPU threads (0 = auto).
     ///
-    /// @return <code>ResACTION</code> with SPA selections and C/H traces.
+    /// @return <code>ResACTION</code> with SPA selections and pre-stacked C/H matrices.
     ResACTION
         decompACTION(const arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-16,
                   int thread_no = 0);
