@@ -63,20 +63,19 @@ Rcpp::List C_decompACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max
                         int thread_no = 0) {
     actionet::ResACTION trace = actionet::decompACTION(S_r, k_min, k_max, max_it, tol, thread_no);
 
-    Rcpp::List res;
-
+    // Slice the stacked buffers back into per-k matrices for the R-facing list.
+    // col_offset[k] mirrors the layout written by decompACTION.
     Rcpp::List C(k_max);
-    for (int i = k_min; i <= k_max; i++) {
-        arma::mat cur_C = trace.C[i];
-        C[i - 1] = cur_C;
-    }
-    res["C"] = C;
-
     Rcpp::List H(k_max);
-    for (int i = k_min; i <= k_max; i++) {
-        arma::mat cur_H = trace.H[i];
-        H[i - 1] = cur_H;
+    size_t col_offset = 0;
+    for (int k = k_min; k <= k_max; k++) {
+        C[k - 1] = arma::mat(trace.C_stacked.cols(col_offset, col_offset + k - 1));
+        H[k - 1] = arma::mat(trace.H_stacked.rows(col_offset, col_offset + k - 1));
+        col_offset += k;
     }
+
+    Rcpp::List res;
+    res["C"] = C;
     res["H"] = H;
 
     return res;
@@ -124,18 +123,36 @@ Rcpp::List C_runACTION(arma::mat& S_r, int k_min = 2, int k_max = 30, int max_it
 Rcpp::List C_collectArchetypes(const Rcpp::List& C_trace, const Rcpp::List& H_trace,
                              double spec_th = -3, int min_obs = 3) {
     int n_list = H_trace.size();
-    arma::field<arma::mat> C_trace_vec(n_list + 1);
-    arma::field<arma::mat> H_trace_vec(n_list + 1);
+
+    // Pre-scan to determine total archetype count and n_samples.
+    size_t total_archs = 0;
+    size_t n_samples = 0;
     for (int i = 0; i < n_list; i++) {
-        if (Rf_isNull(H_trace[i])) {
+        if (Rf_isNull(H_trace[i]))
             continue;
-        }
-        C_trace_vec[i + 1] = (Rcpp::as<arma::mat>(C_trace[i]));
-        H_trace_vec[i + 1] = (Rcpp::as<arma::mat>(H_trace[i]));
+        arma::mat H_k = Rcpp::as<arma::mat>(H_trace[i]);
+        if (n_samples == 0)
+            n_samples = H_k.n_cols;
+        total_archs += H_k.n_rows;
+    }
+
+    // Stack C and H from the R lists into the flat buffers expected by collectArchetypes.
+    arma::mat C_stacked(n_samples, total_archs);
+    arma::mat H_stacked(total_archs, n_samples);
+    size_t col_offset = 0;
+    for (int i = 0; i < n_list; i++) {
+        if (Rf_isNull(H_trace[i]))
+            continue;
+        arma::mat C_k = Rcpp::as<arma::mat>(C_trace[i]);
+        arma::mat H_k = Rcpp::as<arma::mat>(H_trace[i]);
+        size_t nk = H_k.n_rows;
+        C_stacked.cols(col_offset, col_offset + nk - 1) = C_k;
+        H_stacked.rows(col_offset, col_offset + nk - 1) = H_k;
+        col_offset += nk;
     }
 
     actionet::ResCollectArch results =
-        actionet::collectArchetypes(C_trace_vec, H_trace_vec, spec_th, min_obs);
+        actionet::collectArchetypes(C_stacked, H_stacked, spec_th, min_obs);
 
     Rcpp::List out_list;
     out_list["selected_archs"] = results.selected_archs + 1;
