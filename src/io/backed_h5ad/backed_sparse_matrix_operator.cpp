@@ -728,7 +728,7 @@ namespace actionet {
         }
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
-            const arma::uword row_end = next_block_end_(row_start, n_obs_);
+            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -864,7 +864,7 @@ namespace actionet {
             }
 
             for (arma::uword row_start = 0; row_start < n_obs_;) {
-                const arma::uword row_end = next_block_end_(row_start, n_obs_);
+                const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
                 const unsigned long long nnz_start_chunk = indptr_[row_start];
                 const unsigned long long nnz_end_chunk = indptr_[row_end];
                 const unsigned long long nnz_count = nnz_end_chunk - nnz_start_chunk;
