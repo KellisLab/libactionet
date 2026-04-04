@@ -742,7 +742,14 @@ namespace actionet {
             load_chunk_cached_(nnz_start, nnz_count, data, indices);
             ensure_chunk_transformed_csr_(row_start, row_end, nnz_start);
 
-            for (arma::uword r = row_start; r < row_end; ++r) {
+            const arma::uword chunk_rows = row_end - row_start;
+            const unsigned int threads_use = actionet::get_num_threads(
+                static_cast<unsigned int>(chunk_rows), n_threads_);
+
+            #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && chunk_rows > 1)
+            for (arma::sword rs = static_cast<arma::sword>(row_start);
+                 rs < static_cast<arma::sword>(row_end); ++rs) {
+                const arma::uword r = static_cast<arma::uword>(rs);
                 const arma::uword out_row = all_rows ? r : row_map[r];
                 if (out_row == n_sel_rows) continue;
 
