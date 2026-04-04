@@ -77,35 +77,44 @@ arma::mat diffusionChebyshev(arma::sp_mat& G, const arma::mat& X0, int norm_meth
 
     actionet::normalizeGraph(G, norm_method);
 
-    arma::mat prev_prev = X0;
-    arma::mat prev = (1.0 - alpha) * actionet::spmat_mat_product_parallel(G, prev_prev, thread_no) + alpha * X0;
+    arma::mat buf_a = X0;
+    arma::mat buf_b = (1.0 - alpha) * actionet::spmat_mat_product_parallel(G, buf_a, thread_no) + alpha * X0;
     double mu_pp = 1.0, mu_p = 1.0 / (1.0 - alpha);
 
-    if (max_it <= 0) return prev;
+    if (max_it <= 0) return buf_b;
 
-    arma::mat X_out;
+    arma::mat buf_c(X0.n_rows, X0.n_cols);
+
+    arma::mat* pp  = &buf_a;
+    arma::mat* p   = &buf_b;
+    arma::mat* cur = &buf_c;
+
     for (int i = 0; i < max_it; i++) {
         double mu = 2.0 / (1.0 - alpha) * mu_p - mu_pp;
 
-        X_out = 2.0 * (mu_p / mu) * actionet::spmat_mat_product_parallel(G, prev, thread_no)
-              - (mu_pp / mu) * prev_prev
-              + (2.0 * mu_p) / ((1.0 - alpha) * mu) * alpha * X0;
+        *cur = 2.0 * (mu_p / mu) * actionet::spmat_mat_product_parallel(G, *p, thread_no)
+             - (mu_pp / mu) * (*pp)
+             + (2.0 * mu_p) / ((1.0 - alpha) * mu) * alpha * X0;
 
-        double res = arma::norm(X_out - prev, "fro");
-        if (res < tol) break;
+        double res = arma::norm(*cur - *p, "fro");
 
         mu_pp = mu_p;
         mu_p = mu;
-        prev_prev = std::move(prev);
-        prev = X_out;
+        arma::mat* tmp = pp;
+        pp  = p;
+        p   = cur;
+        cur = tmp;
+
+        if (res < tol) break;
     }
 
+    // After rotation, the last-written result is always in *p.
     double m0 = X0.min();
     if (m0 >= 0.0) {
-        X_out = arma::clamp(X_out, 0.0, X_out.max());
+        *p = arma::clamp(*p, 0.0, p->max());
     }
 
-    return X_out;
+    return std::move(*p);
 }
 
 } // anon namespace
