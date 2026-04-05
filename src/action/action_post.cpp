@@ -58,22 +58,30 @@ namespace actionet {
         pruned(nonspecific_idx).ones();
         stdout_printf("\tNon-specific archetypes: %d\n", (int)nonspecific_idx.n_elem);
         FLUSH;
+        // Release O(T^2) buffers before per-archetype checks to reduce peak RSS.
+        A2.reset();
+        A_bin.reset();
+        backbone.reset();
+        s.reset();
+        d.reset();
+        transitivity.reset();
+        transitivity_z.reset();
 
         // Find landmark cells
         // i.e., closest cells to each multi-level archetype (its projection on to the cell space)
         double epsilon = 1e-3;
         int bad_archs = 0;
-        arma::vec landmark_cells = -arma::ones(total_archs);
         for (size_t i = 0; i < total_archs; i++) {
-            arma::vec h = arma::trans(H_stacked.row(i));
-            arma::vec c = C_stacked.col(i);
+            const arma::subview_row<double> h = H_stacked.row(i);
+            const arma::subview_col<double> c = C_stacked.col(i);
+            double h_max = h.max();
 
-            arma::uvec h_landmarks = arma::find((arma::max(h) - h) < epsilon);
-            arma::uvec c_landmarks = arma::find(0 < c);
+            arma::uvec h_landmarks = arma::find((h_max - h) < epsilon);
+            arma::uvec c_landmarks = arma::find(c > 0);
             arma::uvec common_landmarks = arma::intersect(h_landmarks, c_landmarks);
 
             if (0 < common_landmarks.n_elem) { // They don't agree on any samples!
-                landmark_cells(i) = common_landmarks(arma::index_max(c(common_landmarks)));
+                continue;
             }
             else { // Potentially noisy archetype
                 pruned(i) = 1;
@@ -84,10 +92,9 @@ namespace actionet {
         stdout_printf("\tUnreproducible archetypes: %d\n", bad_archs);
         FLUSH;
 
-        arma::uvec idx = arma::find(C_stacked > 1e-6);
-        arma::mat C_bin = C_stacked;
-        C_bin(idx).ones();
-        arma::uvec trivial_idx = arma::find(arma::sum(C_bin) < min_obs);
+        arma::urowvec membership_counts =
+            arma::sum(arma::conv_to<arma::umat>::from(C_stacked > 1e-6), 0);
+        arma::uvec trivial_idx = arma::find(membership_counts < (arma::uword)min_obs);
         pruned(trivial_idx).ones();
 
         stdout_printf("\tTrivial archetypes: %d\n", (int)trivial_idx.n_elem);
@@ -102,13 +109,15 @@ namespace actionet {
     }
 
     ResMergeArch
-        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int thread_no) {
+        mergeArchetypes(const arma::mat& S_r, const arma::mat& C_stacked, arma::mat& H_stacked, int thread_no) {
         stdout_printf("Merging %d archetypes:\n", (int)C_stacked.n_cols);
         FLUSH;
 
         ResMergeArch output;
 
-        H_stacked = arma::normalise(H_stacked, 1, 0);
+        arma::rowvec col_sums = arma::sum(H_stacked, 0);
+        col_sums.transform([](double val) { return (val > 0.0) ? val : 1.0; });
+        H_stacked.each_row() /= col_sums;
         // H_stacked is uniformly dense after column-wise L1 normalisation (every
         // column sums to 1 with all non-negative values). Converting to sp_mat here
         // would allocate an equally-sized sparse copy while the dense original stays
@@ -133,10 +142,10 @@ namespace actionet {
         arma::mat H_merged = runSimplexRegression(W_r_merged, S_r, false);
         arma::uvec assigned_archetypes = arma::trans(arma::index_max(H_merged, 0));
 
-        output.selected_archetypes = candidates;
-        output.C_merged = C_merged;
-        output.H_merged = H_merged;
-        output.assigned_archetypes = assigned_archetypes;
+        output.selected_archetypes = std::move(candidates);
+        output.C_merged = std::move(C_merged);
+        output.H_merged = std::move(H_merged);
+        output.assigned_archetypes = std::move(assigned_archetypes);
 
         return (output);
     }

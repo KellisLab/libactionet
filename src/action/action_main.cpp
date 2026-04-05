@@ -15,6 +15,7 @@ namespace actionet {
 
         arma::mat C_stacked = std::move(trace.C_stacked);
         arma::mat H_stacked = std::move(trace.H_stacked);
+        trace.selected_cols.reset();
 
         ResCollectArch pruned = collectArchetypes(C_stacked, H_stacked, spec_th, min_obs);
         // collectArchetypes is done with the full stacked buffers; free them now so
@@ -28,12 +29,15 @@ namespace actionet {
         arma::mat H_stacked_t = pruned.H_stacked.t();  // cells x archetypes
         pruned.H_stacked.reset();
         arma::mat C_stacked_keep = std::move(pruned.C_stacked);  // cells x archetypes (zero-copy)
+        arma::mat H_merged_t = merged.H_merged.t();    // cells x archetypes
+        merged.H_merged.reset();
+        arma::mat C_merged_keep = std::move(merged.C_merged);    // cells x archetypes
 
         arma::field<arma::mat> out(5);
         out(0) = std::move(H_stacked_t);           // cells x archetypes
         out(1) = std::move(C_stacked_keep);        // cells x archetypes
-        out(2) = merged.H_merged.t();              // cells x archetypes
-        out(3) = merged.C_merged;                  // cells x archetypes
+        out(2) = std::move(H_merged_t);            // cells x archetypes
+        out(3) = std::move(C_merged_keep);         // cells x archetypes
         out(4) = arma::conv_to<arma::mat>::from(merged.assigned_archetypes);
 
         return (out);

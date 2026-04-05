@@ -57,7 +57,7 @@ namespace actionet {
     ///
     /// @return <code>ResMergeArch</code> with merged results and assignments.
     ResMergeArch
-        mergeArchetypes(arma::mat& S_r, arma::mat& C_stacked, arma::mat& H_stacked, int thread_no = 0);
+        mergeArchetypes(const arma::mat& S_r, const arma::mat& C_stacked, arma::mat& H_stacked, int thread_no = 0);
 } // namespace actionet
 
 #endif //ACTIONET_ACTION_POST_HPP
