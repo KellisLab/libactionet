@@ -144,13 +144,18 @@ target_include_directories(
 ## Check for OpenMP support
 CONFIGURE_OPENMP(actionet)
 
-# Set OpenMP thread count in Armadillo configuration
-if (OpenMP_FOUND)
-    target_compile_definitions(actionet PUBLIC ARMA_OPENMP_THREADS=${NPROC})
-    message(STATUS "OpenMP enabled with ${NPROC} threads")
-else ()
-    message(NOTICE "Building without OpenMP")
+if (NOT OpenMP_FOUND)
+    message(FATAL_ERROR
+        "OpenMP is required but was not found.\n"
+        "  Linux : install libgomp (e.g. apt install libgomp1, yum install libgomp)\n"
+        "  macOS : brew install libomp\n"
+        "  Conda : conda install -c conda-forge compilers\n"
+        "To explicitly select a runtime, set LIBACTIONET_OPENMP_RUNTIME (GNU|INTEL|LLVM).")
 endif ()
+
+# Set OpenMP thread count in Armadillo configuration
+target_compile_definitions(actionet PUBLIC ARMA_OPENMP_THREADS=${NPROC})
+message(STATUS "OpenMP enabled with ${NPROC} threads")
 
 ## Additional (optional) compiler options
 target_compile_options(actionet PRIVATE -Wno-psabi -Wno-deprecated-declarations)# -ferror-limit=10)#-fmax-errors=10)

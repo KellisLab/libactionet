@@ -23,10 +23,10 @@ HDF5-backed (out-of-core) operators allow SVD, kernel reduction, specificity, an
   - MKL preferred when available; otherwise generic/system BLAS (can be OpenBLAS/Accelerate/etc.).
 - HDF5 (C library, required):
   - System or conda HDF5 is detected via `find_package(HDF5)`.
-- OpenMP runtime:
+- OpenMP runtime (required):
   - GNU (`libgomp`) is the default on non-Apple.
   - Apple builds use Homebrew `libomp` if available.
-  - INTEL or SEQUENTIAL threading can be requested explicitly.
+  - INTEL runtime can be requested explicitly.
 
 ## Repository Layout
 
@@ -54,15 +54,15 @@ _EXCLUDE/            Deprecated/archived code (not compiled)
 Key CMake options (with defaults):
 - `BLA_VENDOR` (`All`): BLAS/LAPACK vendor. If unset and MKL is detected, it defaults to `Intel10_64lp` (non-R builds).
 - `MKL_THREADING` (unset): When set to `GNU|INTEL|SEQUENTIAL` and MKL libs are found, libactionet links explicitly to the chosen threading variant (`mkl_gnu_thread`, `mkl_intel_thread`, or `mkl_sequential`) along with `mkl_intel_lp64` and `mkl_core`. This prevents accidental linkage to `mkl_intel_thread` when GNU OMP is desired.
-- `LIBACTIONET_OPENMP_RUNTIME` (`AUTO`): `AUTO|GNU|INTEL|LLVM|OFF`. AUTO defaults to GNU unless using Intel compilers. R builds ignore this and use R's OpenMP flags.
+- `LIBACTIONET_OPENMP_RUNTIME` (`AUTO`): `AUTO|GNU|INTEL|LLVM`. AUTO defaults to GNU unless using Intel compilers. R builds ignore this and use R's OpenMP flags.
 - `LIBACTIONET_OPENMP_CXXFLAGS` / `LIBACTIONET_OPENMP_LDFLAGS` (empty): Used by the R build to pass `SHLIB_OPENMP_*` flags into the static library build.
 - `LIBACTIONET_BUILD_R` (`OFF`): Enable R integration mode (set by the R wrapper).
 - `TARGET_ARCHITECTURE` (macOS/R builds): Set by the R configure script to match R's target arch; used for Apple-specific paths.
 - `CMAKE_INTERPROCEDURAL_OPTIMIZATION` (`OFF`): Enable LTO/IPO if your toolchain supports it.
 
 OpenMP behavior:
-- Non-R builds: `AUTO` ⇒ GNU (if found) → LLVM/Clang fallback via `find_package(OpenMP)`. `INTEL` searches `libiomp5`; `OFF` disables OpenMP.
-- R builds: The R package passes `SHLIB_OPENMP_*` into these cache vars. If empty, OpenMP is disabled for the static library.
+- Non-R builds: `AUTO` ⇒ GNU (if found) → LLVM/Clang fallback via `find_package(OpenMP)`. `INTEL` searches `libiomp5`. The build fails if no OpenMP runtime is found.
+- R builds: The R package passes `SHLIB_OPENMP_*` into these cache vars. If empty, standard OpenMP detection is attempted; the build fails if OpenMP cannot be found.
 - MKL mixing: If MKL is detected and a non-Intel OpenMP runtime is selected, a warning is emitted. Use `MKL_THREADING_LAYER=GNU` with `mkl_rt` or `MKL_THREADING=GNU` to keep a single runtime.
 
 BLAS behavior:
@@ -78,7 +78,7 @@ cmake --build . -j$(nproc)
 ```
 
 ## R Package Build Notes
-- The R wrapper's `configure` script passes R's `SHLIB_OPENMP_*` into `LIBACTIONET_OPENMP_*`. If R reports no OpenMP flags, libactionet is built without OpenMP.
+- The R wrapper's `configure` script passes R's `SHLIB_OPENMP_*` into `LIBACTIONET_OPENMP_*`. If R reports no OpenMP flags, standard OpenMP detection is attempted; the build will fail if no OpenMP runtime is found.
 - BLAS/LAPACK come from R (`R CMD config BLAS_LIBS/LAPACK_LIBS`) unless the user overrides `BLA_VENDOR`.
 - On macOS, Accelerate is the default via R; OpenMP requires an OpenMP-enabled R toolchain (e.g., LLVM + libomp).
 - PRIMME and HDF5-backed operators are excluded from R builds (R does not support >2^31 element matrices).

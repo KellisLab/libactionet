@@ -46,7 +46,7 @@ Any change here may impact both wrappers and downstream pipelines.
 
 - **Do not break public headers** without explicitly calling out the change and coordinating wrapper updates.
 - Assume **both Rcpp and pybind11 bindings** consume exported APIs.
-- Avoid introducing heavy dependencies or build steps that complicate HPC usage. Current external requirements: BLAS/LAPACK, HDF5 (C library), OpenMP (optional).
+- Avoid introducing heavy dependencies or build steps that complicate HPC usage. Current external requirements: BLAS/LAPACK, HDF5 (C library), OpenMP.
 - Avoid global state unless explicitly justified and documented.
 
 ---

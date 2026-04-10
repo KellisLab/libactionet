@@ -11,7 +11,7 @@ Before proposing changes:
 3) Assume the following constraints:
    - Core C++ library built with CMake (≥ 3.19, C++17).
    - R bindings via Rcpp; Python bindings via pybind11.
-   - Runtime dependencies: BLAS/LAPACK, HDF5 (C library), OpenMP (optional).
+   - Runtime dependencies: BLAS/LAPACK, HDF5 (C library), OpenMP.
    - ACTIONet packages/modules/libraries usually installed by standard means, but via conda isolation when used in pipeline.
 
 Rules of engagement:

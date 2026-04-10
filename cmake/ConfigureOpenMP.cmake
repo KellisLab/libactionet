@@ -9,7 +9,7 @@ macOS Homebrew installations, which are keg-only and not auto-discoverable.
 The following variables control the behaviour of this module:
 
 ``LIBACTIONET_OPENMP_RUNTIME``
-    Select OpenMP runtime: AUTO, GNU, INTEL, LLVM, OFF.
+    Select OpenMP runtime: AUTO, GNU, INTEL, LLVM.
 
 ``LIBACTIONET_OPENMP_CXXFLAGS``
     OpenMP CXX flags (used for R builds when provided).
@@ -23,8 +23,8 @@ The following variables control the behaviour of this module:
 
 ]=============================================================================]
 
-set(LIBACTIONET_OPENMP_RUNTIME "AUTO" CACHE STRING "OpenMP runtime: AUTO, GNU, INTEL, LLVM, OFF")
-set_property(CACHE LIBACTIONET_OPENMP_RUNTIME PROPERTY STRINGS AUTO GNU INTEL LLVM OFF)
+set(LIBACTIONET_OPENMP_RUNTIME "AUTO" CACHE STRING "OpenMP runtime: AUTO, GNU, INTEL, LLVM")
+set_property(CACHE LIBACTIONET_OPENMP_RUNTIME PROPERTY STRINGS AUTO GNU INTEL LLVM)
 set(LIBACTIONET_OPENMP_CXXFLAGS "" CACHE STRING "OpenMP CXX flags (R builds)")
 set(LIBACTIONET_OPENMP_LDFLAGS "" CACHE STRING "OpenMP linker flags (R builds)")
 
@@ -130,12 +130,6 @@ macro(CONFIGURE_OPENMP libtarget)
     if (NOT _openmp_handled AND NOT APPLE)
         string(TOUPPER "${LIBACTIONET_OPENMP_RUNTIME}" _omp_runtime)
         string(TOUPPER "${CMAKE_CXX_COMPILER_ID}" _omp_compiler_id)
-
-        if (_omp_runtime STREQUAL "OFF")
-            set(OpenMP_FOUND FALSE)
-            set(_openmp_handled TRUE)
-            message(STATUS "OpenMP disabled by LIBACTIONET_OPENMP_RUNTIME=OFF")
-        endif()
 
         set(_omp_search_paths "")
         if (DEFINED ENV{CONDA_PREFIX})
@@ -280,6 +274,9 @@ macro(CONFIGURE_OPENMP libtarget)
         message(VERBOSE "  C_FLAGS: ${OpenMP_C_FLAGS}")
         message(VERBOSE "  CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
     else()
-        message(WARNING "OpenMP not found. Building without OpenMP support.")
+        message(FATAL_ERROR "OpenMP not found. OpenMP is required to build libactionet.\n"
+            "  Linux : install libgomp (e.g. apt install libgomp1, yum install libgomp)\n"
+            "  macOS : brew install libomp\n"
+            "  Conda : conda install -c conda-forge compilers")
     endif()
 endmacro()
