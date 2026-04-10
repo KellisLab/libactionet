@@ -1,5 +1,4 @@
 ## Primary
-* Update uwot
 * Legacy arma::field vs typed structs
   * dual return system across frontends
   * inconsistent return types
@@ -72,3 +71,4 @@
 * pybind 11 wrappers
 * Consolidate svdIRLB()
 * Backed SVD
+* Updated uwot to 0.2.4
