@@ -29,10 +29,14 @@ namespace actionet {
     /// @param spec_th Specificity threshold (z-score) for pruning.
     /// @param min_obs Minimum observations per archetype.
     /// @param thread_no Number of CPU threads (0 = auto).
+    /// @param return_c_matrices Whether to retain and return C_stacked/C_merged
+    /// in the output field. If false, slots (1) and (3) are returned as empty
+    /// matrices while preserving field indices.
     ///
     /// @return Field of matrices containing stacked and merged C/H results.
     arma::field<arma::mat> runACTION(const arma::mat& S_r, int k_min, int k_max, int max_it = 100, double tol = 1e-6,
-                                     double spec_th = -3, int min_obs = 3, int thread_no = 0);
+                                     double spec_th = -3, int min_obs = 3, int thread_no = 0,
+                                     bool return_c_matrices = true);
 } // namespace actionet
 
 #endif //ACTIONET_ACTION_MAIN_HPP
