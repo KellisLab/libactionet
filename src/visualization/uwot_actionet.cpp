@@ -24,12 +24,18 @@ void verboseStatus(const UwotArgs& method_args) {
         case METHOD_LARGEVIZ:
             stderr_printf("LargeVis embedding parameters gamma = %.3f\n", method_args.gamma);
             break;
+        case METHOD_LEOPOLD:
+            stderr_printf("Leopold embedding parameters b = %.3f\n", method_args.b);
+            break;
+        case METHOD_LEOPOLD2:
+            stderr_printf("Leopold2 embedding parameters b = %.3f\n", method_args.b);
+            break;
     }
     stderr_printf("Optimizing for %d epochs with %d threads \n", method_args.n_epochs, (int)method_args.n_threads);
     FLUSH;
 };
 
-void create_umap(UmapFactory& UF, const UwotArgs& method_args) {
+void create_umap(UmapFactory& UF, UwotArgs& method_args) {
     if (method_args.approx_pow) {
         const uwot::apumap_gradient gradient(method_args.a, method_args.b, method_args.gamma);
         UF.create(gradient, method_args.get_engine());
@@ -40,13 +46,25 @@ void create_umap(UmapFactory& UF, const UwotArgs& method_args) {
     }
 }
 
-void create_tumap(UmapFactory& UF, const UwotArgs& method_args) {
-    const uwot::tumap_gradient gradient;
+void create_tumap(UmapFactory& UF, UwotArgs& method_args) {
+    const uwot::tumap_gradient gradient(method_args.gamma);
     UF.create(gradient, method_args.get_engine());
 }
 
-void create_largevis(UmapFactory& UF, const UwotArgs& method_args) {
+void create_largevis(UmapFactory& UF, UwotArgs& method_args) {
     const uwot::largevis_gradient gradient(method_args.gamma);
+    UF.create(gradient, method_args.get_engine());
+}
+
+void create_umapai(UmapFactory& UF, UwotArgs& method_args) {
+    const std::size_t ndim = static_cast<std::size_t>(method_args.n_components);
+    const uwot::umapai_gradient gradient(method_args.ai, method_args.b, ndim);
+    UF.create(gradient, method_args.get_engine());
+}
+
+void create_umapai2(UmapFactory& UF, UwotArgs& method_args) {
+    const std::size_t ndim = static_cast<std::size_t>(method_args.n_components);
+    const uwot::umapai2_gradient gradient(method_args.ai, method_args.aj, method_args.b, ndim);
     UF.create(gradient, method_args.get_engine());
 }
 
@@ -108,6 +126,19 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
     return (EV);
 }
 
+void validateMethodArgs(const UwotArgs& uwot_args, std::size_t n_vertices) {
+    if (uwot_args.get_cost_func() == METHOD_LEOPOLD) {
+        if (uwot_args.ai.size() != n_vertices) {
+            throw std::invalid_argument("For method='leopold', 'ai' must have length equal to number of vertices");
+        }
+    }
+    else if (uwot_args.get_cost_func() == METHOD_LEOPOLD2) {
+        if (uwot_args.ai.size() != n_vertices || uwot_args.aj.size() != n_vertices) {
+            throw std::invalid_argument("For method='leopold2', 'ai' and 'aj' must have length equal to number of vertices");
+        }
+    }
+}
+
 } // anonymous namespace
 
 namespace actionet {
@@ -120,6 +151,9 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
     if (G.n_cols != initial_coordinates.n_rows) {
         throw std::invalid_argument("Incompatible dimsensions (G.n_cols != initial_coordinates.n_rows)");
     }
+    if (initial_coordinates.n_cols < uwot_args.n_components) {
+        throw std::invalid_argument("'initial_coordinates' must have at least n_components columns");
+    }
 
     uwot_args.n_threads = get_num_threads(0, static_cast<int>(uwot_args.n_threads));
     if (uwot_args.n_epochs <= 0) {
@@ -130,9 +164,10 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
     uwot::Coords coords = getCoords(initial_coordinates, uwot_args.n_components);
     auto [positive_head, positive_tail, epochs_per_sample, positive_ptr, n_vertices] =
         buildEdgeVectors(G, uwot_args);
+    validateMethodArgs(uwot_args, n_vertices);
 
     bool move_other = true;
-    UmapFactory UF(move_other, uwot_args.pcg_rand,
+    UmapFactory UF(move_other, uwot_args.get_rng_type(),
                    coords.get_head_embedding(), coords.get_tail_embedding(),
                    positive_head, positive_tail, positive_ptr, uwot_args.n_epochs,
                    n_vertices, n_vertices, epochs_per_sample, uwot_args.alpha,
@@ -147,6 +182,12 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
             break;
         case METHOD_LARGEVIZ:
             create_largevis(UF, uwot_args);
+            break;
+        case METHOD_LEOPOLD:
+            create_umapai(UF, uwot_args);
+            break;
+        case METHOD_LEOPOLD2:
+            create_umapai2(UF, uwot_args);
             break;
         case METHOD_UMAP:
         default:

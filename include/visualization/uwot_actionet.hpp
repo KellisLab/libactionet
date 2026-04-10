@@ -1,4 +1,4 @@
-// Wraps uwot 0.2.2 (https://github.com/jlmelville/uwot)
+// Wraps uwot 0.2.4 (https://github.com/jlmelville/uwot)
 // This function and it's associated header tree implements the core graph optimization functionality of uwot for a
 // precomputed graph and initial coordinates.
 #ifndef ACTIONET_UWOT_ACTIONET_HPP

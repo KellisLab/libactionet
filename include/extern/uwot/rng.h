@@ -21,6 +21,7 @@
 #define UWOT_RNG_H
 
 #include <limits>
+#include <random>
 
 // linked from dqrng
 #include "convert_seed.h"
@@ -49,7 +50,7 @@ struct batch_tau_factory {
     batch_tau_factory(std::size_t n_rngs)
         : n_rngs(n_rngs), seeds(seeds_per_rng * n_rngs) {}
 
-    void reseed(std::mt19937_64 engine) {
+    void reseed(std::mt19937_64& engine) {
         for (std::size_t i = 0; i < seeds.size(); i++) {
             seeds[i] = random64(engine);
         }
@@ -67,7 +68,7 @@ struct pcg_prng {
     pcg_prng(uint64_t seed) { gen.seed(seed); }
 
     // return a value in (0, n]
-    inline std::size_t operator()(std::size_t n) {
+    inline std::size_t operator()(std::size_t n, std::size_t, std::size_t) {
         std::size_t result = gen(n);
         return result;
     }
@@ -83,7 +84,7 @@ struct batch_pcg_factory {
     batch_pcg_factory(std::size_t n_rngs)
         : n_rngs(n_rngs), seeds(seeds_per_rng * n_rngs) {}
 
-    void reseed(std::mt19937_64 engine) {
+    void reseed(std::mt19937_64& engine) {
         for (std::size_t i = 0; i < seeds.size(); i++) {
             seeds[i] = random32(engine);
         }
@@ -104,7 +105,7 @@ struct tau_factory {
     uint64_t seed2;
     tau_factory(std::size_t) : seed1(0), seed2(0) {}
 
-    void reseed(std::mt19937_64 engine) {
+    void reseed(std::mt19937_64& engine) {
         seed1 = random64(engine);
         seed2 = random64(engine);
     }
@@ -118,11 +119,21 @@ struct pcg_factory {
     uint32_t seed1;
     pcg_factory(std::size_t) : seed1(0) {}
 
-    void reseed(std::mt19937_64 engine) { seed1 = random32(engine); }
+    void reseed(std::mt19937_64& engine) { seed1 = random32(engine); }
 
     pcg_prng create(std::size_t seed) {
         uint32_t seeds[2] = {seed1, static_cast<uint32_t>(seed)};
         return pcg_prng(dqrng::convert_seed<uint64_t>(seeds, 2));
+    }
+};
+
+struct deterministic_factory {
+    deterministic_factory(std::size_t) {}
+
+    void reseed(std::mt19937_64&) {}
+
+    uwot::deterministic_ng create(std::size_t) {
+        return uwot::deterministic_ng();
     }
 };
 

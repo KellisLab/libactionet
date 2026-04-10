@@ -2,6 +2,12 @@
 #ifndef ACTIONET_UWOTARGS_HPP
 #define ACTIONET_UWOTARGS_HPP
 
+#include <algorithm>
+#include <cctype>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
 #include "libactionet_config.hpp"
 #include "find_ab.hpp"
 #include "OptimizerArgs.hpp"
@@ -10,6 +16,8 @@
 constexpr int METHOD_UMAP = 1;
 constexpr int METHOD_TUMAP = 2;
 constexpr int METHOD_LARGEVIZ = 3;
+constexpr int METHOD_LEOPOLD = 4;
+constexpr int METHOD_LEOPOLD2 = 5;
 
 // User-specified arguments
 class UwotArgs {
@@ -36,11 +44,16 @@ public:
     // Changing `opt_args.alpha` should not change this value.
     float& alpha = learning_rate; // alias. Passed to UmapFactory()
     float& gamma = repulsion_strength; // alias. Passed to UmapFactory.create()
+    // Required when method is "leopold"/"leopold2"
+    std::vector<float> ai;
+    std::vector<float> aj;
 private:
     int cost_func = 0; // Dummy value. Overwritten by initializer.
     std::string method = "umap";
+    std::string rng_type = "pcg"; // "pcg", "tausworthe", "deterministic"
     int seed = 0;
     std::mt19937_64 engine;
+    bool rng_type_explicit = false;
 
 public:
     // Default constructor
@@ -48,12 +61,15 @@ public:
         set_method(method);
         set_ab();
         set_seed(seed);
+        sync_rng_type_from_legacy_flag();
     }
 
     // Minimal constructor
     explicit UwotArgs(const std::string& method) {
         set_method(method);
+        set_ab();
         set_seed(seed);
+        sync_rng_type_from_legacy_flag();
     }
 
     // Full constructor
@@ -73,7 +89,8 @@ public:
         std::size_t n_threads,
         std::size_t grain_size,
         bool verbose,
-        OptimizerArgs opt_args
+        OptimizerArgs opt_args,
+        const std::string& rng_type = ""
     )
         : n_components(n_components),
           spread(spread),
@@ -94,9 +111,16 @@ public:
         set_method(method);
         set_ab();
         set_seed(seed);
+        if (rng_type.empty()) {
+            sync_rng_type_from_legacy_flag();
+        }
+        else {
+            set_rng_type(rng_type);
+        }
     }
 
     void set_seed(const int seed) {
+        this->seed = seed;
         this->engine = std::mt19937_64(seed);
     }
 
@@ -104,7 +128,11 @@ public:
         return seed;
     }
 
-    std::mt19937_64 get_engine() const {
+    std::mt19937_64& get_engine() {
+        return engine;
+    }
+
+    const std::mt19937_64& get_engine() const {
         return engine;
     }
 
@@ -132,16 +160,23 @@ public:
     // }
 
     void set_method(const std::string& method) {
-        this->method = method;
-        if (method == "umap") {
+        const auto method_norm = normalize_lower(method);
+        this->method = method_norm;
+        if (method_norm == "umap") {
             this->cost_func = METHOD_UMAP;
         }
-        else if (method == "tumap") {
+        else if (method_norm == "tumap") {
             this->cost_func = METHOD_TUMAP;
             set_ab(1, 1); // Automatically by uwot, but just in case.
         }
-        else if (method == "largevis") {
+        else if (method_norm == "largevis") {
             this->cost_func = METHOD_LARGEVIZ;
+        }
+        else if (method_norm == "leopold") {
+            this->cost_func = METHOD_LEOPOLD;
+        }
+        else if (method_norm == "leopold2") {
+            this->cost_func = METHOD_LEOPOLD2;
         }
         else {
             stderr_printf("Invalid 'method'. Defaulting to 'umap'\n");
@@ -152,6 +187,34 @@ public:
 
     std::string get_method() const {
         return method;
+    }
+
+    void set_rng_type(const std::string& rng_type) {
+        const auto rng_norm = normalize_lower(rng_type);
+        if (rng_norm != "pcg" && rng_norm != "tausworthe" && rng_norm != "deterministic") {
+            throw std::invalid_argument("Invalid 'rng_type'. Must be one of: pcg, tausworthe, deterministic");
+        }
+        this->rng_type = rng_norm;
+        this->rng_type_explicit = true;
+    }
+
+    std::string get_rng_type() const {
+        if (rng_type_explicit) {
+            return rng_type;
+        }
+        return pcg_rand ? "pcg" : "tausworthe";
+    }
+
+private:
+    static std::string normalize_lower(std::string value) {
+        std::transform(value.begin(), value.end(), value.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return value;
+    }
+
+    void sync_rng_type_from_legacy_flag() {
+        this->rng_type = pcg_rand ? "pcg" : "tausworthe";
+        this->rng_type_explicit = false;
     }
 };
 
