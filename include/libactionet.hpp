@@ -5,7 +5,7 @@
 // #include "libactionet_config.hpp"
 
 // Exported modules: Symbols defined in these headers are accessible through
-// the `action` namespace and visible to interfaces.
+// the `actionet` namespace and visible to language bindings.
 
 // decomposition: Algorithms for matrix decomposition
 #include "decomposition/matrix_operator.hpp"

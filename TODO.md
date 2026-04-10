@@ -2,14 +2,12 @@
 * Legacy arma::field vs typed structs
   * dual return system across frontends
   * inconsistent return types
-* Backed network construction (??)
 * Document C++ interface
-* Speed up AA and SPA
-  * Reduce memory footprint
+* GPU backend (see context/GPU_BACKEND_PLAN.md)
 
 ## Secondary
 * Compile to Windows x86
-* zscore is multithreaded???
+* Add formal test infrastructure (test/ directory)
 
 ## Done
 * Automate link SuiteSparse on unix/macos
@@ -29,7 +27,6 @@
 * Update StatsLib
 * Fix duplicate PCG headers
 * Fix threading (RcppThread, mini_thread, inline, OpenMP)
-  * <s>Now using mini_thread exclusively. Not great. Will probably change.</s>
   * OpenMP is now the threading model.
 * Rename .cc/.cpp and .h/.hpp
 * Fix defaults (Source -> header)
@@ -59,7 +56,7 @@
 * Template abstraction of functions accepting both dense and sparse matrix input.
 * Add hnsw parameters to interfaces
 * Completely remade UMAP/uwot integration.
-  * Updated uwot
+  * Updated uwot to 0.2.4
   * Modular graph optimization
 * Stand-alone color mapping i.e. de novo colors.
 * Consolidate and abstract network_diffusion
@@ -71,4 +68,28 @@
 * pybind 11 wrappers
 * Consolidate svdIRLB()
 * Backed SVD
-* Updated uwot to 0.2.4
+  * Operator-based PRIMME, Halko, Feng, and IRLB paths
+  * HDF5-backed sparse and dense matrix operators
+  * Chunked I/O with configurable byte budget
+* Backed network construction
+* Backed specificity and annotation
+  * Parallel backed specificity with thread hint
+  * Overloads for BackedSparseMatrixOperator and BackedDenseMatrixOperator
+  * Precomputed marker stats path for faster Python workflows
+* Speed up AA and SPA
+  * Stacked C/H matrices during ACTION decomposition to reduce memory footprint
+  * Release memory and move archetype matrices in runACTION
+  * Conditionally parallel simplex regression
+  * Optimized archetype merging
+* Reduce memory footprint
+  * Eliminated unnecessary matrix copies across decomposition and annotation
+  * Chebyshev diffusion with pointer rotation to avoid matrix moves
+  * Removed excess graph copies in diffusion
+  * Memory corruption fixes
+* Optimized kNN implementation
+  * New graph builder with improved k*nn
+* Batch orthogonalization (operator-backed variant)
+* C++ified IRLB to fix memory leaks
+* Optimized pseudobulk/aggregation functions
+* Optimized specificity (analytical min-shift and single-pass label scatter)
+* Approximate fastlog transform for backed operators

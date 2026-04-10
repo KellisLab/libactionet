@@ -16,11 +16,16 @@ Any change here may impact both wrappers and downstream pipelines.
 ## Repository layout (high level)
 
 - `include/` — public C++ headers (API surface consumed by bindings)
-- `src/` — core implementations
-- `test/` — unit and integration tests
-- `wrappers_r/` — Reference copy of Rcpp wrapper code. May not be synced. (note: primary R package lives in a separate repo)
-- `cmake/`, `CMakeLists.txt`, `CMakeLists_ext.txt` — CMake build system
-- `**/extern/` — Third-party code. Drop-in architecture. Must not be modified
+  - `action/`, `annotation/`, `decomposition/`, `io/`, `network/`, `tools/`, `visualization/` — module headers
+  - `utils_internal/` — internal helpers (not part of public API contract)
+- `src/` — core implementations (mirrors `include/` structure)
+- `cmake/` — CMake modules (`ConfigureApple`, `ConfigureBLAS`, `ConfigureOpenMP`, `ConfigurePRIMME`, `ConfigureR`)
+- `CMakeLists.txt` — root build file
+- `docs/` — algorithm and API documentation
+- `context/` — agent context files and decision records
+- `wrappers_r/` — reference copy of Rcpp wrapper code (primary R package lives in `actionet-r`)
+- `_EXCLUDE/` — deprecated/archived code (not compiled)
+- `**/extern/` — third-party code. Drop-in architecture. Must not be modified
 
 ---
 
@@ -41,7 +46,7 @@ Any change here may impact both wrappers and downstream pipelines.
 
 - **Do not break public headers** without explicitly calling out the change and coordinating wrapper updates.
 - Assume **both Rcpp and pybind11 bindings** consume exported APIs.
-- Avoid introducing heavy dependencies or build steps that complicate HPC usage.
+- Avoid introducing heavy dependencies or build steps that complicate HPC usage. Current external requirements: BLAS/LAPACK, HDF5 (C library), OpenMP (optional).
 - Avoid global state unless explicitly justified and documented.
 
 ---
@@ -52,8 +57,8 @@ Any change here may impact both wrappers and downstream pipelines.
 
 1. Identify affected public headers in `include/`.
 2. Check whether R and/or Python wrappers rely on these symbols.
-3. Update or add tests in `test/` that cover the modified behavior.
-4. Document behavior changes in `README.md` or a dedicated docs section.
+3. Update or add tests that cover the modified behavior.
+4. Document behavior changes in `README.md` or `docs/`.
 
 ### When adding new functionality
 

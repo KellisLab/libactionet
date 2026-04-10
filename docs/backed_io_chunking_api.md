@@ -7,14 +7,13 @@ API and low-level pybind bindings.
 
 - C++ constructor:
   - `actionet::BackedSparseMatrixOperator(...)`
-  - declared in `src/libactionet/include/io/backed_h5ad/backed_sparse_matrix_operator.hpp`
+  - declared in `include/io/backed_h5ad/backed_sparse_matrix_operator.hpp`
 - C++ factory:
   - `actionet::createBackedOperator(...)`
-  - declared in `src/libactionet/include/io/backed_h5ad/create_backed_operator.hpp`
-- pybind low-level bindings:
+  - declared in `include/io/backed_h5ad/create_backed_operator.hpp`
+- pybind low-level bindings (in `actionet-python` repo):
   - `_core.BackedSparseMatrixOperator(...)`
   - `_core.create_backed_operator(...)`
-  - implemented in `src/actionet/wp_io.cpp`
 
 These parameters are currently exposed at the low-level `_core` interface. The
 high-level Python frontend functions are intentionally not wired to the new

@@ -48,7 +48,7 @@ This document records **deliberate architectural and operational decisions** for
 **Decision:**
 
 - Python front-end is the **performance-first and pipeline-critical interface**
-- R front-end remains supported and serves as a **reference for semantics and outputs**
+- R front-end remains supported and is more feature-complete.
 
 **Rationale:**
 
@@ -77,7 +77,7 @@ This document records **deliberate architectural and operational decisions** for
 
 **Decision:**
 
-- Avoid breaking changes are allowed if justifed.
+- Breaking changes are allowed if justified.
 - Such changes must substantially improve:
   - Performance
   - Resource usage
