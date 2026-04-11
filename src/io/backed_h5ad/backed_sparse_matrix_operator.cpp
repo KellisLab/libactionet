@@ -693,6 +693,86 @@ namespace actionet {
         }
     }
 
+    // ---- rowStats implementation ------------------------------------------------
+
+    void BackedSparseMatrixOperator::rowStats(
+        arma::vec& row_sum, arma::vec& row_sum_sq, arma::vec& nnz) const {
+        if (is_csr_) {
+            row_stats_csr_(row_sum, row_sum_sq, nnz);
+        } else {
+            row_stats_csc_(row_sum, row_sum_sq, nnz);
+        }
+    }
+
+    void BackedSparseMatrixOperator::row_stats_csr_(
+        arma::vec& row_sum, arma::vec& row_sum_sq, arma::vec& nnz_out) const {
+        row_sum.zeros(n_obs_);
+        row_sum_sq.zeros(n_obs_);
+        nnz_out.zeros(n_obs_);
+
+        for (arma::uword row_start = 0; row_start < n_obs_;) {
+            const arma::uword row_end = next_block_end_(row_start, n_obs_);
+            const unsigned long long nnz_start = indptr_[row_start];
+            const unsigned long long nnz_end = indptr_[row_end];
+            const unsigned long long nnz_count = nnz_end - nnz_start;
+
+            if (nnz_count > 0) {
+                const std::vector<double>* data;
+                const std::vector<unsigned long long>* indices;
+                load_chunk_cached_(nnz_start, nnz_count, data, indices);
+                ensure_chunk_transformed_csr_(row_start, row_end, nnz_start);
+
+                for (arma::uword r = row_start; r < row_end; ++r) {
+                    const unsigned long long local_start = indptr_[r] - nnz_start;
+                    const unsigned long long local_end = indptr_[r + 1] - nnz_start;
+                    double rs = 0.0, rssq = 0.0;
+                    double cnt = 0.0;
+                    for (unsigned long long p = local_start; p < local_end; ++p) {
+                        const double v = (*data)[static_cast<size_t>(p)];
+                        rs += v;
+                        rssq += v * v;
+                        cnt += 1.0;
+                    }
+                    row_sum(r) = rs;
+                    row_sum_sq(r) = rssq;
+                    nnz_out(r) = cnt;
+                }
+            }
+            row_start = row_end;
+        }
+    }
+
+    void BackedSparseMatrixOperator::row_stats_csc_(
+        arma::vec& row_sum, arma::vec& row_sum_sq, arma::vec& nnz_out) const {
+        row_sum.zeros(n_obs_);
+        row_sum_sq.zeros(n_obs_);
+        nnz_out.zeros(n_obs_);
+
+        for (arma::uword col_start = 0; col_start < n_var_;) {
+            const arma::uword col_end = next_block_end_(col_start, n_var_);
+            const unsigned long long nnz_start = indptr_[col_start];
+            const unsigned long long nnz_end = indptr_[col_end];
+            const unsigned long long nnz_count = nnz_end - nnz_start;
+
+            if (nnz_count > 0) {
+                const std::vector<double>* data;
+                const std::vector<unsigned long long>* indices;
+                load_chunk_cached_(nnz_start, nnz_count, data, indices);
+                ensure_chunk_transformed_csc_();
+
+                for (unsigned long long p = 0; p < nnz_count; ++p) {
+                    const arma::uword row = static_cast<arma::uword>(
+                        (*indices)[static_cast<size_t>(p)]);
+                    const double v = (*data)[static_cast<size_t>(p)];
+                    row_sum(row) += v;
+                    row_sum_sq(row) += v * v;
+                    nnz_out(row) += 1.0;
+                }
+            }
+            col_start = col_end;
+        }
+    }
+
     // ---- takeColumns implementations ------------------------------------------------
 
     void BackedSparseMatrixOperator::take_columns_dense_csr_(

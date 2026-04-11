@@ -129,6 +129,19 @@ namespace actionet {
         arma::sp_mat takeColumnsSparse(const arma::uvec& col_indices,
                                        const arma::uvec& row_indices = {}) const;
 
+        /// @brief Compute fused per-row statistics in a single NNZ pass.
+        ///
+        /// Streams through the on-disk sparse data once, applying the
+        /// lazy transform (row_scale + log1p) before accumulation.
+        /// Replaces the former Pass 2 (matvec for row_sum) + Pass 3
+        /// (column-chunked dense extraction for row_sum_sq / nnz).
+        ///
+        /// @param[out] row_sum     Sum of (transformed) values per row.
+        /// @param[out] row_sum_sq  Sum of squared (transformed) values per row.
+        /// @param[out] nnz         Count of stored (non-zero) entries per row.
+        void rowStats(arma::vec& row_sum, arma::vec& row_sum_sq,
+                      arma::vec& nnz) const;
+
     private:
         // Grant direct access to the single-pass backed specificity implementation.
         friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
@@ -210,6 +223,11 @@ namespace actionet {
         void take_columns_dense_csc_(const arma::uvec& col_indices,
                                      const arma::uvec& row_indices,
                                      arma::mat& out) const;
+
+        void row_stats_csr_(arma::vec& row_sum, arma::vec& row_sum_sq,
+                            arma::vec& nnz) const;
+        void row_stats_csc_(arma::vec& row_sum, arma::vec& row_sum_sq,
+                            arma::vec& nnz) const;
 
         std::string file_path_;
         std::string group_path_;

@@ -13,7 +13,7 @@ namespace {
         const arma::vec& mu,
         const arma::vec& sigma_sq,
         const arma::sp_mat& X,
-        arma::sp_mat& G,
+        const arma::sp_mat& G,
         int norm_method, double alpha, int max_it,
         bool approx, int thread_no) {
 
@@ -35,7 +35,7 @@ namespace {
 } // namespace
 
 namespace actionet {
-    arma::mat computeFeatureStats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_method,
+    arma::mat computeFeatureStats(const arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_method,
                                   double alpha, int max_it, bool approx, int thread_no, bool ignore_baseline) {
         // S is cells x genes (obs x var, Plan 02 contract).
         // X is features(genes) x labels.
@@ -85,7 +85,7 @@ namespace actionet {
         return (stats);
     }
 
-    arma::mat computeFeatureStatsVision(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X,
+    arma::mat computeFeatureStatsVision(const arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X,
                                         int norm_method, double alpha, int max_it,
                                         bool approx, int thread_no) {
         if (S.n_cols != X.n_rows) {
@@ -123,7 +123,7 @@ namespace actionet {
     // ------------------------------------------------------------------
 
     arma::mat computeFeatureStatsVision(BackedSparseMatrixOperator& op,
-                                        arma::sp_mat& G, arma::sp_mat& X,
+                                        const arma::sp_mat& G, arma::sp_mat& X,
                                         int norm_method, double alpha,
                                         int max_it, bool approx,
                                         int thread_no) {
@@ -141,31 +141,9 @@ namespace actionet {
         arma::mat stats;
         op.matmat(X_dense, stats);
 
-        // Pass 2: row_sum = S @ ones
-        arma::vec ones_var(n_var, arma::fill::ones);
-        arma::vec row_sum;
-        op.matvec(ones_var, row_sum);
-
-        // Pass 3: accumulate row_sum_sq and nnz via column-chunked extraction.
-        // Three passes over NNZ is still much faster than the old Python path.
-        arma::vec row_sum_sq(n_obs, arma::fill::zeros);
-        arma::vec nnz_vec(n_obs, arma::fill::zeros);
-        const arma::uword col_chunk = 1024;
-        for (arma::uword c_start = 0; c_start < n_var; c_start += col_chunk) {
-            const arma::uword c_end = std::min(n_var, c_start + col_chunk);
-            const arma::uword n_cols = c_end - c_start;
-            arma::uvec col_idx = arma::regspace<arma::uvec>(c_start, c_end - 1);
-            arma::mat block = op.takeColumnsDense(col_idx);
-            for (arma::uword r = 0; r < n_obs; ++r) {
-                for (arma::uword c = 0; c < n_cols; ++c) {
-                    double v = block(r, c);
-                    if (v != 0.0) {
-                        row_sum_sq(r) += v * v;
-                        nnz_vec(r) += 1.0;
-                    }
-                }
-            }
-        }
+        // Fused pass: row_sum, row_sum_sq, nnz in one NNZ-only scan.
+        arma::vec row_sum, row_sum_sq, nnz_vec;
+        op.rowStats(row_sum, row_sum_sq, nnz_vec);
 
         arma::vec mu = row_sum / static_cast<double>(n_var);
         arma::vec p_nnz = nnz_vec / static_cast<double>(n_var);
@@ -182,7 +160,7 @@ namespace actionet {
     }
 
     arma::mat computeFeatureStatsVision(BackedDenseMatrixOperator& op,
-                                        arma::sp_mat& G, arma::sp_mat& X,
+                                        const arma::sp_mat& G, arma::sp_mat& X,
                                         int norm_method, double alpha,
                                         int max_it, bool approx,
                                         int thread_no) {
@@ -240,7 +218,7 @@ namespace actionet {
     // ------------------------------------------------------------------
 
     arma::mat computeFeatureStatsVisionFromStats(
-        arma::sp_mat& G,
+        const arma::sp_mat& G,
         arma::mat& stats,
         arma::vec& mu,
         arma::vec& sigma_sq,

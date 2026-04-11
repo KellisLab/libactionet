@@ -23,7 +23,7 @@ namespace actionet {
     /// @param ignore_baseline Ignore baseline in scoring.
     ///
     /// @return Matrix of marker scores (cells x labels).
-    arma::mat computeFeatureStats(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_method = 2,
+    arma::mat computeFeatureStats(const arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_method = 2,
                                   double alpha = 0.85, int max_it = 5, bool approx = false, int thread_no = 0,
                                   bool ignore_baseline = false);
 
@@ -39,7 +39,7 @@ namespace actionet {
     /// @param thread_no Number of threads (0 = auto).
     ///
     /// @return Matrix of marker scores (cells x labels).
-    arma::mat computeFeatureStatsVision(arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_method = 2,
+    arma::mat computeFeatureStatsVision(const arma::sp_mat& G, arma::sp_mat& S, arma::sp_mat& X, int norm_method = 2,
                                         double alpha = 0.85, int max_it = 5, bool approx = false, int thread_no = 0);
 
     /// @brief Backed sparse overload of computeFeatureStatsVision.
@@ -47,14 +47,14 @@ namespace actionet {
     /// Streams the expression matrix from disk via the backed operator.
     /// Output semantics are identical to the in-memory overload.
     arma::mat computeFeatureStatsVision(BackedSparseMatrixOperator& op,
-                                        arma::sp_mat& G, arma::sp_mat& X,
+                                        const arma::sp_mat& G, arma::sp_mat& X,
                                         int norm_method = 2, double alpha = 0.85,
                                         int max_it = 5, bool approx = false,
                                         int thread_no = 0);
 
     /// @brief Backed dense overload of computeFeatureStatsVision.
     arma::mat computeFeatureStatsVision(BackedDenseMatrixOperator& op,
-                                        arma::sp_mat& G, arma::sp_mat& X,
+                                        const arma::sp_mat& G, arma::sp_mat& X,
                                         int norm_method = 2, double alpha = 0.85,
                                         int max_it = 5, bool approx = false,
                                         int thread_no = 0);
@@ -80,7 +80,7 @@ namespace actionet {
     ///
     /// @return Matrix of marker scores (cells x labels).
     arma::mat computeFeatureStatsVisionFromStats(
-        arma::sp_mat& G,
+        const arma::sp_mat& G,
         arma::mat& stats,
         arma::vec& mu,
         arma::vec& sigma_sq,

@@ -19,8 +19,11 @@ namespace actionet {
     /// @param tol Convergence tolerance.
     ///
     /// @return Diffused scores matrix.
+    ///
+    /// @note G is not modified.  Prior versions mutated G in-place
+    ///       (normalize + scale); that is no longer the case.
     template <typename T>
-    arma::mat computeNetworkDiffusion(arma::sp_mat& G, T& X0, double alpha = 0.85, int max_it = 5,
+    arma::mat computeNetworkDiffusion(const arma::sp_mat& G, T& X0, double alpha = 0.85, int max_it = 5,
                                       int thread_no = 0, bool approx = false, int norm_method = 0, double tol = 1E-8);
 } // namespace actionet
 
