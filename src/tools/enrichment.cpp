@@ -4,27 +4,70 @@
 
 namespace actionet {
     arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, const arma::mat& scores, int thread_no) {
-        arma::mat Obs = spmat_mat_product_parallel(G, scores, thread_no);
+        const arma::uword n = G.n_rows;
 
-        arma::rowvec p = arma::mean(scores, 0);
-        arma::mat Exp = arma::sum(G, 1) * p;
+        // -----------------------------------------------------------
+        // Single NNZ pass: compute row_sum, row_sum_sq, row_max from
+        // G's CSC storage.  Avoids materializing arma::square(G) and
+        // fuses three separate scans into one.
+        // -----------------------------------------------------------
+        arma::vec row_sum(n, arma::fill::zeros);
+        arma::vec row_sum_sq(n, arma::fill::zeros);
+        arma::vec row_max(n, arma::fill::zeros);
 
-        arma::mat Lambda = Obs - Exp;
-
-        arma::mat Nu = arma::sum(arma::square(G), 1) * p;
-        arma::vec a = arma::vec(arma::max(G, 1));
-
-        arma::mat Lambda_scaled = Lambda;
-        for (int j = 0; j < Lambda_scaled.n_rows; j++) {
-            Lambda_scaled.row(j) *= (a(j) / 3);
+        for (arma::uword col = 0; col < G.n_cols; ++col) {
+            for (arma::sp_mat::const_col_iterator it = G.begin_col(col);
+                 it != G.end_col(col); ++it) {
+                const arma::uword row = it.row();
+                const double val = (*it);
+                row_sum(row) += val;
+                row_sum_sq(row) += val * val;
+                if (val > row_max(row)) {
+                    row_max(row) = val;
+                }
+            }
         }
 
-        arma::mat logPvals_upper = arma::square(Lambda) / (2 * (Nu + Lambda_scaled));
-        arma::uvec lidx = arma::find(Lambda <= 0);
-        logPvals_upper(lidx) = arma::zeros(lidx.n_elem);
-        logPvals_upper.replace(arma::datum::nan, 0); // replace each NaN with 0
+        // -----------------------------------------------------------
+        // Obs = G @ scores   (parallel SpMV)
+        // -----------------------------------------------------------
+        arma::mat Obs = spmat_mat_product_parallel(G, scores, thread_no);
 
-        return logPvals_upper;
+        // -----------------------------------------------------------
+        // Bennett concentration inequality with fused element-wise ops.
+        //
+        //   p          = mean(scores, 0)          (1 x n_labels)
+        //   Exp_ij     = row_sum(i) * p(j)
+        //   Lambda_ij  = Obs_ij - Exp_ij
+        //   Nu_ij      = row_sum_sq(i) * p(j)
+        //   scale_ij   = row_max(i) / 3
+        //
+        //   logPval_ij = Lambda^2 / (2 * (Nu + Lambda * scale))
+        //                 where Lambda > 0, else 0
+        //
+        // We compute this in-place over Obs to avoid separate Lambda,
+        // Nu, Lambda_scaled, and logPvals_upper matrices.
+        // -----------------------------------------------------------
+        const arma::rowvec p = arma::mean(scores, 0);
+        const arma::uword n_labels = scores.n_cols;
+
+        int threads_use = get_num_threads(n_labels, thread_no);
+        #pragma omp parallel for num_threads(threads_use)
+        for (arma::uword j = 0; j < n_labels; ++j) {
+            const double pj = p(j);
+            for (arma::uword i = 0; i < n; ++i) {
+                double lambda = Obs(i, j) - row_sum(i) * pj;
+                if (lambda <= 0.0) {
+                    Obs(i, j) = 0.0;
+                } else {
+                    double nu = row_sum_sq(i) * pj;
+                    double denom = 2.0 * (nu + lambda * (row_max(i) / 3.0));
+                    Obs(i, j) = (denom > 0.0) ? (lambda * lambda) / denom : 0.0;
+                }
+            }
+        }
+
+        return Obs;
     }
 
     arma::field<arma::mat> assess_enrichment(const arma::mat& scores, arma::sp_mat& associations, int thread_no) {
