@@ -69,13 +69,34 @@ macro(CONFIGURE_OPENMP libtarget)
     endif()
 
     if (NOT _openmp_handled AND APPLE)
-        # On macOS, libomp from Homebrew is installed as keg-only, so we need special handling
+        # On macOS, libomp is keg-only under Homebrew and also ships in conda
+        # envs.  When CONDA_PREFIX is set we MUST link the conda copy;
+        # hard-linking Homebrew's libomp while conda's copy is also loaded at
+        # runtime causes duplicate-OpenMP segfaults.
         message(STATUS "Detecting OpenMP on macOS (target arch: ${TARGET_ARCHITECTURE})")
 
-        # First, try the standard find_package approach
-        find_package(OpenMP QUIET)
+        # ── Try conda libomp first ──────────────────────────────────────────
+        if (DEFINED ENV{CONDA_PREFIX})
+            set(_conda_libomp "$ENV{CONDA_PREFIX}/lib/libomp.dylib")
+            set(_conda_omp_h  "$ENV{CONDA_PREFIX}/include/omp.h")
+            if (EXISTS "${_conda_libomp}" AND EXISTS "${_conda_omp_h}")
+                message(STATUS "Found conda libomp at: $ENV{CONDA_PREFIX}")
+                target_include_directories(${libtarget} PRIVATE "$ENV{CONDA_PREFIX}/include")
+                target_link_libraries(${libtarget} PRIVATE "${_conda_libomp}")
+                target_compile_options(${libtarget} PRIVATE -Xclang -fopenmp)
+                target_link_options(${libtarget} PRIVATE -Xclang -fopenmp)
+                set(OpenMP_FOUND TRUE)
+            else()
+                message(STATUS "CONDA_PREFIX set but libomp not found there; falling through to Homebrew.")
+            endif()
+        endif()
 
-        # If not found, try to locate libomp from Homebrew
+        # ── Standard find_package fallback ──────────────────────────────────
+        if (NOT OpenMP_FOUND)
+            find_package(OpenMP QUIET)
+        endif()
+
+        # ── Homebrew fallback (non-conda native installs) ───────────────────
         if (NOT OpenMP_FOUND)
             message(STATUS "OpenMP not found via find_package, checking Homebrew libomp...")
 
