@@ -121,7 +121,9 @@ All public symbols are exposed under the `actionet` namespace via `include/libac
 - **Network**: `buildNetwork`, `computeNetworkDiffusion`, `runLPA`, `computeCoreness`, `computeArchetypeCentrality`
 - **Annotation / specificity**: `computeFeatureSpecificity`, `computeFeatureStats`, `computeFeatureStatsVision`, `computeFeatureStatsVisionFromStats` (with backed-operator overloads)
 - **Visualization**: `layoutNetwork`, `computeNodeColors`
-- **Tools**: `normalizeMatrix`, `scaleMatrix`, `normalizeGraph`, `normalize_scores`, `computeGroupedSums/Means/Vars`, `autocorrelation_Moran/Moran_parametric/Geary`, `assess_enrichment`, `computeGraphLabelEnrichment`, `MWM_hungarian`, `MWM_rank1`, `xicor`, `XICOR`
+- **Tools**: `normalizeMatrix`, `scaleMatrix`, `normalizeGraph`, `normalize_scores`, `computeGroupedSums/Means/Vars`, `autocorrelation_Moran/Moran_parametric/Geary`, `assess_enrichment`, `computeGraphLabelEnrichment`, `MWM_hungarian`, `MWM_rank1`, `xicor`, `XICOR`, `fitGuidesSharedVarianceGMM`, `deriveGuideThresholdsQuantile`, `deriveGuideThresholdsEqualDensity`, `deriveGuideThresholdsValley`, `sweepGuideThresholdsQuantile`, `applyGuideThresholds`
+
+Guide-calling API details: `docs/guide_calling_api.md`
 
 ## License
 GNU Affero General Public License v3 (AGPL-3.0). See [LICENSE](LICENSE).

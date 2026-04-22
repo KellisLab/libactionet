@@ -41,6 +41,7 @@
 // tools: Exported tools and convenience functions
 #include "tools/autocorrelation.hpp"
 #include "tools/enrichment.hpp"
+#include "tools/guide_calling.hpp"
 #include "tools/matrix_aggregate.hpp"
 #include "tools/matrix_transform.hpp"
 #include "tools/mwm.hpp"
