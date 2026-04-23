@@ -3,6 +3,13 @@
 #include "utils_internal/utils_parallel.hpp"
 #include "uwot/coords.h"
 
+#include <cstdlib>
+#include <string>
+
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <sched.h>
+#endif
+
 namespace {
 
 struct EdgeVectors {
@@ -13,7 +20,26 @@ struct EdgeVectors {
     unsigned int n_vertices;
 };
 
-void verboseStatus(const UwotArgs& method_args) {
+const char* env_or_unset(const char* key) {
+    const char* value = std::getenv(key);
+    return (value && value[0] != '\0') ? value : "<unset>";
+}
+
+unsigned int affinity_cpu_count() {
+#if defined(__linux__) && !defined(__ANDROID__)
+    cpu_set_t cpuset;
+    if (sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0) {
+        return static_cast<unsigned int>(CPU_COUNT(&cpuset));
+    }
+#endif
+    return 0;
+}
+
+const char* optimizer_name(const OptimizerArgs& opt_args) {
+    return opt_args.opt_method == OPT_METHOD_SGD ? "sgd" : "adam";
+}
+
+void verboseStatus(const UwotArgs& method_args, std::size_t requested_threads) {
     stderr_printf("Optimizing layout using method '%s': %d components \n", method_args.get_method().c_str(),
                   method_args.n_components);
     switch (method_args.get_cost_func()) {
@@ -32,6 +58,25 @@ void verboseStatus(const UwotArgs& method_args) {
             break;
     }
     stderr_printf("Optimizing for %d epochs with %d threads \n", method_args.n_epochs, (int)method_args.n_threads);
+    stderr_printf("Runtime diagnostics: requested_threads=%zu, effective_threads=%zu, max_threads=%u\n",
+                  requested_threads, method_args.n_threads, get_max_threads());
+    stderr_printf("Runtime diagnostics: batch=%s, grain_size=%zu, approx_pow=%s, rng_type='%s', optimizer='%s'\n",
+                  method_args.batch ? "true" : "false", method_args.grain_size,
+                  method_args.approx_pow ? "true" : "false", method_args.get_rng_type().c_str(),
+                  optimizer_name(method_args.opt_args));
+    stderr_printf("Runtime diagnostics: OMP_NUM_THREADS=%s, OPENBLAS_NUM_THREADS=%s, MKL_NUM_THREADS=%s\n",
+                  env_or_unset("OMP_NUM_THREADS"), env_or_unset("OPENBLAS_NUM_THREADS"),
+                  env_or_unset("MKL_NUM_THREADS"));
+    stderr_printf("Runtime diagnostics: SLURM_CPUS_PER_TASK=%s, NSLOTS=%s, OMP_PROC_BIND=%s, OMP_PLACES=%s\n",
+                  env_or_unset("SLURM_CPUS_PER_TASK"), env_or_unset("NSLOTS"),
+                  env_or_unset("OMP_PROC_BIND"), env_or_unset("OMP_PLACES"));
+    const unsigned int affinity_cpus = affinity_cpu_count();
+    if (affinity_cpus > 0) {
+        stderr_printf("Runtime diagnostics: sched_getaffinity CPUs=%u\n", affinity_cpus);
+    }
+    else {
+        stderr_printf("Runtime diagnostics: sched_getaffinity CPUs=<unavailable>\n");
+    }
     FLUSH;
 };
 
@@ -155,6 +200,7 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
         throw std::invalid_argument("'initial_coordinates' must have at least n_components columns");
     }
 
+    const std::size_t requested_threads = uwot_args.n_threads;
     uwot_args.n_threads = get_num_threads(0, static_cast<int>(uwot_args.n_threads));
     if (uwot_args.n_epochs <= 0) {
         uwot_args.n_epochs = (initial_coordinates.n_rows <= 10000) ? 500 : 200; // uwot defaults
@@ -174,7 +220,7 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
                    uwot_args.opt_args, uwot_args.negative_sample_rate, uwot_args.batch,
                    uwot_args.n_threads, uwot_args.grain_size, uwot_args.verbose);
 
-    if (uwot_args.verbose) { verboseStatus(uwot_args); }
+    if (uwot_args.verbose) { verboseStatus(uwot_args, requested_threads); }
 
     switch (uwot_args.get_cost_func()) {
         case METHOD_TUMAP:
