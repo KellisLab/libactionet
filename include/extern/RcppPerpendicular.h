@@ -27,7 +27,25 @@
 #include <utility>
 #include <vector>
 
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <sched.h>
+#endif
+
 namespace RcppPerpendicular {
+
+// Affinity-aware fallback: respects cgroup/taskset/Slurm CPU limits on Linux.
+inline std::size_t available_concurrency() {
+#if defined(__linux__) && !defined(__ANDROID__)
+  cpu_set_t cpuset;
+  if (sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0) {
+    int count = CPU_COUNT(&cpuset);
+    if (count > 0) {
+      return static_cast<std::size_t>(count);
+    }
+  }
+#endif
+  return std::thread::hardware_concurrency();
+}
 
 using IndexRange = std::pair<std::size_t, std::size_t>;
 
@@ -55,7 +73,7 @@ inline auto split_input_range(const IndexRange &range, std::size_t n_threads,
 
   // determine max number of threads
   if (n_threads == 0) {
-    n_threads = std::thread::hardware_concurrency();
+    n_threads = available_concurrency();
   }
 
   // compute grain_size (including enforcing requested minimum)
