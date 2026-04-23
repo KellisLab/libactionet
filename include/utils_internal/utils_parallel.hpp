@@ -6,7 +6,22 @@
 #include <chrono>
 #include <cstdio>
 
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <sched.h>
+#endif
+
+// Returns the number of CPUs available to this process, respecting
+// cgroup/affinity restrictions (Slurm, SGE, taskset, etc.) on Linux.
 inline unsigned int get_max_threads() {
+#if defined(__linux__) && !defined(__ANDROID__)
+    cpu_set_t cpuset;
+    if (sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0) {
+        int count = CPU_COUNT(&cpuset);
+        if (count > 0) {
+            return static_cast<unsigned int>(count);
+        }
+    }
+#endif
     return std::thread::hardware_concurrency();
 }
 
