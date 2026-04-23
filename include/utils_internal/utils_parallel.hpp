@@ -5,24 +5,42 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <sched.h>
 #endif
 
-// Returns the number of CPUs available to this process, respecting
-// cgroup/affinity restrictions (Slurm, SGE, taskset, etc.) on Linux.
+// Returns the number of CPUs available to this process.
+// Detection priority:
+//   1. OMP_NUM_THREADS env var (explicit user/scheduler intent, capped at hw)
+//   2. sched_getaffinity (cgroup cpuset / taskset), only when it actively
+//      restricts below hardware count — some schedulers (SGE) leave the
+//      affinity mask at 1 core even when more slots are allocated
+//   3. std::thread::hardware_concurrency (full node)
 inline unsigned int get_max_threads() {
+    unsigned int hw = std::thread::hardware_concurrency();
+    if (hw == 0) hw = 1;
+
+    const char* omp_env = std::getenv("OMP_NUM_THREADS");
+    if (omp_env) {
+        int omp_val = std::atoi(omp_env);
+        if (omp_val > 0) {
+            return std::min(static_cast<unsigned int>(omp_val), hw);
+        }
+    }
+
 #if defined(__linux__) && !defined(__ANDROID__)
     cpu_set_t cpuset;
     if (sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0) {
-        int count = CPU_COUNT(&cpuset);
-        if (count > 0) {
-            return static_cast<unsigned int>(count);
+        unsigned int count = static_cast<unsigned int>(CPU_COUNT(&cpuset));
+        if (count > 0 && count < hw) {
+            return count;
         }
     }
 #endif
-    return std::thread::hardware_concurrency();
+
+    return hw;
 }
 
 namespace actionet {

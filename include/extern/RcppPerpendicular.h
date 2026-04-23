@@ -26,6 +26,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <cstdlib>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <sched.h>
@@ -33,18 +34,30 @@
 
 namespace RcppPerpendicular {
 
-// Affinity-aware fallback: respects cgroup/taskset/Slurm CPU limits on Linux.
+// HPC-aware thread count: OMP_NUM_THREADS > cpuset affinity > hardware count.
 inline std::size_t available_concurrency() {
+  std::size_t hw = std::thread::hardware_concurrency();
+  if (hw == 0) hw = 1;
+
+  const char* omp_env = std::getenv("OMP_NUM_THREADS");
+  if (omp_env) {
+    int omp_val = std::atoi(omp_env);
+    if (omp_val > 0) {
+      return (std::min)(static_cast<std::size_t>(omp_val), hw);
+    }
+  }
+
 #if defined(__linux__) && !defined(__ANDROID__)
   cpu_set_t cpuset;
   if (sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0) {
-    int count = CPU_COUNT(&cpuset);
-    if (count > 0) {
-      return static_cast<std::size_t>(count);
+    std::size_t count = static_cast<std::size_t>(CPU_COUNT(&cpuset));
+    if (count > 0 && count < hw) {
+      return count;
     }
   }
 #endif
-  return std::thread::hardware_concurrency();
+
+  return hw;
 }
 
 using IndexRange = std::pair<std::size_t, std::size_t>;
