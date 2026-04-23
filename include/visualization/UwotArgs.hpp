@@ -36,6 +36,9 @@ public:
     std::size_t n_threads = 1;
     std::size_t grain_size = 1;
     bool verbose = true;
+    // C++-only diagnostic switch for verbose runtime environment details.
+    // This is intentionally not exposed via R/Python wrapper APIs.
+    bool debug_runtime_diagnostics = false;
     OptimizerArgs opt_args = OptimizerArgs(learning_rate);
     // Initialized by members
     float a = 0; // Dummy value. Overwritten by initializer.

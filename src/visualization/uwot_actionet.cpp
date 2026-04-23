@@ -58,24 +58,26 @@ void verboseStatus(const UwotArgs& method_args, std::size_t requested_threads) {
             break;
     }
     stderr_printf("Optimizing for %d epochs with %d threads \n", method_args.n_epochs, (int)method_args.n_threads);
-    stderr_printf("Runtime diagnostics: requested_threads=%zu, effective_threads=%zu, max_threads=%u\n",
-                  requested_threads, method_args.n_threads, get_max_threads());
-    stderr_printf("Runtime diagnostics: batch=%s, grain_size=%zu, approx_pow=%s, rng_type='%s', optimizer='%s'\n",
-                  method_args.batch ? "true" : "false", method_args.grain_size,
-                  method_args.approx_pow ? "true" : "false", method_args.get_rng_type().c_str(),
-                  optimizer_name(method_args.opt_args));
-    stderr_printf("Runtime diagnostics: OMP_NUM_THREADS=%s, OPENBLAS_NUM_THREADS=%s, MKL_NUM_THREADS=%s\n",
-                  env_or_unset("OMP_NUM_THREADS"), env_or_unset("OPENBLAS_NUM_THREADS"),
-                  env_or_unset("MKL_NUM_THREADS"));
-    stderr_printf("Runtime diagnostics: SLURM_CPUS_PER_TASK=%s, NSLOTS=%s, OMP_PROC_BIND=%s, OMP_PLACES=%s\n",
-                  env_or_unset("SLURM_CPUS_PER_TASK"), env_or_unset("NSLOTS"),
-                  env_or_unset("OMP_PROC_BIND"), env_or_unset("OMP_PLACES"));
-    const unsigned int affinity_cpus = affinity_cpu_count();
-    if (affinity_cpus > 0) {
-        stderr_printf("Runtime diagnostics: sched_getaffinity CPUs=%u\n", affinity_cpus);
-    }
-    else {
-        stderr_printf("Runtime diagnostics: sched_getaffinity CPUs=<unavailable>\n");
+    if (method_args.debug_runtime_diagnostics) {
+        stderr_printf("Runtime diagnostics: requested_threads=%zu, effective_threads=%zu, max_threads=%u\n",
+                      requested_threads, method_args.n_threads, get_max_threads());
+        stderr_printf("Runtime diagnostics: batch=%s, grain_size=%zu, approx_pow=%s, rng_type='%s', optimizer='%s'\n",
+                      method_args.batch ? "true" : "false", method_args.grain_size,
+                      method_args.approx_pow ? "true" : "false", method_args.get_rng_type().c_str(),
+                      optimizer_name(method_args.opt_args));
+        stderr_printf("Runtime diagnostics: OMP_NUM_THREADS=%s, OPENBLAS_NUM_THREADS=%s, MKL_NUM_THREADS=%s\n",
+                      env_or_unset("OMP_NUM_THREADS"), env_or_unset("OPENBLAS_NUM_THREADS"),
+                      env_or_unset("MKL_NUM_THREADS"));
+        stderr_printf("Runtime diagnostics: SLURM_CPUS_PER_TASK=%s, NSLOTS=%s, OMP_PROC_BIND=%s, OMP_PLACES=%s\n",
+                      env_or_unset("SLURM_CPUS_PER_TASK"), env_or_unset("NSLOTS"),
+                      env_or_unset("OMP_PROC_BIND"), env_or_unset("OMP_PLACES"));
+        const unsigned int affinity_cpus = affinity_cpu_count();
+        if (affinity_cpus > 0) {
+            stderr_printf("Runtime diagnostics: main-thread sched_getaffinity CPUs=%u\n", affinity_cpus);
+        }
+        else {
+            stderr_printf("Runtime diagnostics: main-thread sched_getaffinity CPUs=<unavailable>\n");
+        }
     }
     FLUSH;
 };
