@@ -65,11 +65,30 @@ namespace {
         return out;
     }
 
+    // Threshold below which classical Gram-Schmidt is faster than LAPACK QR for
+    // orthonormalising the (rows × c) batch / basal subspace matrix `Z`.  At
+    // very small c the LAPACK dispatch overhead dominates the actual flops.
+    // Mirrors the threshold used in perturbedSVD; see svd_main.cpp.
+    static constexpr arma::uword ORTHOG_SMALL_C_THRESHOLD = 16;
+
+    // Replace `Z` (rows × c) with an orthonormal basis for its column space.
+    // Picks the cheaper of classical Gram-Schmidt (small c) and Householder QR
+    // (large c).  Modifies `Z` in place.
+    inline void orthonormalize_columns_(arma::mat& Z) {
+        if (Z.n_cols == 0) return;
+        if (Z.n_cols <= ORTHOG_SMALL_C_THRESHOLD) {
+            actionet::gram_schmidt(Z);
+        } else {
+            arma::mat Q_orth, R_unused;
+            arma::qr_econ(Q_orth, R_unused, Z);
+            Z = std::move(Q_orth);
+        }
+    }
+
     actionet::PerturbedSVDResult deflate_reduction_struct_(const actionet::SVDResult& svd,
                                                            const actionet::PerturbedSVDResult* prior,
                                                            const arma::mat& A,
-                                                           const arma::mat& B) {
-        if (A.n_rows != svd.V.n_rows) {
+                                                           const arma::mat& B) {        if (A.n_rows != svd.V.n_rows) {
             throw std::runtime_error("orthogonalization: gene-space perturbation rows must match reduction U rows (genes)");
         }
         if (B.n_rows != svd.U.n_rows) {
@@ -127,11 +146,8 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         // Z = S.t() * design: (cells × genes)' * (cells × q) = genes × q
         arma::mat Z = arma::mat(S.t() * design);
 
-        // Householder QR is faster and more stable than classical Gram-Schmidt
-        // for tall thin matrices; we only need the orthonormal basis.
-        arma::mat Q_orth, R_unused;
-        arma::qr_econ(Q_orth, R_unused, Z);
-        Z = std::move(Q_orth);
+        // Orthonormalise Z; uses GS for small c and Householder QR otherwise.
+        orthonormalize_columns_(Z);
 
         // B = -(S * Z): (cells × genes)(genes × q) = cells × q  — direct, no extra transpose
         arma::mat A = Z;
@@ -156,11 +172,8 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         stdout_printf("Orthogonalizing basal:\n");
         FLUSH;
 
-        arma::mat Z;
-        {
-            arma::mat R_unused;
-            arma::qr_econ(Z, R_unused, basal_state);
-        }
+        arma::mat Z = basal_state;
+        orthonormalize_columns_(Z);
 
         // S is cells × genes.  B = -(S * Z): (cells × genes)(genes × q) = cells × q
         arma::mat A = Z;
@@ -216,12 +229,8 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
             Z(it.col(), col) += (*it);
         }
 
-        // Orthonormalize Z (genes × n_batches) via thin Householder QR.
-        {
-            arma::mat Q_orth, R_unused;
-            arma::qr_econ(Q_orth, R_unused, Z);
-            Z = std::move(Q_orth);
-        }
+        // Orthonormalize Z (genes × n_batches); GS for small c, QR for large.
+        orthonormalize_columns_(Z);
 
         // B = -(S * Z): cells × n_batches.  Use the standard sparse-dense product;
         // this is a single pass over the nnz with width = Z.n_cols (after QR,
@@ -260,11 +269,7 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         // New (cells × genes): S.rmatmat(design, Z) → (cells × genes)'(cells × q) = genes × q
         arma::mat Z;
         S.rmatmat(design, Z);
-        {
-            arma::mat Q_orth, R_unused;
-            arma::qr_econ(Q_orth, R_unused, Z);
-            Z = std::move(Q_orth);
-        }
+        orthonormalize_columns_(Z);
 
         // B = -(S * Z): matmat computes S * X where X is (n_var × q) → (n_obs × q) = cells × q
         // Old (genes × cells): S.rmatmat(Z, B_raw) → (genes × cells)'(genes × q) = cells × q
@@ -298,11 +303,8 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
             prior_ptr = &prior_buf;
         }
 
-        arma::mat Z;
-        {
-            arma::mat R_unused;
-            arma::qr_econ(Z, R_unused, basal_state);
-        }
+        arma::mat Z = basal_state;
+        orthonormalize_columns_(Z);
 
         // B = -(S * Z): matmat computes S * X → cells × q
         // Old (genes × cells): S.rmatmat(Z, B_raw) → (genes × cells)'(genes × q) = cells × q

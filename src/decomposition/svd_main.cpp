@@ -129,6 +129,15 @@ namespace actionet {
     // When @p prior is non-null and carries non-empty perturbation terms, the new Apert/Bpert
     // are horizontally concatenated onto the prior's A/B for cumulative tracking.
 
+    // Threshold below which the optimized "split-GEMM + Householder QR" path is
+    // slower than the legacy "join_horiz + classical Gram-Schmidt" path.  At
+    // small `c` the LAPACK QR dispatch overhead exceeds the cost of an in-place
+    // column-loop GS, and a single wide GEMM `[U|P] * U_p` is more cache-
+    // friendly than two narrow GEMMs of widths k and c.  Empirically the
+    // crossover sits near c ≈ k/2 ≈ 16 for k = 30.  Bench numbers in
+    // docs/batch_correction_benchmark.md.
+    static constexpr arma::uword PERTURBED_SVD_SMALL_C_THRESHOLD = 16;
+
     PerturbedSVDResult perturbedSVD(const SVDResult& svd,
                                     const arma::mat& Apert,
                                     const arma::mat& Bpert,
@@ -139,23 +148,39 @@ namespace actionet {
 
         const arma::uword k = U.n_cols;
         const arma::uword c = Apert.n_cols;
+        const bool small_c = (c > 0) && (c <= PERTURBED_SVD_SMALL_C_THRESHOLD);
 
         // Project perturbation onto the existing SVD basis and compute orthogonal residuals.
         // M = U' * Apert  (k × c);  A_ortho = Apert - U * M  (m × c)
         arma::mat M = U.t() * Apert;
         arma::mat A_ortho = Apert - U * M;
 
-        // Replace classical Gram-Schmidt on (m × c) with a thin QR.  P has orthonormal
-        // columns, R_P is upper-triangular with the same column space relationship as
-        // P' * A_ortho in the original formulation.
+        // Orthonormalise the residual column space.
+        //   - Large c:  Householder QR (LAPACK, Level-3 BLAS) — `qr_econ`.
+        //   - Small c:  Classical Gram-Schmidt (tight in-place column loop).
+        // Both produce an orthonormal P; R_P is the upper-triangular part of
+        // P' * A_ortho.  For the GS path we materialise R_P explicitly via a
+        // narrow (c × c) GEMM, which is cheap when c is small.
         arma::mat P, R_P;
-        arma::qr_econ(P, R_P, A_ortho);
+        if (small_c) {
+            P = A_ortho;
+            gram_schmidt(P);
+            R_P = P.t() * A_ortho;          // c × c, exact when GS succeeded
+        } else {
+            arma::qr_econ(P, R_P, A_ortho);
+        }
 
         arma::mat N = V.t() * Bpert;
         arma::mat B_ortho = Bpert - V * N;
 
         arma::mat Q, R_Q;
-        arma::qr_econ(Q, R_Q, B_ortho);
+        if (small_c) {
+            Q = B_ortho;
+            gram_schmidt(Q);
+            R_Q = Q.t() * B_ortho;
+        } else {
+            arma::qr_econ(Q, R_Q, B_ortho);
+        }
 
         // Assemble the (k + c) × (k + c) inner matrix K block-wise without join_vert/trans:
         //   K = [[Σ + M N',   M R_Q'],
@@ -183,10 +208,13 @@ namespace actionet {
         arma::mat U_p, V_p;
         arma::svd(U_p, sigma_p, V_p, K);
 
-        // Truncate U_p / V_p to k columns *before* expanding to feature/sample space.
-        // Expansion uses two narrow GEMMs that avoid the (m × (k+c)) join_horiz copy.
-        //   U_updated = U * U_p_top + P * U_p_bot   (m × k)
-        //   V_updated = V * V_p_top + Q * V_p_bot   (n × k)
+        // Expand back to feature/sample space.
+        //   - Large c:  Two narrow GEMMs `U·U_p_top + P·U_p_bot` (avoids the
+        //               (m × (k+c)) join_horiz allocation and the wasted
+        //               work on c discarded columns).
+        //   - Small c:  Single wide GEMM `[U|P] · U_p[:, :k]` is more
+        //               cache-friendly when c << k and the join_horiz cost
+        //               is small relative to the GEMM.
         PerturbedSVDResult out;
         if (k == 0) {
             out.U.set_size(U.n_rows, 0);
@@ -199,6 +227,9 @@ namespace actionet {
             if (c == 0) {
                 out.U = U * U_p_k;
                 out.V = V * V_p_k;
+            } else if (small_c) {
+                out.U = arma::join_horiz(U, P) * U_p_k;
+                out.V = arma::join_horiz(V, Q) * V_p_k;
             } else {
                 out.U = U * U_p_k.head_rows(k) + P * U_p_k.tail_rows(c);
                 out.V = V * V_p_k.head_rows(k) + Q * V_p_k.tail_rows(c);
