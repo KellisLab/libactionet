@@ -126,11 +126,17 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         // S is cells × genes (Plan 02).  design is cells × q.
         // Z = S.t() * design: (cells × genes)' * (cells × q) = genes × q
         arma::mat Z = arma::mat(S.t() * design);
-        gram_schmidt(Z);
+
+        // Householder QR is faster and more stable than classical Gram-Schmidt
+        // for tall thin matrices; we only need the orthonormal basis.
+        arma::mat Q_orth, R_unused;
+        arma::qr_econ(Q_orth, R_unused, Z);
+        Z = std::move(Q_orth);
 
         // B = -(S * Z): (cells × genes)(genes × q) = cells × q  — direct, no extra transpose
         arma::mat A = Z;
-        arma::mat B = -arma::mat(S * Z);
+        arma::mat B = arma::mat(S * Z);
+        B *= -1.0;
 
         arma::field<arma::mat> perturbed_SVD = deflateReduction(reduction_results, A, B);
         FLUSH;
@@ -150,12 +156,16 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         stdout_printf("Orthogonalizing basal:\n");
         FLUSH;
 
-        arma::mat Z = basal_state;
-        gram_schmidt(Z);
+        arma::mat Z;
+        {
+            arma::mat R_unused;
+            arma::qr_econ(Z, R_unused, basal_state);
+        }
 
         // S is cells × genes.  B = -(S * Z): (cells × genes)(genes × q) = cells × q
         arma::mat A = Z;
-        arma::mat B = -arma::mat(S * Z);
+        arma::mat B = arma::mat(S * Z);
+        B *= -1.0;
 
         arma::field<arma::mat> perturbed_SVD = deflateReduction(reduction_results, A, B);
         FLUSH;
@@ -167,6 +177,64 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
 
     template arma::field<arma::mat>
         orthogonalizeBasal<arma::sp_mat>(arma::sp_mat& S, arma::field<arma::mat>& SVD_results, arma::mat& basal_state);
+
+    // ---- Sparse one-hot fast path for batch correction ------------------------------------
+
+    arma::field<arma::mat> orthogonalizeBatchEffect_sparse_labels(
+        const arma::sp_mat& S,
+        arma::field<arma::mat>& reduction_results,
+        const arma::Col<arma::sword>& batch_labels,
+        arma::uword n_batches) {
+
+        stdout_printf("Orthogonalizing batch effect (sparse one-hot fast path):\n");
+        FLUSH;
+
+        const arma::uword n_cells = S.n_rows;
+        const arma::uword n_genes = S.n_cols;
+        if (batch_labels.n_elem != n_cells) {
+            throw std::runtime_error(
+                "orthogonalizeBatchEffect_sparse_labels: batch_labels length must equal n_cells");
+        }
+        if (n_batches == 0) {
+            throw std::runtime_error(
+                "orthogonalizeBatchEffect_sparse_labels: n_batches must be positive");
+        }
+
+        // Pass 1: build Z = S' * D  (genes × n_batches) directly from the CSC
+        // nonzeros of S.  S is stored cells × genes, so iterating in column-major
+        // order gives column = gene, row = cell.  Each nonzero v at (cell i, gene j)
+        // contributes v to Z(j, label(i)).  Cells with negative labels are skipped.
+        arma::mat Z(n_genes, n_batches, arma::fill::zeros);
+        for (auto it = S.begin(); it != S.end(); ++it) {
+            const arma::sword lbl = batch_labels(it.row());
+            if (lbl < 0) continue;
+            const arma::uword col = static_cast<arma::uword>(lbl);
+            if (col >= n_batches) {
+                throw std::runtime_error(
+                    "orthogonalizeBatchEffect_sparse_labels: batch label out of range");
+            }
+            Z(it.col(), col) += (*it);
+        }
+
+        // Orthonormalize Z (genes × n_batches) via thin Householder QR.
+        {
+            arma::mat Q_orth, R_unused;
+            arma::qr_econ(Q_orth, R_unused, Z);
+            Z = std::move(Q_orth);
+        }
+
+        // B = -(S * Z): cells × n_batches.  Use the standard sparse-dense product;
+        // this is a single pass over the nnz with width = Z.n_cols (after QR,
+        // possibly truncated to rank ≤ n_batches).
+        arma::sp_mat S_ref = S;  // make non-const for templated path
+        arma::mat A = Z;
+        arma::mat B = arma::mat(S_ref * Z);
+        B *= -1.0;
+
+        arma::field<arma::mat> perturbed_SVD = deflateReduction(reduction_results, A, B);
+        FLUSH;
+        return perturbed_SVD;
+    }
 
     // ---- Operator-backed orthogonalization ------------------------------------------------
 
@@ -192,14 +260,18 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         // New (cells × genes): S.rmatmat(design, Z) → (cells × genes)'(cells × q) = genes × q
         arma::mat Z;
         S.rmatmat(design, Z);
-        gram_schmidt(Z);
+        {
+            arma::mat Q_orth, R_unused;
+            arma::qr_econ(Q_orth, R_unused, Z);
+            Z = std::move(Q_orth);
+        }
 
         // B = -(S * Z): matmat computes S * X where X is (n_var × q) → (n_obs × q) = cells × q
         // Old (genes × cells): S.rmatmat(Z, B_raw) → (genes × cells)'(genes × q) = cells × q
         // New (cells × genes): S.matmat(Z, B_raw)  → (cells × genes)(genes × q) = cells × q
-        arma::mat B_raw;
-        S.matmat(Z, B_raw);
-        arma::mat B = -B_raw;
+        arma::mat B;
+        S.matmat(Z, B);
+        B *= -1.0;
 
         stdout_printf("\tDeflating reduction ... ");
         FLUSH;
@@ -226,15 +298,18 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
             prior_ptr = &prior_buf;
         }
 
-        arma::mat Z = basal_state;
-        gram_schmidt(Z);
+        arma::mat Z;
+        {
+            arma::mat R_unused;
+            arma::qr_econ(Z, R_unused, basal_state);
+        }
 
         // B = -(S * Z): matmat computes S * X → cells × q
         // Old (genes × cells): S.rmatmat(Z, B_raw) → (genes × cells)'(genes × q) = cells × q
         // New (cells × genes): S.matmat(Z, B_raw)  → (cells × genes)(genes × q) = cells × q
-        arma::mat B_raw;
-        S.matmat(Z, B_raw);
-        arma::mat B = -B_raw;
+        arma::mat B;
+        S.matmat(Z, B);
+        B *= -1.0;
 
         stdout_printf("\tDeflating reduction ... ");
         FLUSH;

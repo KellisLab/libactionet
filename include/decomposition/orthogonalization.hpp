@@ -54,6 +54,27 @@ arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& reduction_result
     arma::field<arma::mat> orthogonalizeBasal(T& S, arma::field<arma::mat>& reduction_results,
                                               arma::mat& basal_state);
 
+    /// @brief Sparse-matrix fast path for batch correction with one-hot batch labels.
+    ///
+    /// When the design matrix is one-hot (each cell belongs to exactly one batch),
+    /// `Z = S' * D` can be computed by a single linear pass over the sparse
+    /// nonzeros: each (cell i, gene j, value v) contributes v to Z(j, label(i)).
+    /// Cost is O(nnz + g*b), independent of the number of batches `b`,
+    /// versus O(nnz * b) for the generic sparse-dense product.
+    ///
+    /// @param S            Sparse cell × gene matrix.
+    /// @param reduction_results Reduction field (Plan 02 layout).
+    /// @param batch_labels Integer batch index per cell, values in [0, n_batches).
+    ///                     Negative values mean "no batch" and are skipped.
+    /// @param n_batches    Number of distinct batch indices.
+    ///
+    /// @return Corrected reduction field in the same public layout.
+    arma::field<arma::mat> orthogonalizeBatchEffect_sparse_labels(
+        const arma::sp_mat& S,
+        arma::field<arma::mat>& reduction_results,
+        const arma::Col<arma::sword>& batch_labels,
+        arma::uword n_batches);
+
     // ---- Operator-backed orthogonalization ------------------------------------------------
 
     /// @brief Orthogonalize a reduced representation against a batch design matrix

@@ -248,8 +248,14 @@ The function stores results in:
 
 ### Numerical Stability
 
-- Gram-Schmidt includes a tolerance check ($\|v\| < 10^{-4}$) to handle near-collinear batch indicators.
+- The orthonormal bases for the batch subspace and for the perturbed-SVD residuals are produced by Householder QR (`arma::qr_econ`) rather than classical Gram-Schmidt. This is more stable for tall thin matrices and uses Level-3 BLAS.
 - The perturbed SVD works with the small core matrix, avoiding ill-conditioning in the full space.
+
+### Performance Notes
+
+- Cost grows with the number of batches `b` because the inner SVD is on a `(k+b+1)²` matrix and the final factor expansion is `O((g+n)·k·(k+b+1))` after column-truncation.
+- The expansion `U_new = [U|P] U_p[:, :k]` is split into two narrow GEMMs (`U·U_p_top + P·U_p_bot`) to avoid materialising a `(g × (k+b+1))` intermediate.
+- For sparse `S` with one-hot batch labels, the Python wrapper dispatches to `orthogonalize_batch_effect_sparse_labels`, which fills `Z = S' D` in a single sparse-iterator pass (`O(nnz + g·b)`) instead of evaluating the generic sparse-dense product (`O(nnz·b)`). The Python user-facing API (`correct_batch_effect(adata, batch_key=...)`) takes this path automatically when `adata.X` is sparse.
 
 ---
 

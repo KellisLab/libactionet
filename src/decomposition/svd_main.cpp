@@ -137,46 +137,81 @@ namespace actionet {
         const arma::mat& V = svd.V;
         const arma::vec& sigma = svd.sigma;
 
-        int dim = static_cast<int>(U.n_cols);
+        const arma::uword k = U.n_cols;
+        const arma::uword c = Apert.n_cols;
 
         // Project perturbation onto the existing SVD basis and compute orthogonal residuals.
+        // M = U' * Apert  (k × c);  A_ortho = Apert - U * M  (m × c)
         arma::mat M = U.t() * Apert;
-        arma::mat A_ortho_proj = Apert - U * M;
-        arma::mat P = A_ortho_proj;
-        gram_schmidt(P);
-        arma::mat R_P = P.t() * A_ortho_proj;
+        arma::mat A_ortho = Apert - U * M;
+
+        // Replace classical Gram-Schmidt on (m × c) with a thin QR.  P has orthonormal
+        // columns, R_P is upper-triangular with the same column space relationship as
+        // P' * A_ortho in the original formulation.
+        arma::mat P, R_P;
+        arma::qr_econ(P, R_P, A_ortho);
 
         arma::mat N = V.t() * Bpert;
-        arma::mat B_ortho_proj = Bpert - V * N;
-        arma::mat Q = B_ortho_proj;
-        gram_schmidt(Q);
-        arma::mat R_Q = Q.t() * B_ortho_proj;
+        arma::mat B_ortho = Bpert - V * N;
 
-        // Build the inner (dim + p) × (dim + p) matrix and compute its full SVD.
-        arma::mat K1 = arma::zeros(sigma.n_elem + Apert.n_cols, sigma.n_elem + Apert.n_cols);
-        for (arma::uword i = 0; i < sigma.n_elem; i++) {
-            K1(i, i) = sigma(i);
+        arma::mat Q, R_Q;
+        arma::qr_econ(Q, R_Q, B_ortho);
+
+        // Assemble the (k + c) × (k + c) inner matrix K block-wise without join_vert/trans:
+        //   K = [[Σ + M N',   M R_Q'],
+        //        [R_P N',     R_P R_Q']]
+        const arma::uword K_dim = k + c;
+        arma::mat K(K_dim, K_dim, arma::fill::none);
+        // Top-left block: Σ + M*N'
+        if (k > 0) {
+            arma::mat top_left = M * N.t();
+            top_left.diag() += sigma;
+            K.submat(0, 0, k - 1, k - 1) = top_left;
         }
-
-        arma::mat K2 = arma::join_vert(M, R_P) * arma::trans(arma::join_vert(N, R_Q));
-        arma::mat K = K1 + K2;
+        if (c > 0) {
+            // Top-right: M*R_Q'  (k × c)
+            if (k > 0) {
+                K.submat(0, k, k - 1, K_dim - 1) = M * R_Q.t();
+                // Bottom-left: R_P*N'  (c × k)
+                K.submat(k, 0, K_dim - 1, k - 1) = R_P * N.t();
+            }
+            // Bottom-right: R_P*R_Q'  (c × c)
+            K.submat(k, k, K_dim - 1, K_dim - 1) = R_P * R_Q.t();
+        }
 
         arma::vec sigma_p;
         arma::mat U_p, V_p;
         arma::svd(U_p, sigma_p, V_p, K);
 
-        arma::mat U_updated = arma::join_horiz(U, P) * U_p;
-        arma::mat V_updated = arma::join_horiz(V, Q) * V_p;
-
+        // Truncate U_p / V_p to k columns *before* expanding to feature/sample space.
+        // Expansion uses two narrow GEMMs that avoid the (m × (k+c)) join_horiz copy.
+        //   U_updated = U * U_p_top + P * U_p_bot   (m × k)
+        //   V_updated = V * V_p_top + Q * V_p_bot   (n × k)
         PerturbedSVDResult out;
-        out.U     = U_updated.cols(0, dim - 1);
-        out.sigma = sigma_p(arma::span(0, dim - 1));
-        out.V     = V_updated.cols(0, dim - 1);
+        if (k == 0) {
+            out.U.set_size(U.n_rows, 0);
+            out.V.set_size(V.n_rows, 0);
+            out.sigma.set_size(0);
+        } else {
+            arma::mat U_p_k = U_p.cols(0, k - 1);
+            arma::mat V_p_k = V_p.cols(0, k - 1);
+            out.sigma = sigma_p.subvec(0, k - 1);
+            if (c == 0) {
+                out.U = U * U_p_k;
+                out.V = V * V_p_k;
+            } else {
+                out.U = U * U_p_k.head_rows(k) + P * U_p_k.tail_rows(c);
+                out.V = V * V_p_k.head_rows(k) + Q * V_p_k.tail_rows(c);
+            }
+        }
 
-        // Accumulate perturbation history.
+        // Accumulate perturbation history via insert_cols (avoids constructing a fresh
+        // (rows × p_total) matrix on every call when used cumulatively).
         if (prior != nullptr && prior->A.n_elem != 0) {
-            out.A = arma::join_rows(prior->A, Apert);
-            out.B = arma::join_rows(prior->B, Bpert);
+            out.A = prior->A;
+            out.A.insert_cols(out.A.n_cols, Apert);
+            out.B = prior->B;
+            out.B.insert_cols(out.B.n_cols, Bpert);
         } else {
             out.A = Apert;
             out.B = Bpert;
