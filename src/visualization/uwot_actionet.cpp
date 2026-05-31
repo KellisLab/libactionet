@@ -2,9 +2,13 @@
 #include "visualization/UmapFactory.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "uwot/coords.h"
+#include "uwot/connected_components.h"
 
+#include <algorithm>
 #include <cstdlib>
+#include <random>
 #include <string>
+#include <vector>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <sched.h>
@@ -18,6 +22,11 @@ struct EdgeVectors {
     std::vector<float> epochs_per_sample;
     std::vector<unsigned int> positive_ptr;
     unsigned int n_vertices;
+    // Cleaned graph (post H.clean) and its transpose, retained so the caller
+    // can run connected-components / disconnected-vertex repair without
+    // re-doing the prune.
+    arma::sp_mat H;
+    arma::sp_mat Ht;
 };
 
 const char* env_or_unset(const char* key) {
@@ -164,13 +173,153 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
     }
 
     EdgeVectors EV;
-    EV.positive_head = positive_head;
-    EV.positive_tail = positive_tail;
-    EV.positive_ptr = positive_ptr;
-    EV.epochs_per_sample = epochs_per_sample;
+    EV.positive_head = std::move(positive_head);
+    EV.positive_tail = std::move(positive_tail);
+    EV.positive_ptr = std::move(positive_ptr);
+    EV.epochs_per_sample = std::move(epochs_per_sample);
     EV.n_vertices = nV;
+    EV.H = std::move(H);
+    EV.Ht = std::move(Ht);
 
-    return (EV);
+    return EV;
+}
+
+// Compute connected components of the (undirected closure of the) post-pruned
+// graph by calling the vendored `uwot::connected_components_undirected` helper.
+// arma stores `sp_mat` in CSC; the helper expects a CSR/CSR-like (indices,
+// indptr) pair for both the graph and its transpose. Since CSC of `H` equals
+// CSR of `H^T`, and CSC of `Ht == H^T` equals CSR of `H`, we feed:
+//   indices1, indptr1 = CSR of H   = (Ht.row_indices, Ht.col_ptrs)
+//   indices2, indptr2 = CSR of H^T = (H.row_indices,  H.col_ptrs)
+std::pair<unsigned int, std::vector<int>>
+computeConnectedComponents(const arma::sp_mat& H, const arma::sp_mat& Ht) {
+    const std::size_t n = H.n_rows;
+
+    auto to_int_vec = [](const arma::uword* data, std::size_t count) {
+        std::vector<int> out(count);
+        for (std::size_t i = 0; i < count; ++i) {
+            out[i] = static_cast<int>(data[i]);
+        }
+        return out;
+    };
+
+    // CSR of H: row pointers come from Ht.col_ptrs (size n+1), column indices
+    // from Ht.row_indices (size nnz).
+    std::vector<int> indptr1 = to_int_vec(Ht.col_ptrs, Ht.n_cols + 1);
+    std::vector<int> indices1 = to_int_vec(Ht.row_indices, Ht.n_nonzero);
+
+    // CSR of H^T (i.e., row-pointers from H.col_ptrs).
+    std::vector<int> indptr2 = to_int_vec(H.col_ptrs, H.n_cols + 1);
+    std::vector<int> indices2 = to_int_vec(H.row_indices, H.n_nonzero);
+
+    return uwot::connected_components_undirected(n, indices1, indptr1, indices2, indptr2);
+}
+
+// Canonical umap-learn safeguard for disconnected/orphaned vertices.
+//
+// Mirrors `umap.umap_.simplicial_set_embedding` behavior: if the post-pruned
+// graph has more than one connected component, translate every vertex outside
+// the largest component by a random offset drawn per-component from
+// N(0, COMPONENT_OFFSET_SCALE), preserving the relative layout within each
+// non-largest component while breaking axis-alignment of frozen seeds. A small
+// per-coordinate Gaussian jitter (scale `JITTER_SCALE`) is then applied to the
+// entire embedding, which also handles duplicate-row seeds within the largest
+// component.
+//
+// The jitter step is intentionally always applied (when repair is enabled),
+// even with a single connected component, because the diagnosed failure mode
+// (cells with average archetype-1/2 footprints landing exactly at X=0 or
+// Y=0 after `scale()`) is independent of graph connectivity.
+//
+// Reference: lmcinnes/umap simplicial_set_embedding `noisy_scale_coords` and
+// the per-component recentering loop.
+void applyDisconnectedRepair(arma::mat& initial_coordinates,
+                             const arma::sp_mat& H,
+                             const arma::sp_mat& Ht,
+                             unsigned int n_components,
+                             std::mt19937_64& engine,
+                             bool verbose) {
+    constexpr float COMPONENT_OFFSET_SCALE = 10.0f; // matches umap-learn default
+    constexpr float JITTER_SCALE = 1e-4f;           // matches umap-learn default
+
+    const std::size_t n_vertices = initial_coordinates.n_rows;
+    const std::size_t ndim = static_cast<std::size_t>(n_components);
+
+    if (n_vertices == 0 || ndim == 0) {
+        return;
+    }
+
+    auto [n_comp, comp_labels] = computeConnectedComponents(H, Ht);
+
+    if (n_comp > 1) {
+        std::vector<std::size_t> comp_sizes(n_comp, 0);
+        for (auto label : comp_labels) {
+            ++comp_sizes[static_cast<std::size_t>(label)];
+        }
+        const std::size_t largest = static_cast<std::size_t>(
+            std::distance(comp_sizes.begin(),
+                          std::max_element(comp_sizes.begin(), comp_sizes.end())));
+
+        // Per-component centroid (only for non-largest components, since the
+        // largest is left untouched).
+        arma::mat centroids(n_comp, ndim, arma::fill::zeros);
+        for (std::size_t v = 0; v < n_vertices; ++v) {
+            const std::size_t c = static_cast<std::size_t>(comp_labels[v]);
+            if (c == largest) continue;
+            for (std::size_t d = 0; d < ndim; ++d) {
+                centroids(c, d) += initial_coordinates(v, d);
+            }
+        }
+        for (std::size_t c = 0; c < n_comp; ++c) {
+            if (c == largest) continue;
+            const double denom = static_cast<double>(std::max<std::size_t>(1, comp_sizes[c]));
+            for (std::size_t d = 0; d < ndim; ++d) {
+                centroids(c, d) /= denom;
+            }
+        }
+
+        // Random per-component offset (largest stays at origin offset).
+        std::normal_distribution<float> offset_dist(0.0f, COMPONENT_OFFSET_SCALE);
+        arma::mat offsets(n_comp, ndim, arma::fill::zeros);
+        for (std::size_t c = 0; c < n_comp; ++c) {
+            if (c == largest) continue;
+            for (std::size_t d = 0; d < ndim; ++d) {
+                offsets(c, d) = offset_dist(engine);
+            }
+        }
+
+        // Translate non-largest components: subtract their centroid (so each
+        // component's internal layout is preserved relative to its centroid)
+        // and add the random offset.
+        std::size_t n_relocated = 0;
+        for (std::size_t v = 0; v < n_vertices; ++v) {
+            const std::size_t c = static_cast<std::size_t>(comp_labels[v]);
+            if (c == largest) continue;
+            for (std::size_t d = 0; d < ndim; ++d) {
+                initial_coordinates(v, d) -= centroids(c, d);
+                initial_coordinates(v, d) += offsets(c, d);
+            }
+            ++n_relocated;
+        }
+
+        if (verbose) {
+            stderr_printf(
+                "Disconnected-vertex repair: %u connected components found; "
+                "relocated %zu vertices outside the largest component (size %zu)\n",
+                n_comp, n_relocated, comp_sizes[largest]);
+        }
+    }
+
+    // Always apply small per-coordinate jitter (umap-learn `noisy_scale_coords`).
+    // This breaks any remaining seed-collinearity for duplicate or zero rows
+    // (e.g. cells whose archetype-footprint row standardizes to a vector of
+    // axis-aligned values) within the largest component.
+    std::normal_distribution<float> jitter_dist(0.0f, JITTER_SCALE);
+    for (std::size_t v = 0; v < n_vertices; ++v) {
+        for (std::size_t d = 0; d < ndim; ++d) {
+            initial_coordinates(v, d) += jitter_dist(engine);
+        }
+    }
 }
 
 void validateMethodArgs(const UwotArgs& uwot_args, std::size_t n_vertices) {
@@ -208,10 +357,29 @@ arma::mat optimize_layout_uwot(arma::sp_mat& G, arma::mat& initial_coordinates, 
         uwot_args.n_epochs = (initial_coordinates.n_rows <= 10000) ? 500 : 200; // uwot defaults
     }
 
+    // Build edge vectors first so we can run the canonical disconnected-vertex
+    // repair on the post-pruned graph before seeding `getCoords`.
+    auto edge_vectors = buildEdgeVectors(G, uwot_args);
+
+    // Apply the umap-learn safeguard. We work on a local copy to avoid
+    // mutating the caller's matrix (which may live in R/Python memory).
+    // Only the first `n_components` columns of `initial_coordinates` are used
+    // by `getCoords`, so we copy just those.
+    arma::mat init_for_layout =
+        initial_coordinates.cols(0, uwot_args.n_components - 1);
+    if (uwot_args.repair_disconnected) {
+        applyDisconnectedRepair(init_for_layout, edge_vectors.H, edge_vectors.Ht,
+                                uwot_args.n_components, uwot_args.get_engine(),
+                                uwot_args.verbose);
+    }
+
     // `UF` references `coords`. Must be in the same scope.
-    uwot::Coords coords = getCoords(initial_coordinates, uwot_args.n_components);
-    auto [positive_head, positive_tail, epochs_per_sample, positive_ptr, n_vertices] =
-        buildEdgeVectors(G, uwot_args);
+    uwot::Coords coords = getCoords(init_for_layout, uwot_args.n_components);
+    auto& positive_head = edge_vectors.positive_head;
+    auto& positive_tail = edge_vectors.positive_tail;
+    auto& epochs_per_sample = edge_vectors.epochs_per_sample;
+    auto& positive_ptr = edge_vectors.positive_ptr;
+    const unsigned int n_vertices = edge_vectors.n_vertices;
     validateMethodArgs(uwot_args, n_vertices);
 
     bool move_other = true;

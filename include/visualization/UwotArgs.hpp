@@ -39,6 +39,12 @@ public:
     // C++-only diagnostic switch for verbose runtime environment details.
     // This is intentionally not exposed via R/Python wrapper APIs.
     bool debug_runtime_diagnostics = false;
+    // Canonical umap-learn safeguard for disconnected/orphaned vertices in the
+    // post-pruned graph (see `optimize_layout_uwot`). When enabled, vertices in
+    // non-largest connected components are translated to random offsets and a
+    // small Gaussian jitter is applied to every coordinate so the optimizer's
+    // negative-sampling forces can move otherwise-frozen vertices off-axis.
+    bool repair_disconnected = true;
     OptimizerArgs opt_args = OptimizerArgs(learning_rate);
     // Initialized by members
     float a = 0; // Dummy value. Overwritten by initializer.
@@ -93,7 +99,8 @@ public:
         std::size_t grain_size,
         bool verbose,
         OptimizerArgs opt_args,
-        const std::string& rng_type = ""
+        const std::string& rng_type = "",
+        bool repair_disconnected = true
     )
         : n_components(n_components),
           spread(spread),
@@ -108,6 +115,7 @@ public:
           n_threads(n_threads),
           grain_size(grain_size),
           verbose(verbose),
+          repair_disconnected(repair_disconnected),
           opt_args(opt_args),
           method(method),
           seed(seed) {

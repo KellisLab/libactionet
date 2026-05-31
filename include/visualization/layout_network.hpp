@@ -43,7 +43,7 @@ namespace actionet {
                             bool batch = true, unsigned int grain_size = 1, int seed = 0, int thread_no = 0,
                             bool verbose = true, float a = 0, float b = 0, std::string opt_method = "adam",
                             float alpha = LR_OPT_ALPHA, float beta1 = ADAM_BETA1, float beta2 = ADAM_BETA2,
-                            float eps = ADAM_EPS);
+                            float eps = ADAM_EPS, bool repair_disconnected = true);
 
     /// @brief Compute a graph layout using a pre-built argument struct.
     ///
