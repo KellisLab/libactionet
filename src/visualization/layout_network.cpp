@@ -10,7 +10,7 @@ namespace actionet {
                             float learning_rate, float repulsion_strength, float negative_sample_rate, bool approx_pow,
                             bool pcg_rand, bool batch, unsigned int grain_size, int seed, int thread_no, bool verbose,
                             float a, float b, std::string opt_method, float alpha, float beta1, float beta2,
-                            float eps, bool repair_disconnected) {
+                            float eps) {
         unsigned int n_threads = get_num_threads(0, thread_no);
 
         alpha = (alpha == -1) ? learning_rate : alpha;
@@ -22,7 +22,7 @@ namespace actionet {
 
         UwotArgs uwot_args(method, n_components, spread, min_dist, n_epochs, learning_rate, repulsion_strength,
                            negative_sample_rate, approx_pow, pcg_rand, batch, seed, n_threads, grain_size, verbose,
-                           opt_args, "", repair_disconnected);
+                           opt_args);
 
         if (a != 0 || b != 0) {
             uwot_args.set_ab(a, b);
