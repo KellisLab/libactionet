@@ -12,7 +12,7 @@ namespace actionet {
     /// @param lambda Propagation strength.
     /// @param iters Number of iterations.
     /// @param sig_threshold Significance threshold.
-    /// @param fixed_labels Optional indices to keep fixed.
+    /// @param fixed_labels 0-indexed positions of vertices whose labels are reverted after each iteration.
     /// @param thread_no Number of threads (0 = auto).
     ///
     /// @return Updated label vector.
