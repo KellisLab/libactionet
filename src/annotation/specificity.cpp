@@ -1,5 +1,6 @@
 #include "annotation/specificity.hpp"
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
+#include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include <algorithm>
@@ -645,7 +646,6 @@ namespace actionet {
 // ============================================================================
 // Backed dense overloads
 // ============================================================================
-#include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 
 namespace actionet {
 

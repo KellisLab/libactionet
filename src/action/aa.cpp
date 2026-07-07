@@ -5,6 +5,11 @@
 
 namespace actionet {
 
+    // Squared-norm threshold below which the current archetype h-column is
+    // considered singular and re-seeded from the residual argmax.
+    // Note: the literal `10e-8` reads as `1e-7`, not `1e-8`; naming makes intent explicit.
+    static constexpr double AA_SINGULAR_THRESHOLD = 1e-7;
+
     arma::field<arma::mat> runAA(const arma::mat &A, const arma::mat &W0, int max_it, double tol) {
         int sample_no = A.n_cols;
         int k = W0.n_cols; // AA components
@@ -17,8 +22,10 @@ namespace actionet {
 
         double old_RSS = 0;
 
+        // A never changes inside the outer loop; compute the Frobenius norm once.
+        const double A_norm = arma::norm(A, "fro");
+
         for (int it = 0; it < max_it; it++) {
-            double A_norm = arma::norm(A, "fro");
             H = actionet::runSimplexRegression(W, A, true);
 
             arma::mat R = A - W * H;
@@ -28,7 +35,7 @@ namespace actionet {
                 arma::vec h = Ht.col(i);
 
                 double norm_sq = arma::dot(h, h);
-                if (norm_sq < double(10e-8)) {
+                if (norm_sq < AA_SINGULAR_THRESHOLD) {
                     // singular
                     int max_res_idx = arma::index_max(arma::rowvec(arma::sum(arma::square(R), 0)));
                     W.col(i) = A.col(max_res_idx);

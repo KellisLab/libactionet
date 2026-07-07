@@ -10,9 +10,9 @@ namespace actionet {
     ///
     /// @param xvec Input vector X.
     /// @param yvec Input vector Y.
-    /// @param compute_pval Compute p-value if true.
+    /// @param compute_pval Compute z-score if true (p-value is not returned).
     /// @param seed Random seed.
-    /// @return Vector of statistics (xi, p-value, z).
+    /// @return Vector of statistics (xi, z). `z` is 0 when @p compute_pval is false.
     arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval = true, int seed = 0);
 
     /// @brief Compute Xi correlation between two matrices.

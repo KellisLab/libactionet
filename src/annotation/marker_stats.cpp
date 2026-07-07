@@ -4,7 +4,7 @@
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 
-double tol_approx = 1E-8;
+static constexpr double tol_approx = 1e-8;
 
 namespace {
     // Shared standardization + diffusion logic for the VISION method.
@@ -47,7 +47,7 @@ namespace actionet {
         arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no, approx).col(0);
 
         for (int i = 0; i < X.n_cols; i++) {
-            int marker_count = arma::accu(arma::spones(X.col(i)));
+            int marker_count = X.col(i).n_nonzero;
 
             int idx = 0;
             arma::vec w = arma::zeros(marker_count);

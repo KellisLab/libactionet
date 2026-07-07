@@ -270,7 +270,7 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
     const double *pr_M = M.memptr();
     // constraint matrix
     arma::vec A = arma::ones(L);
-    double *pr_A = A.memptr();;
+    double *pr_A = A.memptr();
 
     // Non-Active Constraints Set
     arma::ivec NASet(L);

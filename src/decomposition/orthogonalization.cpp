@@ -88,7 +88,8 @@ namespace {
     actionet::PerturbedSVDResult deflate_reduction_struct_(const actionet::SVDResult& svd,
                                                            const actionet::PerturbedSVDResult* prior,
                                                            const arma::mat& A,
-                                                           const arma::mat& B) {        if (A.n_rows != svd.V.n_rows) {
+                                                           const arma::mat& B) {
+        if (A.n_rows != svd.V.n_rows) {
             throw std::runtime_error("orthogonalization: gene-space perturbation rows must match reduction U rows (genes)");
         }
         if (B.n_rows != svd.U.n_rows) {

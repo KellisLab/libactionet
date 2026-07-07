@@ -21,7 +21,7 @@
 
 #include "uwot/rng.h"
 #include "uwot/rparallel.h"
-#include "OptimizerArgs.hpp"
+#include "visualization/OptimizerArgs.hpp"
 
 // Template class specialization to handle different rng/batch combinations
 template <bool DoBatch = true>

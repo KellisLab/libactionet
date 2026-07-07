@@ -17,6 +17,7 @@ namespace actionet {
         arma::vec norm_trace = arma::zeros(k);
         double eps = 1e-16;
 
+        int selected = 0; // Actual number of columns selected (may be < k on early break).
         for (int i = 1; i <= k; i++) {
             // Find the column with maximum norm. In case of having more than one column
             // with almost very small diff in norm, pick the one that originally had the
@@ -59,6 +60,15 @@ namespace actionet {
             }
             normM = normM - arma::square(u.t() * A);
             normM.transform([](double val) { return (val < 0 ? 0 : val); });
+
+            selected = i;
+        }
+
+        // Shrink outputs to the number of columns actually selected so downstream
+        // consumers cannot silently index zero-initialised slots on early break.
+        if (selected < k) {
+            K.shed_rows(selected, k - 1);
+            norm_trace.shed_rows(selected, k - 1);
         }
 
         res.selected_cols = K;

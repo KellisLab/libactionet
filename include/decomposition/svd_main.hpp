@@ -92,6 +92,12 @@ namespace actionet {
     /// @p algorithm. Backed operators may request an internal IRLB fast path
     /// via a block-capable backend.
     ///
+    /// @note Default is @c ALG_HALKO — this differs from the in-memory
+    /// @c runSVD default (@c ALG_IRLB).  Halko is preferred for backed
+    /// operators because its matvec count is fixed at @c 2*(iters+1) passes,
+    /// giving a predictable NNZ-proportional I/O cost model.  See
+    /// @c context/DECISIONS.md.
+    ///
     /// @param op        Matrix operator representing an m × n matrix.
     /// @param k         Number of singular vectors/values to compute.
     /// @param max_it    Maximum iterations (0 = auto).

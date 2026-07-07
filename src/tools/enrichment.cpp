@@ -1,6 +1,7 @@
 #include "tools/enrichment.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_matrix.hpp"
+#include <stdexcept>
 
 namespace actionet {
     arma::mat computeGraphLabelEnrichment(const arma::sp_mat& G, const arma::mat& scores, int thread_no) {
@@ -71,13 +72,9 @@ namespace actionet {
     }
 
     arma::field<arma::mat> assess_enrichment(const arma::mat& scores, arma::sp_mat& associations, int thread_no) {
-        arma::field<arma::mat> res(3);
-
         if (scores.n_rows != associations.n_rows) {
-            stderr_printf(
-                "Number of rows in scores and association matrices should both match the number of features\n");
-            FLUSH;
-            return (res);
+            throw std::invalid_argument(
+                "assess_enrichment: scores.n_rows must equal associations.n_rows (both must match number of features)");
         }
 
         associations = arma::spones(associations);

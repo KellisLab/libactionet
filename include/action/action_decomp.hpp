@@ -23,7 +23,9 @@ namespace actionet {
 
     /// @brief Run ACTION decomposition across a k-range without post-processing.
     ///
-    /// @param S_r Reduced input matrix (<em>vars</em> x <em>obs</em>).
+    /// @param S_r Reduced input matrix (<em>k</em> × <em>cells</em>).  This is the internal
+    ///            orientation used throughout the ACTION decomposition; Python bindings
+    ///            transpose at the boundary (see <code>wp_action.cpp</code>).
     /// @param k_min Minimum number of archetypes (>= 2).
     /// @param k_max Maximum number of archetypes (<= <code>S_r.n_cols</code>).
     /// @param max_it Maximum number of iterations for AA.

@@ -1,5 +1,4 @@
 #include "decomposition/svd_feng.hpp"
-#include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
 namespace actionet {

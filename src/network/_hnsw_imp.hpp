@@ -4,7 +4,7 @@
 
 #include "libactionet_config.hpp"
 #include "hnswlib/hnswlib.h"
-#include "hnsw_jensen_shannon.hpp"
+#include "_hnsw_jensen_shannon.hpp"
 #include <type_traits>
 
 static_assert(std::is_integral_v<hnswlib::labeltype>, "HNSW labels must remain integral");

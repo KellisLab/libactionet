@@ -1,5 +1,5 @@
-#ifndef ACTIONET_MATRIX_MISC_HPP
-#define ACTIONET_MATRIX_MISC_HPP
+#ifndef ACTIONET_MATRIX_AGGREGATE_HPP
+#define ACTIONET_MATRIX_AGGREGATE_HPP
 
 #include "libactionet_config.hpp"
 
@@ -37,4 +37,4 @@ namespace actionet {
 
 } // namespace actionet
 
-#endif //ACTIONET_MATRIX_MISC_HPP
+#endif //ACTIONET_MATRIX_AGGREGATE_HPP

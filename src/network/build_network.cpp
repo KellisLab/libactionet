@@ -1,6 +1,6 @@
 #include "network/build_network.hpp"
 #include "network/build_network_core.hpp"
-#include "network/hnsw_imp.hpp"
+#include "_hnsw_imp.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include <algorithm>
 #include <cmath>

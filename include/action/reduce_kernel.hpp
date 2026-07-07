@@ -40,8 +40,11 @@ namespace actionet {
         arma::mat S_r;      ///< Reduced kernel (cells × k)    — was (k × cells)
         arma::vec sigma;    ///< Singular values (k)
         arma::mat U;        ///< Gene loadings / right singular vectors (genes × k)
-        arma::mat A;        ///< Left perturbation (genes × p)
-        arma::mat B;        ///< Right perturbation (cells × p)
+        arma::mat A;        ///< Gene-space (col-space) perturbation (genes × p).
+                            ///< Note: populated from the internal perturbedSVD's B term because
+                            ///< S is cells × genes; kept named `A` for legacy field-layout compat.
+        arma::mat B;        ///< Cell-space (row-space) perturbation (cells × p).
+                            ///< Note: populated from the internal perturbedSVD's A term (see A above).
     };
 
     // ---- Legacy field ↔ struct conversion helpers ----------------------------------------

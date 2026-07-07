@@ -1,5 +1,5 @@
-#ifndef ACTIONET_NORMALIZATION_HPP
-#define ACTIONET_NORMALIZATION_HPP
+#ifndef ACTIONET_MATRIX_TRANSFORM_HPP
+#define ACTIONET_MATRIX_TRANSFORM_HPP
 
 #include "libactionet_config.hpp"
 
@@ -40,4 +40,4 @@ namespace actionet {
     arma::mat normalize_scores(arma::mat scores, int method = 1, int thread_no = 0);
 } // namespace actionet
 
-#endif //ACTIONET_NORMALIZATION_HPP
+#endif //ACTIONET_MATRIX_TRANSFORM_HPP
