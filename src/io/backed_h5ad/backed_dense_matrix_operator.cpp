@@ -1,16 +1,14 @@
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 
+#include "_h5_utils.hpp"
+
 #include "fastapprox/fastlog.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 namespace {
-    void check_h5(bool ok, const char* msg) {
-        if (!ok) {
-            throw std::runtime_error(msg);
-        }
-    }
+    using actionet::detail::h5::check_h5;
 } // namespace
 
 namespace actionet {
@@ -51,12 +49,8 @@ namespace actionet {
           file_id_(-1),
           dataset_id_(-1) {
 
-        hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
-        check_h5(fapl >= 0, "Failed to create file access property list");
-        H5Pset_file_locking(fapl, 0, 1);
-        file_id_ = H5Fopen(file_path_.c_str(), H5F_ACC_RDONLY, fapl);
-        H5Pclose(fapl);
-        check_h5(file_id_ >= 0, "Failed to open h5ad file");
+        file_id_ = actionet::detail::h5::open_h5_readonly_no_lock(
+            file_path_, "BackedDenseMatrixOperator");
 
         dataset_id_ = H5Dopen2(file_id_, group_path_.c_str(), H5P_DEFAULT);
         check_h5(dataset_id_ >= 0,
@@ -151,19 +145,17 @@ namespace actionet {
         hid_t mem_space = H5Screate_simple(2, count, nullptr);
         check_h5(mem_space >= 0, "Failed to create dense memory dataspace");
 
-        // HDF5 reads in row-major order. Read the slab in one call and transpose
-        // into Armadillo's column-major storage to avoid per-column H5Dread calls.
-        std::vector<double> row_major_buf(static_cast<size_t>(obs_count) * static_cast<size_t>(n_var_));
+        // HDF5 writes the (obs_count × n_var) hyperslab in row-major order.
+        // Read it into an arma::mat that is dimensioned as (n_var × obs_count):
+        // arma is column-major, so treating the row-major buffer as a
+        // (n_var × obs_count) column-major matrix reinterprets each on-disk
+        // row as one column.  A single ``strans`` then yields the desired
+        // (obs_count × n_var) slab without an explicit per-element copy.
+        arma::mat tmp(n_var_, obs_count);
         check_h5(H5Dread(dataset_id_, H5T_NATIVE_DOUBLE, mem_space, file_space,
-                         H5P_DEFAULT, row_major_buf.data()) >= 0,
+                         H5P_DEFAULT, tmp.memptr()) >= 0,
                  "Failed to read dense slab");
-
-        for (arma::uword r = 0; r < obs_count; ++r) {
-            const double* row_ptr = row_major_buf.data() + static_cast<size_t>(r) * static_cast<size_t>(n_var_);
-            for (arma::uword c = 0; c < n_var_; ++c) {
-                slab(r, c) = row_ptr[c];
-            }
-        }
+        slab = tmp.t();
 
         H5Sclose(mem_space);
         H5Sclose(file_space);
@@ -173,26 +165,35 @@ namespace actionet {
         arma::uword obs_start, arma::mat& slab) const {
 
         const arma::uword nrows = slab.n_rows;
+        const arma::uword ncols = slab.n_cols;
         const bool has_scale = !row_scale_.is_empty();
         const bool apply_log_scale = apply_log1p_ && std::abs(log_scale_ - 1.0) > 0.0;
-        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(nrows), n_threads_);
 
         if (!has_scale && !apply_log1p_) return;
 
-        #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && nrows > 1)
-        for (arma::sword rs = 0; rs < static_cast<arma::sword>(nrows); ++rs) {
-            const arma::uword r = static_cast<arma::uword>(rs);
-            const arma::uword obs_idx = obs_start + r;
-            if (has_scale) {
-                slab.row(r) *= row_scale_(obs_idx);
+        // Row scaling: vectorised via arma's row-wise scalar multiplication.
+        // slab is (obs_count × n_var); row_scale_ is (n_obs,).  Using
+        // ``.row(r) *= factor`` in a tight loop lets arma dispatch to BLAS
+        // scal on each row without the C-level per-element multiply.
+        if (has_scale) {
+            for (arma::uword r = 0; r < nrows; ++r) {
+                slab.row(r) *= row_scale_(obs_start + r);
             }
-            if (apply_log1p_) {
-                for (arma::uword c = 0; c < slab.n_cols; ++c) {
-                    double val = static_cast<double>(fastlog(1.0f + static_cast<float>(slab(r, c))));
-                    if (apply_log_scale) {
-                        val *= log_scale_;
-                    }
-                    slab(r, c) = val;
+        }
+
+        // Log1p: element-wise operation on a contiguous column-major buffer.
+        // Parallelise over columns (the outer arma dimension) so each thread
+        // writes to a disjoint contiguous span of memory.
+        if (apply_log1p_) {
+            const unsigned int threads_use = actionet::get_num_threads(
+                static_cast<unsigned int>(ncols), n_threads_);
+            #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && ncols > 1)
+            for (arma::sword cs = 0; cs < static_cast<arma::sword>(ncols); ++cs) {
+                double* col = slab.colptr(static_cast<arma::uword>(cs));
+                for (arma::uword r = 0; r < nrows; ++r) {
+                    double val = static_cast<double>(fastlog(1.0f + static_cast<float>(col[r])));
+                    if (apply_log_scale) val *= log_scale_;
+                    col[r] = val;
                 }
             }
         }
@@ -292,34 +293,84 @@ namespace actionet {
         const arma::uvec& row_indices) const {
 
         const arma::uword n_sel = col_indices.n_elem;
+        const bool subset_rows = !row_indices.is_empty();
+        const arma::uword n_out_rows = subset_rows ? row_indices.n_elem : n_obs_;
+
         if (n_sel == 0) {
-            const arma::uword n_out_rows = row_indices.is_empty() ? n_obs_ : row_indices.n_elem;
             return arma::mat(n_out_rows, 0);
         }
 
-        // Build sparse selector E: shape (n_var, n_sel), E(col_indices[j], j) = 1.
-        arma::umat locations(2, n_sel);
-        arma::vec ones(n_sel, arma::fill::ones);
-        for (arma::uword j = 0; j < n_sel; ++j) {
-            locations(0, j) = col_indices(j);
-            locations(1, j) = j;
-        }
-        arma::sp_mat selector(locations, ones, n_var_, n_sel, /*sort_locations=*/true,
-                              /*check_for_zeros=*/false);
+        // Direct gather over dense-slab chunks: read one obs-chunk at a
+        // time, apply the lazy transform, then copy the requested columns
+        // straight into the output.  Avoids the previous approach of
+        // building a full (n_var × n_sel) sparse selector, densifying it
+        // (n_var × n_sel doubles), and running matmat — which allocated
+        // ~n_var × n_sel × 8 bytes of scratch and did an O(n_var·n_sel)
+        // dense multiply for what is inherently an O(n_obs·n_sel) gather.
+        arma::mat out(n_out_rows, n_sel);
+        arma::mat slab;
 
-        // Y = S @ selector via matmat  =>  (n_obs x n_sel)
-        arma::mat E_dense(selector);
-        arma::mat Y;
-        matmat(E_dense, Y);
+        if (!subset_rows) {
+            for (arma::uword obs_start = 0; obs_start < n_obs_; obs_start += effective_chunk_size_) {
+                const arma::uword obs_end = std::min(n_obs_, obs_start + effective_chunk_size_);
+                const arma::uword obs_count = obs_end - obs_start;
 
-        if (!row_indices.is_empty()) {
-            arma::mat sub(row_indices.n_elem, n_sel);
-            for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
-                sub.row(i) = Y.row(row_indices(i));
+                read_slab_(obs_start, obs_count, slab);
+                apply_transforms_(obs_start, slab);
+                // ``slab.cols(col_indices)`` gathers the requested columns
+                // (duplicates preserved) in a single armadillo call.
+                out.rows(obs_start, obs_end - 1) = slab.cols(col_indices);
             }
-            return sub;
+            return out;
         }
-        return Y;
+
+        // Row-subset path: bucket requested rows into their originating
+        // obs-chunks so each chunk is read at most once, then gather
+        // (rows, cols) directly from the slab into the correct output row.
+        std::vector<std::vector<arma::uword>> per_chunk_out_indices;
+        std::vector<arma::uword> per_chunk_start;
+        {
+            const arma::uword n_req = row_indices.n_elem;
+            std::vector<arma::uword> perm(n_req);
+            for (arma::uword i = 0; i < n_req; ++i) perm[i] = i;
+            std::sort(perm.begin(), perm.end(),
+                      [&](arma::uword a, arma::uword b) {
+                          return row_indices(a) < row_indices(b);
+                      });
+
+            arma::uword cursor = 0;
+            for (arma::uword obs_start = 0; obs_start < n_obs_ && cursor < n_req;
+                 obs_start += effective_chunk_size_) {
+                const arma::uword obs_end = std::min(n_obs_, obs_start + effective_chunk_size_);
+                std::vector<arma::uword> out_idx;
+                out_idx.reserve(n_req);
+                while (cursor < n_req && row_indices(perm[cursor]) < obs_end) {
+                    out_idx.push_back(perm[cursor]);
+                    ++cursor;
+                }
+                if (!out_idx.empty()) {
+                    per_chunk_start.push_back(obs_start);
+                    per_chunk_out_indices.push_back(std::move(out_idx));
+                }
+            }
+        }
+
+        for (size_t k = 0; k < per_chunk_start.size(); ++k) {
+            const arma::uword obs_start = per_chunk_start[k];
+            const arma::uword obs_end = std::min(n_obs_, obs_start + effective_chunk_size_);
+            const arma::uword obs_count = obs_end - obs_start;
+
+            read_slab_(obs_start, obs_count, slab);
+            apply_transforms_(obs_start, slab);
+
+            for (arma::uword out_i : per_chunk_out_indices[k]) {
+                const arma::uword src_row = row_indices(out_i) - obs_start;
+                for (arma::uword j = 0; j < n_sel; ++j) {
+                    out(out_i, j) = slab(src_row, col_indices(j));
+                }
+            }
+        }
+        return out;
     }
 
     arma::sp_mat BackedDenseMatrixOperator::takeColumnsSparse(

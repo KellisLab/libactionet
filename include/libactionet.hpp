@@ -14,6 +14,8 @@
 
 // io: Backed HDF5 matrix operators
 #include "io/backed_h5ad/create_backed_operator.hpp"
+#include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
+#include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 
 // action: Main archetypal analysis for cell type identification (ACTION) module
 #include "action/aa.hpp"

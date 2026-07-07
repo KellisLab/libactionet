@@ -12,41 +12,7 @@
 
 namespace actionet {
 
-    // Forward declarations for friend functions defined in annotation/specificity.cpp.
-    // These non-template overloads implement the backed sparse specificity algorithm
-    // and require direct access to BackedSparseMatrixOperator private members.
     class BackedSparseMatrixOperator;
-    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     const arma::mat& H, int thread_no);
-    arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                     const arma::uvec& labels, int thread_no);
-    // Forward declarations for the internal single-pass scan helpers.
-    void backed_specificity_scan_csr_(const BackedSparseMatrixOperator& op,
-                                      const arma::mat& H_norm_t,
-                                      arma::vec& row_count,
-                                      arma::vec& col_count,
-                                      arma::vec& row_factor_sum_orig,
-                                      arma::mat& obs_orig,
-                                      double& min_stored,
-                                      int thread_no);
-    void backed_specificity_scan_csc_(const BackedSparseMatrixOperator& op,
-                                      const arma::mat& H_norm_t,
-                                      arma::vec& row_count,
-                                      arma::vec& col_count,
-                                      arma::vec& row_factor_sum_orig,
-                                      arma::mat& obs_orig,
-                                      double& min_stored,
-                                      int thread_no);
-    void backed_specificity_support_csr_(const BackedSparseMatrixOperator& op,
-                                         const arma::mat& H_norm_t,
-                                         arma::mat& obs_out,
-                                         double shift,
-                                         int thread_no);
-    void backed_specificity_support_csc_(const BackedSparseMatrixOperator& op,
-                                         const arma::mat& H_norm_t,
-                                         arma::mat& obs_out,
-                                         double shift,
-                                         int thread_no);
 
     /// @brief MatrixOperator implementation backed by sparse AnnData h5ad storage.
     ///
@@ -62,6 +28,25 @@ namespace actionet {
     /// Because the computation is performed in @c float, values above ~16M
     /// lose integer precision after the cast; for standard library-size
     /// normalized single-cell data this is not a concern.
+    ///
+    /// @par Lazy transform ordering
+    /// The transform semantically applied to every returned value is
+    /// @code v_out = (apply_log1p ? log1p(row_scale * v_in) : row_scale * v_in) * log_scale @endcode
+    /// where @c row_scale defaults to 1.0 per row when not provided.  The
+    /// transform is applied lazily inside each chunk (see @c ensure_chunk_transformed_csr_
+    /// / @c ensure_chunk_transformed_csc_) so on-disk data is never mutated.
+    /// The LRU cache holds only one transformed chunk at a time.
+    ///
+    /// @par Thread-safety
+    /// All @c const methods (@c matvec, @c rmatvec, @c matmat, @c rmatmat,
+    /// @c takeColumnsDense, @c takeColumnsSparse, @c rowStats) are safe to
+    /// call from multiple threads @b concurrently on different operator
+    /// instances.  A @b single instance is @b not re-entrant across threads
+    /// because the internal LRU chunk cache is mutable.  OpenMP is used
+    /// internally to parallelise column/row loops after a chunk has been
+    /// loaded; this is safe because worker threads only read the cached
+    /// buffers.  Callers must not invoke a public method on the operator
+    /// from multiple host threads simultaneously.
     class BackedSparseMatrixOperator final : public MatrixOperator {
     public:
         BackedSparseMatrixOperator(const std::string& file_path,
@@ -141,7 +126,7 @@ namespace actionet {
         /// @param[out] nnz         Count of stored (non-zero) entries per row.
         void rowStats(arma::vec& row_sum, arma::vec& row_sum_sq,
                       arma::vec& nnz) const;
-
+    
     private:
         // Grant direct access to the single-pass backed specificity implementation.
         friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
@@ -207,15 +192,27 @@ namespace actionet {
         }
         void close_handles_();
 
-        void matvec_csr_(const arma::vec& x, arma::vec& y) const;
-        void rmatvec_csr_(const arma::vec& x, arma::vec& y) const;
-        void matmat_csr_(const arma::mat& X, arma::mat& Y) const;
-        void rmatmat_csr_(const arma::mat& X, arma::mat& Y) const;
+        // Private CSR/CSC kernels.
+        //
+        // Naming reflects true semantics of the operator's public interface
+        // (S is n_obs × n_var):
+        //   * ``matvec_*_impl_``  : y = S  * x  (x n_var-length -> y n_obs-length)
+        //   * ``rmatvec_*_impl_`` : y = S' * x  (x n_obs-length -> y n_var-length)
+        //
+        // For CSR storage, rmatvec is the natural row-wise walk (each row of
+        // S accumulates into y[col] with weight x[row]).  For CSC storage,
+        // rmatvec is the natural column-wise walk (each column of S is dotted
+        // with x to yield y[col]).  matvec is the other direction in each
+        // case.
+        void matvec_csr_impl_(const arma::vec& x, arma::vec& y) const;
+        void rmatvec_csr_impl_(const arma::vec& x, arma::vec& y) const;
+        void matmat_csr_impl_(const arma::mat& X, arma::mat& Y) const;
+        void rmatmat_csr_impl_(const arma::mat& X, arma::mat& Y) const;
 
-        void matvec_csc_(const arma::vec& x, arma::vec& y) const;
-        void rmatvec_csc_(const arma::vec& x, arma::vec& y) const;
-        void matmat_csc_(const arma::mat& X, arma::mat& Y) const;
-        void rmatmat_csc_(const arma::mat& X, arma::mat& Y) const;
+        void matvec_csc_impl_(const arma::vec& x, arma::vec& y) const;
+        void rmatvec_csc_impl_(const arma::vec& x, arma::vec& y) const;
+        void matmat_csc_impl_(const arma::mat& X, arma::mat& Y) const;
+        void rmatmat_csc_impl_(const arma::mat& X, arma::mat& Y) const;
 
         void take_columns_dense_csr_(const arma::uvec& col_indices,
                                      const arma::uvec& row_indices,

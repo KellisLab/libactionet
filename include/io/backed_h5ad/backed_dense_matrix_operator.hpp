@@ -29,6 +29,26 @@ namespace actionet {
     /// Because the computation is performed in @c float, values above ~16M
     /// lose integer precision after the cast; for standard library-size
     /// normalized single-cell data this is not a concern.
+    ///
+    /// @par Lazy transform ordering
+    /// Every value read from disk is transformed by @c apply_transforms_ as
+    /// @code v_out = (apply_log1p ? log1p(row_scale * v_in) : row_scale * v_in) * log_scale @endcode
+    /// with the row_scale factor determined by the value's originating obs
+    /// row.  Because the underlying h5ad data is dense, on-zero entries are
+    /// affected too: with @c apply_log1p the returned value on a stored zero
+    /// is @c fastlog(1+0) ~ -1.65e-6 (not exact 0), which is well within the
+    /// approximation's stated ~0.3% relative error budget.
+    ///
+    /// @par Thread-safety
+    /// All @c const methods (@c matvec, @c rmatvec, @c matmat, @c rmatmat,
+    /// @c takeColumnsDense, @c takeColumnsSparse) are safe to call on
+    /// different operator instances concurrently.  A @b single instance is
+    /// @b not re-entrant across threads because the internal slab cache is
+    /// mutable.  OpenMP is used internally to parallelise the log1p pass and
+    /// scatter/gather loops after a slab has been loaded; this is safe
+    /// because worker threads only read the cached buffer.  Callers must not
+    /// invoke a public method on the operator from multiple host threads
+    /// simultaneously.
     class BackedDenseMatrixOperator final : public MatrixOperator {
     public:
         /// @param file_path        Path to the .h5ad file.

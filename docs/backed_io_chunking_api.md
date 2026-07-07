@@ -82,3 +82,44 @@ On that dataset, relative to prior backed defaults:
 
 Given the memory-first objective for backed atlas-scale workloads, `0.5` is the
 default auto-target fraction.
+
+## Backed Dense Operator
+
+The dense counterpart lives at `actionet::BackedDenseMatrixOperator` (declared
+in `include/io/backed_h5ad/backed_dense_matrix_operator.hpp`) and is selected
+automatically by `createBackedOperator(...)` when the h5ad group is a dense
+2-D dataset (rather than a CSR/CSC group).
+
+The dense operator uses a distinct chunking model:
+
+- Constructor parameters `chunk_size` and `slab_byte_budget` (default
+  `256 MiB`).
+- `chunk_size` is an **upper bound** on the number of observation rows loaded
+  per slab.  The effective slab height (`effectiveChunkSize()`) is
+  `min(chunk_size, floor(slab_byte_budget / (n_var * sizeof(double))))`,
+  clamped to at least 1 row.
+- The transposed slab (`n_var x rows_in_slab`) is cached with LRU-1 semantics;
+  a repeated request within the same slab reuses the cached buffer.
+- `slab_byte_budget` protects wide (n_var-heavy) datasets from unbounded RSS
+  when the caller asks for a large `chunk_size`.
+
+`n_threads` has the same semantics as for the sparse operator: it controls the
+OpenMP thread count used by the internal compute loops (per-row scaling,
+log1p pass, gather/scatter for `matvec`/`rmatvec`).  `0` = auto, `1` = serial.
+
+Both sparse and dense operators apply the lazy transform in-place on the
+cached chunk/slab (never on the on-disk data), so switching `row_scale` or
+`apply_log1p` requires constructing a new operator.
+
+## Thread-safety contract
+
+Both backed operators (sparse and dense) follow the same rule:
+
+- All `const` methods are safe to call on **different** operator instances
+  concurrently.
+- A **single** operator instance is not re-entrant across host threads
+  because the chunk/slab cache is mutable.
+- Internal OpenMP parallelism is applied only after the cache is populated,
+  so worker threads see a stable, read-only buffer.
+- Callers must serialise access to a given operator instance across host
+  threads.

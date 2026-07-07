@@ -2,6 +2,8 @@
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
 
+#include "_h5_utils.hpp"
+
 #include <hdf5.h>
 #include <stdexcept>
 
@@ -18,29 +20,20 @@ namespace actionet {
         double io_target_chunk_fraction_of_cap,
         int n_threads) {
 
-        hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
-        if (fapl < 0) {
-            throw std::runtime_error("createBackedOperator: failed to create file access plist");
-        }
-        H5Pset_file_locking(fapl, 0, 1);
-        hid_t file_id = H5Fopen(file_path.c_str(), H5F_ACC_RDONLY, fapl);
-        H5Pclose(fapl);
-        if (file_id < 0) {
-            throw std::runtime_error("createBackedOperator: failed to open h5ad file: " + file_path);
-        }
-
-        H5O_info_t info;
-#if H5_VERSION_GE(1, 12, 0)
-        herr_t status = H5Oget_info_by_name(file_id, group_path.c_str(), &info, H5O_INFO_BASIC, H5P_DEFAULT);
-#else
-        herr_t status = H5Oget_info_by_name(file_id, group_path.c_str(), &info, H5P_DEFAULT);
-#endif
-        if (status < 0) {
+        // Probe the object type once, then close and let the concrete
+        // operator reopen the file in its constructor.  Reopening keeps the
+        // operator RAII-owned and lets it hold the exact HDF5 handles it
+        // needs (sparse: group + 3 datasets; dense: dataset only).
+        hid_t file_id = detail::h5::open_h5_readonly_no_lock(
+            file_path, "createBackedOperator");
+        H5O_type_t obj_type;
+        try {
+            obj_type = detail::h5::probe_object_type(
+                file_id, group_path, "createBackedOperator");
+        } catch (...) {
             H5Fclose(file_id);
-            throw std::runtime_error("createBackedOperator: path not found: " + group_path);
+            throw;
         }
-
-        H5O_type_t obj_type = info.type;
         H5Fclose(file_id);
 
         if (obj_type == H5O_TYPE_GROUP) {
@@ -67,11 +60,10 @@ namespace actionet {
                 log_scale,
                 slab_budget,
                 n_threads);
-        } else {
-            throw std::runtime_error(
-                "createBackedOperator: HDF5 object at '" + group_path +
-                "' is neither a group (sparse) nor a dataset (dense)");
         }
+        throw std::runtime_error(
+            "createBackedOperator: HDF5 object at '" + group_path +
+            "' is neither a group (sparse) nor a dataset (dense)");
     }
 
 } // namespace actionet

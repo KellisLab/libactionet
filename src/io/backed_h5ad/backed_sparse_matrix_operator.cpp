@@ -1,5 +1,7 @@
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 
+#include "_h5_utils.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -7,11 +9,7 @@
 #include <stdexcept>
 
 namespace {
-    void check_h5(bool ok, const char* msg) {
-        if (!ok) {
-            throw std::runtime_error(msg);
-        }
-    }
+    using actionet::detail::h5::check_h5;
 
     std::string normalize_encoding(const std::string& encoding) {
         std::string out = encoding;
@@ -127,12 +125,8 @@ namespace actionet {
         // Disable HDF5 advisory file locking so this reader can coexist with
         // h5py/AnnData backed-mode handles that already hold a lock on the
         // same inode (errno 11 / EAGAIN from H5FD__sec2_lock otherwise).
-        hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
-        check_h5(fapl >= 0, "Failed to create file access property list");
-        H5Pset_file_locking(fapl, 0 /*use_file_locking=false*/, 1 /*ignore_when_disabled=true*/);
-        file_id_ = H5Fopen(file_path_.c_str(), H5F_ACC_RDONLY, fapl);
-        H5Pclose(fapl);
-        check_h5(file_id_ >= 0, "Failed to open h5ad file");
+        file_id_ = actionet::detail::h5::open_h5_readonly_no_lock(
+            file_path_, "BackedSparseMatrixOperator");
 
         group_id_ = H5Gopen2(file_id_, group_path_.c_str(), H5P_DEFAULT);
         check_h5(group_id_ >= 0, "Failed to open sparse matrix group path");
@@ -394,54 +388,73 @@ namespace actionet {
     }
 
     void BackedSparseMatrixOperator::matvec(const arma::vec& x, arma::vec& y) const {
-        // S is cells × genes.  matvec: y = S * x, x is gene-length, y is cell-length.
+        // S is n_obs × n_var.  matvec: y = S * x  (x n_var-length, y n_obs-length).
         if (x.n_elem != n_var_) {
             throw std::runtime_error("BackedSparseMatrixOperator::matvec dimension mismatch");
         }
         if (is_csr_) {
-            rmatvec_csr_(x, y);   // old rmatvec_csr_ computes sum over genes → cell-length output
+            matvec_csr_impl_(x, y);
         } else {
-            rmatvec_csc_(x, y);
+            matvec_csc_impl_(x, y);
         }
     }
 
     void BackedSparseMatrixOperator::rmatvec(const arma::vec& x, arma::vec& y) const {
-        // S is cells × genes.  rmatvec: y = S' * x, x is cell-length, y is gene-length.
+        // S is n_obs × n_var.  rmatvec: y = S' * x  (x n_obs-length, y n_var-length).
         if (x.n_elem != n_obs_) {
             throw std::runtime_error("BackedSparseMatrixOperator::rmatvec dimension mismatch");
         }
         if (is_csr_) {
-            matvec_csr_(x, y);    // old matvec_csr_ accumulates into gene columns → gene-length output
+            rmatvec_csr_impl_(x, y);
         } else {
-            matvec_csc_(x, y);
+            rmatvec_csc_impl_(x, y);
         }
     }
 
     void BackedSparseMatrixOperator::matmat(const arma::mat& X, arma::mat& Y) const {
-        // S is cells × genes.  matmat: Y = S * X, X is (n_var × q), Y is (n_obs × q).
+        // S is n_obs × n_var.  matmat: Y = S * X  (X (n_var × q) -> Y (n_obs × q)).
         if (X.n_rows != n_var_) {
             throw std::runtime_error("BackedSparseMatrixOperator::matmat dimension mismatch");
         }
         if (is_csr_) {
-            rmatmat_csr_(X, Y);   // old rmatmat_csr_ produces (n_obs × q) output
+            matmat_csr_impl_(X, Y);
         } else {
-            rmatmat_csc_(X, Y);
+            matmat_csc_impl_(X, Y);
         }
     }
 
     void BackedSparseMatrixOperator::rmatmat(const arma::mat& X, arma::mat& Y) const {
-        // S is cells × genes.  rmatmat: Y = S' * X, X is (n_obs × q), Y is (n_var × q).
+        // S is n_obs × n_var.  rmatmat: Y = S' * X  (X (n_obs × q) -> Y (n_var × q)).
         if (X.n_rows != n_obs_) {
             throw std::runtime_error("BackedSparseMatrixOperator::rmatmat dimension mismatch");
         }
         if (is_csr_) {
-            matmat_csr_(X, Y);    // old matmat_csr_ produces (n_var × q) output
+            rmatmat_csr_impl_(X, Y);
         } else {
-            matmat_csc_(X, Y);
+            rmatmat_csc_impl_(X, Y);
         }
     }
 
-    void BackedSparseMatrixOperator::matvec_csr_(const arma::vec& x, arma::vec& y) const {
+    // ---------------------------------------------------------------------
+    // CSR kernels — semantic mapping to storage layout
+    // ---------------------------------------------------------------------
+    //
+    // For CSR storage (indptr indexes n_obs rows), the natural single pass
+    // touches every stored (r, c) exactly once by scanning rows in order:
+    //
+    //   for r in [0, n_obs):
+    //     for p in [indptr[r], indptr[r+1]):
+    //       c = indices[p]; v = data[p]
+    //       ...update y with (r, c, v)...
+    //
+    // Two useful accumulations fall out:
+    //   * y[r] += v * x[c]    → y = S * x   (matvec)
+    //   * y[c] += v * x[r]    → y = S' * x  (rmatvec)
+    //
+    // ``rmatvec_csr_impl_`` is therefore the storage-native walk; matvec on
+    // CSR requires per-row accumulation into a scalar before writing y[r].
+
+    void BackedSparseMatrixOperator::rmatvec_csr_impl_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_var_);
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
@@ -468,7 +481,7 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::rmatvec_csr_(const arma::vec& x, arma::vec& y) const {
+    void BackedSparseMatrixOperator::matvec_csr_impl_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_obs_);
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
@@ -496,7 +509,7 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::matmat_csr_(const arma::mat& X, arma::mat& Y) const {
+    void BackedSparseMatrixOperator::rmatmat_csr_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_var_, X.n_cols);
         const arma::uword q = X.n_cols;
         const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
@@ -531,7 +544,7 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::rmatmat_csr_(const arma::mat& X, arma::mat& Y) const {
+    void BackedSparseMatrixOperator::matmat_csr_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_obs_, X.n_cols);
         const arma::uword q = X.n_cols;
         const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
@@ -567,7 +580,26 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::matvec_csc_(const arma::vec& x, arma::vec& y) const {
+    // ---------------------------------------------------------------------
+    // CSC kernels — semantic mapping to storage layout
+    // ---------------------------------------------------------------------
+    //
+    // For CSC storage (indptr indexes n_var columns), the natural single
+    // pass walks each column's contiguous NNZ run:
+    //
+    //   for c in [0, n_var):
+    //     for p in [indptr[c], indptr[c+1]):
+    //       r = indices[p]; v = data[p]
+    //       ...update y with (r, c, v)...
+    //
+    // The natural accumulations are the mirror of the CSR case:
+    //   * y[c] += v * x[r]    → y = S' * x  (rmatvec, per-column dot)
+    //   * y[r] += v * x[c]    → y = S  * x  (matvec, scatter into rows)
+    //
+    // As for CSR, ``rmatvec_csc_impl_`` is therefore the storage-native
+    // walk; matvec on CSC scatters into y[r] across the same NNZ pass.
+
+    void BackedSparseMatrixOperator::rmatvec_csc_impl_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_var_);
 
         for (arma::uword col_start = 0; col_start < n_var_;) {
@@ -595,7 +627,7 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::rmatvec_csc_(const arma::vec& x, arma::vec& y) const {
+    void BackedSparseMatrixOperator::matvec_csc_impl_(const arma::vec& x, arma::vec& y) const {
         y.zeros(n_obs_);
 
         for (arma::uword col_start = 0; col_start < n_var_;) {
@@ -622,7 +654,7 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::matmat_csc_(const arma::mat& X, arma::mat& Y) const {
+    void BackedSparseMatrixOperator::rmatmat_csc_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_var_, X.n_cols);
         const arma::uword q = X.n_cols;
         const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
@@ -658,7 +690,7 @@ namespace actionet {
         }
     }
 
-    void BackedSparseMatrixOperator::rmatmat_csc_(const arma::mat& X, arma::mat& Y) const {
+    void BackedSparseMatrixOperator::matmat_csc_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_obs_, X.n_cols);
         const arma::uword q = X.n_cols;
         const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
@@ -919,20 +951,23 @@ namespace actionet {
         const bool all_rows = row_indices.is_empty();
         const arma::uword n_sel_rows = all_rows ? n_obs_ : row_indices.n_elem;
 
+        // Build an inverse map ``src_col -> [output slot indices]`` so we
+        // can emit one triplet per output slot per stored NNZ in a single
+        // pass.  This replaces the previous O(D · T) post-hoc duplicate
+        // expansion (D = number of duplicate slots, T = total triplets),
+        // which pathologically blew up for wide gene-set queries.
+        std::vector<std::vector<arma::uword>> col_to_slots(
+            static_cast<size_t>(n_var_));
+        for (arma::uword j = 0; j < n_sel_cols; ++j) {
+            col_to_slots[static_cast<size_t>(col_indices(j))].push_back(j);
+        }
+
         // Collect triplets then batch-construct.
         std::vector<arma::uword> trip_rows;
         std::vector<arma::uword> trip_cols;
         std::vector<double> trip_vals;
 
         if (is_csr_) {
-            // col -> output-position lookup
-            std::vector<arma::uword> col_map(static_cast<size_t>(n_var_), n_sel_cols);
-            for (arma::uword j = 0; j < n_sel_cols; ++j) {
-                if (col_map[col_indices(j)] == n_sel_cols) {
-                    col_map[col_indices(j)] = j;
-                }
-            }
-
             std::vector<arma::uword> row_map;
             if (!all_rows) {
                 row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
@@ -966,10 +1001,11 @@ namespace actionet {
                     const unsigned long long le = indptr_[r + 1] - nnz_start_chunk;
                     for (unsigned long long p = ls; p < le; ++p) {
                         const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                        const arma::uword out_col = col_map[col];
-                        if (out_col == n_sel_cols) continue;
-                        double v = (*data)[static_cast<size_t>(p)];
-                        if (v != 0.0) {
+                        const auto& slots = col_to_slots[static_cast<size_t>(col)];
+                        if (slots.empty()) continue;
+                        const double v = (*data)[static_cast<size_t>(p)];
+                        if (v == 0.0) continue;
+                        for (arma::uword out_col : slots) {
                             trip_rows.push_back(out_row);
                             trip_cols.push_back(out_col);
                             trip_vals.push_back(v);
@@ -978,23 +1014,9 @@ namespace actionet {
                 }
                 row_start = row_end;
             }
-
-            // Expand duplicate columns.
-            for (arma::uword j = 0; j < n_sel_cols; ++j) {
-                if (col_map[col_indices(j)] != j) {
-                    const arma::uword src_j = col_map[col_indices(j)];
-                    const size_t n = trip_rows.size();
-                    for (size_t t = 0; t < n; ++t) {
-                        if (trip_cols[t] == src_j) {
-                            trip_rows.push_back(trip_rows[t]);
-                            trip_cols.push_back(j);
-                            trip_vals.push_back(trip_vals[t]);
-                        }
-                    }
-                }
-            }
         } else {
-            // CSC path
+            // CSC path — dedupe requested columns before the disk sweep so
+            // repeated references to the same column read from HDF5 only once.
             std::vector<arma::uword> row_map;
             if (!all_rows) {
                 row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
@@ -1005,8 +1027,15 @@ namespace actionet {
                 }
             }
 
-            for (arma::uword j = 0; j < n_sel_cols; ++j) {
-                const arma::uword c = col_indices(j);
+            std::vector<arma::uword> unique_cols;
+            unique_cols.reserve(n_sel_cols);
+            for (arma::uword c = 0; c < n_var_; ++c) {
+                if (!col_to_slots[static_cast<size_t>(c)].empty()) {
+                    unique_cols.push_back(c);
+                }
+            }
+
+            for (arma::uword c : unique_cols) {
                 const unsigned long long nnz_start = indptr_[c];
                 const unsigned long long nnz_end = indptr_[c + 1];
                 const unsigned long long nnz_count = nnz_end - nnz_start;
@@ -1016,14 +1045,16 @@ namespace actionet {
                 std::vector<unsigned long long> indices;
                 read_data_indices_slice_(nnz_start, nnz_count, data, indices);
 
+                const auto& slots = col_to_slots[static_cast<size_t>(c)];
                 for (unsigned long long p = 0; p < nnz_count; ++p) {
                     const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
                     const arma::uword out_row = all_rows ? row : row_map[row];
                     if (out_row == n_sel_rows) continue;
-                    double v = transform_value_(row, data[static_cast<size_t>(p)]);
-                    if (v != 0.0) {
+                    const double v = transform_value_(row, data[static_cast<size_t>(p)]);
+                    if (v == 0.0) continue;
+                    for (arma::uword out_col : slots) {
                         trip_rows.push_back(out_row);
-                        trip_cols.push_back(j);
+                        trip_cols.push_back(out_col);
                         trip_vals.push_back(v);
                     }
                 }
