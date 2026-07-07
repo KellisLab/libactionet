@@ -3,6 +3,32 @@
 #include "utils_internal/utils_decomp.hpp"
 
 namespace actionet {
+namespace {
+
+// Compute SVD via eigendecomposition of A' * A.
+arma::field<arma::mat> eigSVD(const arma::mat& A) {
+    int n = A.n_cols;
+    arma::mat B = arma::trans(A) * A;
+
+    arma::vec d;
+    arma::mat V;
+    arma::eig_sym(d, V, B);
+    d = sqrt(d);
+
+    arma::sp_mat S(n, n);
+    S.diag() = 1 / d;
+    arma::mat U = (S * arma::trans(V)) * arma::trans(A);
+    U = arma::trans(U);
+
+    arma::field<arma::mat> out(3);
+    out(0) = U;
+    out(1) = d;
+    out(2) = V;
+
+    return out;
+}
+
+} // anonymous namespace
 
 template <typename T>
 arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool verbose) {
@@ -25,7 +51,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
         Q = actionet::randNorm(n, dim + s, seed);
         Q = A * Q;
         if (max_it == 0) {
-            svd_out = actionet::eigSVD(Q);
+            svd_out = eigSVD(Q);
             Q = svd_out(0);
         }
         else {
@@ -39,7 +65,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
                 FLUSH;
             }
             if (i == max_it) {
-                svd_out = actionet::eigSVD(A * (arma::trans(A) * Q));
+                svd_out = eigSVD(A * (arma::trans(A) * Q));
                 Q = svd_out(0);
             }
             else {
@@ -48,7 +74,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
             }
         }
 
-        svd_out = actionet::eigSVD(trans(A) * Q);
+        svd_out = eigSVD(trans(A) * Q);
         V = svd_out(0);
         sigma = arma::vec(svd_out(1));
         U = svd_out(2);
@@ -61,7 +87,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
         Q = actionet::randNorm(m, dim + s, seed);
         Q = arma::trans(A) * Q;
         if (max_it == 0) {
-            svd_out = actionet::eigSVD(Q);
+            svd_out = eigSVD(Q);
             Q = svd_out(0);
         }
         else {
@@ -75,7 +101,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
                 FLUSH;
             }
             if (i == max_it) {
-                svd_out = actionet::eigSVD(trans(A) * (A * Q));
+                svd_out = eigSVD(trans(A) * (A * Q));
                 Q = svd_out(0);
             }
             else {
@@ -84,7 +110,7 @@ arma::field<arma::mat> svdFeng(const T& A, int dim, int max_it, int seed, bool v
             }
         }
 
-        svd_out = actionet::eigSVD(A * Q);
+        svd_out = eigSVD(A * Q);
         U = svd_out(0);
         sigma = arma::vec(svd_out(1));
         V = svd_out(2);
@@ -136,7 +162,7 @@ arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
         Q = std::move(Aq);
 
         if (max_it == 0) {
-            svd_out = actionet::eigSVD(Q);
+            svd_out = eigSVD(Q);
             Q = svd_out(0);
         }
         else {
@@ -156,7 +182,7 @@ arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
             A.matmat(AtQ, AAtQ);        // m x (dim+s)
 
             if (i == max_it) {
-                svd_out = actionet::eigSVD(AAtQ);
+                svd_out = eigSVD(AAtQ);
                 Q = svd_out(0);
             }
             else {
@@ -167,7 +193,7 @@ arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
 
         arma::mat AtQ_final;
         A.rmatmat(Q, AtQ_final);        // n x (dim+s)
-        svd_out = actionet::eigSVD(AtQ_final);
+        svd_out = eigSVD(AtQ_final);
         V = svd_out(0);
         sigma = arma::vec(svd_out(1));
         U = svd_out(2);
@@ -183,7 +209,7 @@ arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
         Q = std::move(AtQ);
 
         if (max_it == 0) {
-            svd_out = actionet::eigSVD(Q);
+            svd_out = eigSVD(Q);
             Q = svd_out(0);
         }
         else {
@@ -203,7 +229,7 @@ arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
             A.rmatmat(AQ, AtAQ);        // n x (dim+s)
 
             if (i == max_it) {
-                svd_out = actionet::eigSVD(AtAQ);
+                svd_out = eigSVD(AtAQ);
                 Q = svd_out(0);
             }
             else {
@@ -214,7 +240,7 @@ arma::field<arma::mat> svdFeng(const MatrixOperator& A, int dim, int max_it,
 
         arma::mat AQ_final;
         A.matmat(Q, AQ_final);          // m x (dim+s)
-        svd_out = actionet::eigSVD(AQ_final);
+        svd_out = eigSVD(AQ_final);
         U = svd_out(0);
         sigma = arma::vec(svd_out(1));
         V = svd_out(2);

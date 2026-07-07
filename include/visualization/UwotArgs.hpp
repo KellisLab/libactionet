@@ -154,14 +154,6 @@ public:
         this->b = b;
     }
 
-    // void set_OptimizerArgs(const OptimizerArgs& opt_args) {
-    //     this->opt_args = opt_args;
-    // }
-    //
-    // OptimizerArgs get_OptimizerArgs() const {
-    //     return opt_args;
-    // }
-
     void set_method(const std::string& method) {
         const auto method_norm = normalize_lower(method);
         this->method = method_norm;

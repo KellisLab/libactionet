@@ -1,9 +1,31 @@
 #include "network/label_propagation.hpp"
 #include "tools/enrichment.hpp"
 #include "tools/matrix_transform.hpp"
-#include "utils_internal/utils_misc.hpp"
 
 namespace actionet {
+    namespace {
+    // Convert a label vector to a one-hot indicator matrix (columns = unique non-negative labels).
+    arma::mat one_hot_encoding(const arma::vec& V) {
+        int n = V.n_elem;
+
+        arma::vec vals = arma::unique(V);
+
+        arma::uvec idx = arma::find(0 <= vals);
+        vals = vals(idx);
+
+        int k = vals.n_elem;
+        arma::mat M = arma::zeros(n, k);
+        for (int i = 0; i < k; i++) {
+            arma::uvec idx = arma::find(V == vals(i));
+            for (int j = 0; j < idx.n_elem; j++) {
+                M(idx(j), i) = 1;
+            }
+        }
+
+        return M;
+    }
+    } // anonymous namespace
+
     arma::vec runLPA(const arma::sp_mat& G, const arma::vec& labels, double lambda, int iters, double sig_threshold,
                      arma::uvec fixed_labels, int thread_no) {
         int n = G.n_rows;

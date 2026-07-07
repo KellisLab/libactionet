@@ -7,23 +7,6 @@
 
 namespace actionet {
 
-/// @brief Deflate a reduced representation using perturbation matrices.
-///
-/// The field layout is the public reduction contract
-/// {S_r, sigma, U, A, B} returned by reduceKernel():
-///   - S_r: cells x k
-///   - U  : genes x k
-///   - A  : genes x p
-///   - B  : cells x p
-///
-/// @param reduction_results Reduction field in public Plan 02 layout.
-/// @param A Gene-space perturbation (genes x q).
-/// @param B Cell-space perturbation (cells x q).
-///
-/// @return Updated reduction field in the same public layout.
-arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& reduction_results,
-                                        const arma::mat& A, const arma::mat& B);
-
     /// @brief Orthogonalize a reduced representation against a batch design matrix.
     ///
     /// AnnData-native orientation (Plan 02): S is cells × genes.

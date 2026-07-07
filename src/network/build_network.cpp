@@ -31,20 +31,16 @@ struct DirectedEdge {
     float value;
 };
 
-inline VertexIndex checked_vertex_index(std::size_t value, const char* name) {
-    if (value > static_cast<std::size_t>(std::numeric_limits<VertexIndex>::max())) {
-        throw std::runtime_error(std::string(name) + " exceeds the supported HNSW vertex range");
-    }
-    return static_cast<VertexIndex>(value);
-}
-
 inline VertexIndex checked_neighbor_label(std::size_t value,
                                           std::size_t n_points,
                                           const char* name) {
     if (value >= n_points) {
         throw std::runtime_error(std::string(name) + " is outside the valid vertex range");
     }
-    return checked_vertex_index(value, name);
+    if (value > static_cast<std::size_t>(std::numeric_limits<VertexIndex>::max())) {
+        throw std::runtime_error(std::string(name) + " exceeds the supported HNSW vertex range");
+    }
+    return static_cast<VertexIndex>(value);
 }
 
 inline arma::uword checked_arma_uword(std::uint64_t value, const char* name) {

@@ -6,11 +6,6 @@
 
 namespace actionet {
 
-// Sparse matrix-dense vector product: y = A*x
-arma::vec spmat_vec_product(const arma::sp_mat& A, const arma::vec& x) {
-    return A * x;
-}
-
 // Thread-safe parallel sparse-dense matrix product
 // Each thread independently computes a subset of output columns
 arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, int thread_no) {

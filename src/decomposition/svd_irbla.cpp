@@ -1,18 +1,67 @@
 // Singular value decomposition (SVD) algorithms
 // IRLB implementation - Note: PRIMME is preferred for large sparse matrices
 #include "decomposition/svd_irbla.hpp"
-#include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_decomp.hpp"
+#include "aarand/aarand.hpp"
 #include "blas_deps.hpp"
 #include <cstring>
 #include <vector>
 #include <functional>
 
 namespace actionet {
+namespace {
+
+// BLAS-based orthogonalization: Y -= X * (X' * Y), using scratch buffer T of size xn*yn.
+void irlb_orthog(double *X, double *Y, double *T, int xm, int xn, int yn) {
+    double a = 1, b = 1;
+    int inc = 1;
+    std::memset(T, 0, xn * yn * sizeof(double));
+    cblas_dgemv(CblasColMajor, CblasTrans, xm, xn, a, X, xm, Y, inc, b, T, inc);
+    a = -1.0;
+    b = 1.0;
+    cblas_dgemv(CblasColMajor, CblasNoTrans, xm, xn, a, X, xm, T, inc, b, Y, inc);
+}
+
+// Convergence test for the IRLB outer iteration.
+void irlb_convtests(int Bsz, int n, double tol, double svtol, double Smax,
+                    double *svratio, double *residuals, int *k, int *converged, double S) {
+    int Len_res = 0;
+    for (int j = 0; j < Bsz; j++) {
+        if ((std::fabs(residuals[j]) < tol * Smax) && (svratio[j] < svtol))
+            Len_res++;
+    }
+
+    if (Len_res >= n || S == 0) {
+        *converged = 1;
+        return;
+    }
+    if (*k < n + Len_res)
+        *k = n + Len_res;
+
+    if (*k > Bsz - 3)
+        *k = Bsz - 3;
+
+    if (*k < 1)
+        *k = 1;
+
+    *converged = 0;
+}
+
+// Fill a buffer with standard normal values.
+inline void irlb_StdNorm(double *v, int n, std::mt19937_64& engine) {
+    for (int ii = 0; ii < n - 1; ii += 2) {
+        auto paired = aarand::standard_normal(engine);
+        v[ii] = paired.first;
+        v[ii + 1] = paired.second;
+    }
+    auto paired = aarand::standard_normal(engine);
+    v[n - 1] = paired.first;
+}
+
 using MatvecFn = std::function<void(char transpose, const double* x, double* out)>;
 
 // Helper: sparse matrix-vector multiplication into raw buffer
-static void sparse_matvec(char transpose, const arma::sp_mat& A, const double* x, double* out) {
+void sparse_matvec(char transpose, const arma::sp_mat& A, const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.n_cols, false, true);
         arma::vec out_vec(out, A.n_rows, false, true);
@@ -25,7 +74,7 @@ static void sparse_matvec(char transpose, const arma::sp_mat& A, const double* x
 }
 
 // Helper: dense matrix-vector multiplication into raw buffer
-static void dense_matvec(char transpose, const arma::mat& A, const double* x, double* out) {
+void dense_matvec(char transpose, const arma::mat& A, const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.n_cols, false, true);
         arma::vec out_vec(out, A.n_rows, false, true);
@@ -38,8 +87,8 @@ static void dense_matvec(char transpose, const arma::mat& A, const double* x, do
 }
 
 // Helper: operator-backed matrix-vector multiplication into raw buffer
-static void operator_matvec(char transpose, const MatrixOperator& A,
-                             const double* x, double* out) {
+void operator_matvec(char transpose, const MatrixOperator& A,
+                     const double* x, double* out) {
     if (transpose == 'n') {
         arma::vec x_vec(const_cast<double*>(x), A.cols(), false, true);
         arma::vec out_vec(out, A.rows(), false, true);
@@ -53,10 +102,10 @@ static void operator_matvec(char transpose, const MatrixOperator& A,
 
 // Unified IRLB core: Lanczos bidiagonalization with implicit restarts.
 // The matvec callback abstracts over sparse, dense, and operator-backed matrices.
-static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
-                                            int seed, bool verbose,
-                                            const char* label,
-                                            const MatvecFn& matvec) {
+arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
+                                    int seed, bool verbose,
+                                    const char* label,
+                                    const MatvecFn& matvec) {
     dim = std::min(dim, std::min(m, n) - 1);
 
     if (verbose) {
@@ -120,7 +169,7 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
     int inc = 1;
 
     std::mt19937_64 engine(seed);
-    actionet::StdNorm(V, n, engine);
+    irlb_StdNorm(V, n, engine);
 
     /* Main iteration */
     while (iter < iters) {
@@ -138,7 +187,7 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
         matvec('n', x, W + j * m);
 
         if (iter > 0)
-            actionet::orthog(W, W + j * m, T, m, j, 1);
+            irlb_orthog(W, W + j * m, T, m, j, 1);
 
         S = cblas_dnrm2(m, W + j * m, inc);
         SS = 1.0 / S;
@@ -150,16 +199,16 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
 
             SS = -S;
             cblas_daxpy(n, SS, V + j * n, inc, F, inc);
-            actionet::orthog(V, F, T, n, j + 1, 1);
+            irlb_orthog(V, F, T, n, j + 1, 1);
 
             if (j + 1 < work) {
                 R_F = cblas_dnrm2(n, F, inc);
                 R = 1.0 / R_F;
 
                 if (R_F < eps) {
-                    actionet::StdNorm(F, n, engine);
+                    irlb_StdNorm(F, n, engine);
 
-                    actionet::orthog(V, F, T, n, j + 1, 1);
+                    irlb_orthog(V, F, T, n, j + 1, 1);
                     R_F = cblas_dnrm2(n, F, inc);
                     R = 1.0 / R_F;
                     R_F = 0;
@@ -176,14 +225,14 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
                 R = -R_F;
                 cblas_daxpy(m, R, W + j * m, inc, W + (j + 1) * m, inc);
 
-                actionet::orthog(W, W + (j + 1) * m, T, m, j + 1, 1);
+                irlb_orthog(W, W + (j + 1) * m, T, m, j + 1, 1);
                 S = cblas_dnrm2(m, W + (j + 1) * m, inc);
                 SS = 1.0 / S;
 
                 if (S < eps) {
-                    actionet::StdNorm(W + (j + 1) * m, m, engine);
+                    irlb_StdNorm(W + (j + 1) * m, m, engine);
 
-                    actionet::orthog(W, W + (j + 1) * m, T, m, j + 1, 1);
+                    irlb_orthog(W, W + (j + 1) * m, T, m, j + 1, 1);
                     S = cblas_dnrm2(m, W + (j + 1) * m, inc);
                     SS = 1.0 / S;
                     cblas_dscal(m, SS, W + (j + 1) * m, inc);
@@ -218,7 +267,7 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
         for (kk = 0; kk < j; ++kk)
             res[kk] = R_F * BU[kk * work + (j - 1)];
 
-        actionet::convtests(j, dim, tol, svtol, Smax, svratio, res, &k, &converged, S);
+        irlb_convtests(j, dim, tol, svtol, Smax, svratio, res, &k, &converged, S);
         if (k >= work)
             k = work - 1;
         if (k > dim)
@@ -270,6 +319,8 @@ static arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
     actionet::orient_SVD(out);
     return out;
 }
+
+} // anonymous namespace
 
 // --- Public overloads: thin wrappers that construct the appropriate matvec ---
 

@@ -107,35 +107,38 @@ namespace {
         // perturbedSVD expects (left / row-space, right / col-space).
         return actionet::perturbedSVD(svd, B_aug, A_aug, prior);
     }
+
+    // Deflate a public-layout reduction field {S_r, sigma, U, A, B} against perturbation
+    // matrices `A` (genes x q) and `B` (cells x q).  Only used from the field-based
+    // orthogonalize* overloads below.
+    arma::field<arma::mat> deflate_reduction_field_(arma::field<arma::mat>& reduction_results,
+                                                    const arma::mat& A, const arma::mat& B) {
+        stdout_printf("\tDeflating reduction ... ");
+        FLUSH;
+
+        if (reduction_results.n_elem != 5) {
+            throw std::runtime_error("deflateReduction: expected reduction field layout {S_r, sigma, U, A, B}");
+        }
+
+        actionet::KernelReductionResult reduction = actionet::kernelResultFromField(reduction_results);
+        actionet::SVDResult svd = svd_from_reduction_(reduction);
+
+        actionet::PerturbedSVDResult prior_buf;
+        const actionet::PerturbedSVDResult* prior_ptr = nullptr;
+        if (has_prior_history_(reduction)) {
+            prior_buf = prior_from_reduction_(reduction);
+            prior_ptr = &prior_buf;
+        }
+
+        actionet::PerturbedSVDResult perturbed = deflate_reduction_struct_(svd, prior_ptr, A, B);
+        stdout_printf("done\n");
+        FLUSH;
+
+        return actionet::kernelFieldFromResult(reduction_from_perturbed_(perturbed));
+    }
 } // namespace
 
 namespace actionet {
-
-arma::field<arma::mat> deflateReduction(arma::field<arma::mat>& reduction_results,
-                                        const arma::mat& A, const arma::mat& B) {
-    stdout_printf("\tDeflating reduction ... ");
-    FLUSH;
-
-    if (reduction_results.n_elem != 5) {
-        throw std::runtime_error("deflateReduction: expected reduction field layout {S_r, sigma, U, A, B}");
-    }
-
-    KernelReductionResult reduction = kernelResultFromField(reduction_results);
-    SVDResult svd = svd_from_reduction_(reduction);
-
-    PerturbedSVDResult prior_buf;
-    const PerturbedSVDResult* prior_ptr = nullptr;
-    if (has_prior_history_(reduction)) {
-        prior_buf = prior_from_reduction_(reduction);
-        prior_ptr = &prior_buf;
-    }
-
-    PerturbedSVDResult perturbed = deflate_reduction_struct_(svd, prior_ptr, A, B);
-    stdout_printf("done\n");
-    FLUSH;
-
-    return kernelFieldFromResult(reduction_from_perturbed_(perturbed));
-}
 
 template <typename T>
 arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& reduction_results, arma::mat& design) {
@@ -154,7 +157,7 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         arma::mat B = arma::mat(S * Z);
         B *= -1.0;
 
-        arma::field<arma::mat> perturbed_SVD = deflateReduction(reduction_results, A, B);
+        arma::field<arma::mat> perturbed_SVD = deflate_reduction_field_(reduction_results, A, B);
         FLUSH;
         return (perturbed_SVD);
     }
@@ -180,7 +183,7 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         arma::mat B = arma::mat(S * Z);
         B *= -1.0;
 
-        arma::field<arma::mat> perturbed_SVD = deflateReduction(reduction_results, A, B);
+        arma::field<arma::mat> perturbed_SVD = deflate_reduction_field_(reduction_results, A, B);
         FLUSH;
         return (perturbed_SVD);
     }
@@ -240,7 +243,7 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         arma::mat B = arma::mat(S_ref * Z);
         B *= -1.0;
 
-        arma::field<arma::mat> perturbed_SVD = deflateReduction(reduction_results, A, B);
+        arma::field<arma::mat> perturbed_SVD = deflate_reduction_field_(reduction_results, A, B);
         FLUSH;
         return perturbed_SVD;
     }

@@ -1,41 +1,6 @@
 #include "utils_internal/utils_decomp.hpp"
-#include "blas_deps.hpp"
 
 namespace actionet {
-
-void orthog(double *X, double *Y, double *T, int xm, int xn, int yn) {
-    double a = 1, b = 1;
-    int inc = 1;
-    std::memset(T, 0, xn * yn * sizeof(double));
-    cblas_dgemv(CblasColMajor, CblasTrans, xm, xn, a, X, xm, Y, inc, b, T, inc);
-    a = -1.0;
-    b = 1.0;
-    cblas_dgemv(CblasColMajor, CblasNoTrans, xm, xn, a, X, xm, T, inc, b, Y, inc);
-}
-
-void convtests(int Bsz, int n, double tol, double svtol, double Smax, double *svratio, double *residuals, int *k,
-               int *converged, double S) {
-    int Len_res = 0;
-    for (int j = 0; j < Bsz; j++) {
-        if ((std::fabs(residuals[j]) < tol * Smax) && (svratio[j] < svtol))
-            Len_res++;
-    }
-
-    if (Len_res >= n || S == 0) {
-        *converged = 1;
-        return;
-    }
-    if (*k < n + Len_res)
-        *k = n + Len_res;
-
-    if (*k > Bsz - 3)
-        *k = Bsz - 3;
-
-    if (*k < 1)
-        *k = 1;
-
-    *converged = 0;
-}
 
 void gram_schmidt(arma::mat &A) {
     for (arma::uword i = 0; i < A.n_cols; ++i) {
@@ -67,28 +32,6 @@ arma::mat randNorm(int l, int m, int seed) {
         }
     }
     return R;
-}
-
-arma::field<arma::mat> eigSVD(const arma::mat &A) {
-    int n = A.n_cols;
-    arma::mat B = arma::trans(A) * A;
-
-    arma::vec d;
-    arma::mat V;
-    arma::eig_sym(d, V, B);
-    d = sqrt(d);
-
-    arma::sp_mat S(n, n);
-    S.diag() = 1 / d;
-    arma::mat U = (S * arma::trans(V)) * arma::trans(A);
-    U = arma::trans(U);
-
-    arma::field<arma::mat> out(3);
-    out(0) = U;
-    out(1) = d;
-    out(2) = V;
-
-    return (out);
 }
 
 void orient_SVD(arma::field<arma::mat>& SVD_res) {

@@ -64,16 +64,6 @@ namespace actionet {
     template arma::field<arma::mat> runSVD<arma::sp_mat>(const arma::sp_mat& A, int k, int max_it, int seed, int algorithm,
                                                          bool verbose);
 
-    SVDResult runSVD_Halko_Operator(const MatrixOperator& op, int k, int iters, int seed, bool verbose) {
-        arma::field<arma::mat> out = svdHalko(op, k, iters, seed, verbose);
-        return svdResultFromField(out);
-    }
-
-    SVDResult runSVD_Feng_Operator(const MatrixOperator& op, int k, int max_it, int seed, bool verbose) {
-        arma::field<arma::mat> out = svdFeng(op, k, max_it, seed, verbose);
-        return svdResultFromField(out);
-    }
-
     SVDResult runSVD_Operator(const MatrixOperator& op, int k, int max_it, int seed, int algorithm, bool verbose) {
         if (max_it < 1) {
             switch (algorithm) {
@@ -94,9 +84,9 @@ namespace actionet {
 
         switch (algorithm) {
             case ALG_HALKO:
-                return runSVD_Halko_Operator(op, k, max_it, seed, verbose);
+                return svdResultFromField(svdHalko(op, k, max_it, seed, verbose));
             case ALG_FENG:
-                return runSVD_Feng_Operator(op, k, max_it, seed, verbose);
+                return svdResultFromField(svdFeng(op, k, max_it, seed, verbose));
 #if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
             case ALG_PRIMME:
                 return runSVD_PRIMME_Operator(op, k, max_it, seed, verbose);

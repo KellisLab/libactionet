@@ -1,7 +1,6 @@
 #include "tools/autocorrelation.hpp"
 #include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_parallel.hpp"
-#include "utils_internal/utils_matrix.hpp"
 #include <random>
 #include <numeric>
 
@@ -39,7 +38,7 @@ namespace actionet {
         #pragma omp parallel for num_threads(threads_use)
         for (unsigned int i = 0; i < scores_no; i++) {
             arma::vec x = normalized_scores.col(i);
-            double y = dot(x, spmat_vec_product(G, x)); // THis is the only line that differs from dense version
+            double y = dot(x, G * x);
             stat(i) = y;
         }
 
@@ -102,7 +101,7 @@ namespace actionet {
         #pragma omp parallel for num_threads(threads_use)
         for (unsigned int i = 0; i < scores_no; i++) {
             arma::vec x = normalized_scores.col(i);
-            double y = arma::dot(x, spmat_vec_product(G, x));
+            double y = arma::dot(x, G * x);
             stat(i) = y;
         }
 
@@ -121,7 +120,7 @@ namespace actionet {
                 arma::vec v = arma::zeros(scores_no);
                 for (int i = 0; i < scores_no; i++) {
                     arma::vec rand_x = score_permuted.col(i);
-                    v(i) = arma::dot(rand_x, spmat_vec_product(G, rand_x));
+                    v(i) = arma::dot(rand_x, G * rand_x);
                 }
                 rand_stats.col(j) = v;
             }
@@ -169,7 +168,7 @@ namespace actionet {
         #pragma omp parallel for num_threads(threads_use)
         for (unsigned int i = 0; i < scores_no; i++) {
             arma::vec x = normalized_scores.col(i);
-            double y = arma::dot(x, spmat_vec_product(L, x));
+            double y = arma::dot(x, L * x);
             stat(i) = y;
         }
 
@@ -189,7 +188,7 @@ namespace actionet {
                 arma::vec v = arma::zeros(scores_no);
                 for (int i = 0; i < scores_no; i++) {
                     arma::vec rand_x = score_permuted.col(i);
-                    v(i) = arma::dot(rand_x, spmat_vec_product(L, rand_x));
+                    v(i) = arma::dot(rand_x, L * rand_x);
                 }
                 rand_stats.col(j) = v;
             }

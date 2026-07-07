@@ -112,10 +112,10 @@ cmake --build . -j$(nproc)
 ## Public API (C++)
 All public symbols are exposed under the `actionet` namespace via `include/libactionet.hpp`.
 
-- **Decomposition / SVD**: `runSVD`, `runSVD_Operator`, `runSVD_PRIMME_Operator`, `runSVD_Halko_Operator`, `runSVD_Feng_Operator`, `perturbedSVD`,
+- **Decomposition / SVD**: `runSVD`, `runSVD_Operator`, `runSVD_PRIMME_Operator`, `perturbedSVD`,
   plus result structs (`SVDResult`, `PerturbedSVDResult`) and the `MatrixOperator` interface (`DenseMatrixOperator`, `SparseMatrixOperator`)
-- **Batch orthogonalization**: `orthogonalizeBatchEffect`, `orthogonalizeBasal`, `deflateReduction` (in-memory and operator-backed variants)
-- **Kernel reduction**: `reduceKernel`, `reduceKernel_Operator`, `reduceKernelFromSVD`, `reduceKernelFromSVD_Operator`, `reduceKernelFromSVD_InMemory`, `computeKernelPerturbationTerms`, `applyKernelPostSVD`, plus `KernelReductionResult`
+- **Batch orthogonalization**: `orthogonalizeBatchEffect`, `orthogonalizeBasal` (in-memory and operator-backed variants)
+- **Kernel reduction**: `reduceKernel`, `reduceKernel_Operator`, `reduceKernelFromSVD`, `reduceKernelFromSVD_Operator`, `reduceKernelFromSVD_InMemory`, `applyKernelPostSVD`, plus `KernelReductionResult`
 - **ACTION decomposition**: `runACTION`, `decompACTION`, `collectArchetypes`, `mergeArchetypes`, `runAA`, `runSPA`, `runSimplexRegression`
 - **Backed I/O**: `createBackedOperator` (auto-detects sparse/dense from HDF5), `BackedSparseMatrixOperator`, `BackedDenseMatrixOperator`
 - **Network**: `buildNetwork`, `computeNetworkDiffusion`, `runLPA`, `computeCoreness`, `computeArchetypeCentrality`

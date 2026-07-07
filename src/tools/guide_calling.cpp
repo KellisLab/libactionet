@@ -38,21 +38,13 @@ namespace {
         bool converged = false;
     };
 
-    /// Clamp probability to (eps, 1-eps); non-finite inputs return NaN.
-    double clamp_prob(const double p) {
-        constexpr double eps = 1e-12;
-        if (!std::isfinite(p)) {
-            return std::numeric_limits<double>::quiet_NaN();
-        }
-        return std::min(1.0 - eps, std::max(eps, p));
-    }
-
     /// Peter J. Acklam's rational approximation to the inverse normal CDF.
     double inverse_normal_cdf(const double p_in) {
-        const double p = clamp_prob(p_in);
-        if (!std::isfinite(p)) {
+        constexpr double eps = 1e-12;
+        if (!std::isfinite(p_in)) {
             return std::numeric_limits<double>::quiet_NaN();
         }
+        const double p = std::min(1.0 - eps, std::max(eps, p_in));
 
         // Peter J. Acklam's rational approximation.
         static const double a1 = -3.969683028665376e+01;
@@ -386,83 +378,6 @@ namespace {
         std::vector<arma::uword> rows;
         std::vector<arma::uword> cols;
     };
-
-    /// OpenMP-parallel version of collect_threshold_triplets.
-    ///
-    /// Each thread accumulates into a private TripletBuf, then results are
-    /// concatenated sequentially.  Falls back to the serial version for
-    /// single-threaded or single-column cases.
-    void collect_threshold_triplets_parallel(
-        const arma::sp_mat& X,
-        const arma::vec& background_thresholds,
-        const arma::vec& foreground_thresholds,
-        std::vector<arma::uword>& bg_rows,
-        std::vector<arma::uword>& bg_cols,
-        std::vector<arma::uword>& fg_rows,
-        std::vector<arma::uword>& fg_cols,
-        const unsigned int n_threads
-    ) {
-        const arma::uword n_cols = X.n_cols;
-        const unsigned int threads_use = actionet::get_num_threads(
-            static_cast<unsigned int>(std::max<arma::uword>(1, n_cols)),
-            static_cast<unsigned int>(std::max(static_cast<int>(n_threads), 0))
-        );
-
-        if (threads_use <= 1 || n_cols <= 1) {
-            collect_threshold_triplets(X, background_thresholds, foreground_thresholds,
-                                       nullptr, bg_rows, bg_cols, fg_rows, fg_cols);
-            return;
-        }
-
-        std::vector<TripletBuf> bg_bufs(threads_use);
-        std::vector<TripletBuf> fg_bufs(threads_use);
-
-        #pragma omp parallel num_threads(threads_use)
-        {
-            const int tid = omp_get_thread_num();
-            TripletBuf& bg_local = bg_bufs[static_cast<size_t>(tid)];
-            TripletBuf& fg_local = fg_bufs[static_cast<size_t>(tid)];
-
-            #pragma omp for schedule(static)
-            for (long long jj = 0; jj < static_cast<long long>(n_cols); ++jj) {
-                const arma::uword j = static_cast<arma::uword>(jj);
-                const double bg_t = background_thresholds(j);
-                const double fg_t = foreground_thresholds(j);
-                const bool use_bg = std::isfinite(bg_t);
-                const bool use_fg = std::isfinite(fg_t);
-                if (!(use_bg || use_fg)) {
-                    continue;
-                }
-                for (arma::sp_mat::const_col_iterator it = X.begin_col(j); it != X.end_col(j); ++it) {
-                    const double v = *it;
-                    if (use_bg && v > bg_t) {
-                        bg_local.rows.push_back(it.row());
-                        bg_local.cols.push_back(j);
-                    }
-                    if (use_fg && v > fg_t) {
-                        fg_local.rows.push_back(it.row());
-                        fg_local.cols.push_back(j);
-                    }
-                }
-            }
-        }
-
-        size_t bg_total = 0, fg_total = 0;
-        for (unsigned int t = 0; t < threads_use; ++t) {
-            bg_total += bg_bufs[t].rows.size();
-            fg_total += fg_bufs[t].rows.size();
-        }
-        bg_rows.reserve(bg_total);
-        bg_cols.reserve(bg_total);
-        fg_rows.reserve(fg_total);
-        fg_cols.reserve(fg_total);
-        for (unsigned int t = 0; t < threads_use; ++t) {
-            bg_rows.insert(bg_rows.end(), bg_bufs[t].rows.begin(), bg_bufs[t].rows.end());
-            bg_cols.insert(bg_cols.end(), bg_bufs[t].cols.begin(), bg_bufs[t].cols.end());
-            fg_rows.insert(fg_rows.end(), fg_bufs[t].rows.begin(), fg_bufs[t].rows.end());
-            fg_cols.insert(fg_cols.end(), fg_bufs[t].cols.begin(), fg_bufs[t].cols.end());
-        }
-    }
 
     /// Build a binary sparse matrix from (row, col) triplets using counting
     /// sort into CSC order.
@@ -933,16 +848,68 @@ namespace actionet {
         fg_rows.reserve(static_cast<size_t>(X.n_nonzero / 8 + 1));
         fg_cols.reserve(static_cast<size_t>(X.n_nonzero / 8 + 1));
 
-        collect_threshold_triplets_parallel(
-            X,
-            background_thresholds,
-            foreground_thresholds,
-            bg_rows,
-            bg_cols,
-            fg_rows,
-            fg_cols,
+        // OpenMP-parallel triplet collection.  Each thread accumulates into a private
+        // TripletBuf; results are concatenated sequentially at the end.  Falls back to
+        // the serial helper when single-threaded or single-column.
+        const arma::uword n_cols = X.n_cols;
+        const unsigned int threads_use = actionet::get_num_threads(
+            static_cast<unsigned int>(std::max<arma::uword>(1, n_cols)),
             static_cast<unsigned int>(std::max(n_threads, 0))
         );
+
+        if (threads_use <= 1 || n_cols <= 1) {
+            collect_threshold_triplets(X, background_thresholds, foreground_thresholds,
+                                       nullptr, bg_rows, bg_cols, fg_rows, fg_cols);
+        } else {
+            std::vector<TripletBuf> bg_bufs(threads_use);
+            std::vector<TripletBuf> fg_bufs(threads_use);
+
+            #pragma omp parallel num_threads(threads_use)
+            {
+                const int tid = omp_get_thread_num();
+                TripletBuf& bg_local = bg_bufs[static_cast<size_t>(tid)];
+                TripletBuf& fg_local = fg_bufs[static_cast<size_t>(tid)];
+
+                #pragma omp for schedule(static)
+                for (long long jj = 0; jj < static_cast<long long>(n_cols); ++jj) {
+                    const arma::uword j = static_cast<arma::uword>(jj);
+                    const double bg_t = background_thresholds(j);
+                    const double fg_t = foreground_thresholds(j);
+                    const bool use_bg = std::isfinite(bg_t);
+                    const bool use_fg = std::isfinite(fg_t);
+                    if (!(use_bg || use_fg)) {
+                        continue;
+                    }
+                    for (arma::sp_mat::const_col_iterator it = X.begin_col(j); it != X.end_col(j); ++it) {
+                        const double v = *it;
+                        if (use_bg && v > bg_t) {
+                            bg_local.rows.push_back(it.row());
+                            bg_local.cols.push_back(j);
+                        }
+                        if (use_fg && v > fg_t) {
+                            fg_local.rows.push_back(it.row());
+                            fg_local.cols.push_back(j);
+                        }
+                    }
+                }
+            }
+
+            size_t bg_total = 0, fg_total = 0;
+            for (unsigned int t = 0; t < threads_use; ++t) {
+                bg_total += bg_bufs[t].rows.size();
+                fg_total += fg_bufs[t].rows.size();
+            }
+            bg_rows.reserve(bg_rows.size() + bg_total);
+            bg_cols.reserve(bg_cols.size() + bg_total);
+            fg_rows.reserve(fg_rows.size() + fg_total);
+            fg_cols.reserve(fg_cols.size() + fg_total);
+            for (unsigned int t = 0; t < threads_use; ++t) {
+                bg_rows.insert(bg_rows.end(), bg_bufs[t].rows.begin(), bg_bufs[t].rows.end());
+                bg_cols.insert(bg_cols.end(), bg_bufs[t].cols.begin(), bg_bufs[t].cols.end());
+                fg_rows.insert(fg_rows.end(), fg_bufs[t].rows.begin(), fg_bufs[t].rows.end());
+                fg_cols.insert(fg_cols.end(), fg_bufs[t].cols.begin(), fg_bufs[t].cols.end());
+            }
+        }
 
         arma::field<arma::sp_mat> out(2);
         out(0) = triplets_to_sparse(bg_rows, bg_cols, X.n_rows, X.n_cols);

@@ -1,9 +1,43 @@
 #include "tools/xicor.hpp"
 #include "utils_internal/utils_parallel.hpp"
-#include "utils_internal/utils_misc.hpp"
 #include "aarand/aarand.hpp"
 
 namespace actionet {
+    namespace {
+    // Rank a numeric vector; ties get their average rank (method=0) or the upper-tie index (method=1).
+    arma::vec rank_vec(arma::vec x, int method = 0) {
+        int n = x.n_elem;
+        arma::vec ranks(n);
+        arma::uvec indx = arma::sort_index(x, "ascend");
+
+        int ib = 0, i;
+        double b = x[indx[0]];
+        for (i = 1; i < n; ++i) {
+            if (x[indx[i]] != b) {
+                if (ib < i - 1) {
+                    double rnk = method == 0 ? ((i - 1 + ib + 2) / 2.0) : (i - 1);
+                    for (int j = ib; j <= i - 1; ++j)
+                        ranks[indx[j]] = rnk;
+                }
+                else {
+                    ranks[indx[ib]] = (double)(ib + 1);
+                }
+                b = x[indx[i]];
+                ib = i;
+            }
+        }
+        if (ib == i - 1)
+            ranks[indx[ib]] = (double)i;
+        else {
+            double rnk = method == 0 ? ((i - 1 + ib + 2) / 2.0) : (i - 1);
+            for (int j = ib; j <= i - 1; ++j)
+                ranks[indx[j]] = rnk;
+        }
+
+        return ranks;
+    }
+    } // anonymous namespace
+
     arma::vec xicor(arma::vec xvec, arma::vec yvec, bool compute_pval, int seed) {
         arma::vec out(2);
 

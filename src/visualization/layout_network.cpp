@@ -14,9 +14,6 @@ namespace actionet {
         unsigned int n_threads = get_num_threads(0, thread_no);
 
         alpha = (alpha == -1) ? learning_rate : alpha;
-        // beta1 = (beta1 == -1) ? ADAM_BETA1 : beta1;
-        // beta2 = (beta2 == -1) ? ADAM_BETA2 : beta2;
-        // eps = (eps == -1) ? ADAM_EPS : eps;
 
         OptimizerArgs opt_args = OptimizerArgs(opt_method, alpha, beta1, beta2, eps);
 

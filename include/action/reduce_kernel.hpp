@@ -69,18 +69,6 @@ namespace actionet {
 
     // ---- Operator-backed (OOM) entry points -----------------------------------------------
 
-    /// @brief Compute perturbation matrices A and B from an operator-backed matrix.
-    ///
-    /// A and B encode centering corrections derived from column and row means of S.
-    /// With S in cells × genes (obs × var) orientation:
-    ///   A (genes × 2) — gene-space (col-space) perturbation.
-    ///   B (cells × 2) — cell-space (row-space) perturbation.
-    ///
-    /// @param S  Matrix operator (cells × genes, obs × var).
-    /// @param[out] A  Gene-space perturbation matrix  (genes × 2).
-    /// @param[out] B  Cell-space perturbation matrix  (cells × 2).
-    void computeKernelPerturbationTerms(const MatrixOperator& S, arma::mat& A, arma::mat& B);
-
     /// @brief Apply ACTION kernel post-processing from a precomputed SVD and perturbation terms.
     ///
     /// S is treated as cells × genes.  perturbedSVD is called with B (cells × p) as

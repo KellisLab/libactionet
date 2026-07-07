@@ -103,36 +103,6 @@ namespace actionet {
     SVDResult runSVD_Operator(const MatrixOperator& op, int k, int max_it = 0, int seed = 0,
                               int algorithm = ALG_HALKO, bool verbose = true);
 
-    /// @brief Compute truncated SVD using the Halko method via matrix operator callbacks.
-    ///
-    /// Thin wrapper around svdHalko(MatrixOperator) that returns a typed SVDResult
-    /// instead of an arma::field.
-    ///
-    /// @param op      Matrix operator representing an m × n matrix.
-    /// @param k       Number of singular vectors/values to compute.
-    /// @param iters   Number of power iterations (default 5).
-    /// @param seed    Random seed.
-    /// @param verbose Print progress messages if true.
-    ///
-    /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.
-    SVDResult runSVD_Halko_Operator(const MatrixOperator& op, int k, int iters = 5,
-                                    int seed = 0, bool verbose = true);
-
-    /// @brief Compute truncated SVD using the Feng method via matrix operator callbacks.
-    ///
-    /// Thin wrapper around svdFeng(MatrixOperator) that returns a typed SVDResult
-    /// instead of an arma::field.
-    ///
-    /// @param op      Matrix operator representing an m × n matrix.
-    /// @param k       Number of singular vectors/values to compute.
-    /// @param max_it  Maximum iterations (default 5).
-    /// @param seed    Random seed.
-    /// @param verbose Print progress messages if true.
-    ///
-    /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.
-    SVDResult runSVD_Feng_Operator(const MatrixOperator& op, int k, int max_it = 5,
-                                   int seed = 0, bool verbose = true);
-
     /// @brief Apply perturbation correction to an SVD decomposition (struct API).
     ///
     /// Implements the Brand (2006) perturbation update:  given A ≈ U Σ V' and low-rank

@@ -47,7 +47,6 @@ namespace actionet {
         arma::vec pr = computeNetworkDiffusion(G, o, alpha, max_it, thread_no, approx).col(0);
 
         for (int i = 0; i < X.n_cols; i++) {
-            // int marker_count = (int)sum(sum(spones(X.col(i))));
             int marker_count = arma::accu(arma::spones(X.col(i)));
 
             int idx = 0;

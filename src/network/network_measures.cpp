@@ -1,6 +1,6 @@
 #include "network/network_measures.hpp"
 
-arma::uvec compute_induced_core_number(arma::sp_mat& G, arma::uvec mask) {
+static arma::uvec compute_induced_core_number(arma::sp_mat& G, arma::uvec mask) {
     unsigned int i, j;
     unsigned int no_of_nodes = G.n_rows;
 

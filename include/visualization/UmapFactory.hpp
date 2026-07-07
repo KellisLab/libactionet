@@ -124,7 +124,7 @@ struct UmapFactory {
         }
     }
 
-    std::unique_ptr<uwot::Optimizer> create_optimizer(OptimizerArgs opt_args) {
+    std::unique_ptr<uwot::Optimizer> create_optimizer() {
         float alpha = opt_args.alpha;
         switch (opt_args.opt_method) {
             case OPT_METHOD_SGD:
@@ -152,7 +152,7 @@ struct UmapFactory {
 
         auto epoch_callback = std::make_unique<uwot::DoNothingCallback>();
         if (batch) {
-            auto opt = create_optimizer(opt_args);
+            auto opt = create_optimizer();
             uwot::BatchUpdate<DoMove> update(head_embedding, tail_embedding, std::move(opt), epoch_callback.release());
             uwot::NodeWorker<Gradient, decltype(update), RandFactory> worker(
                 gradient, update, positive_head, positive_tail, positive_ptr, sampler,

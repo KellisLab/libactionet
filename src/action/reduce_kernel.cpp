@@ -80,45 +80,47 @@ namespace actionet {
                 throw std::runtime_error("applyKernelPostSVD: A.n_cols != B.n_cols");
             }
         }
+
+        /// @brief Compute centering perturbation terms from a MatrixOperator (out-of-memory path).
+        ///
+        /// S is cells × genes (obs × var); shares the same rank-2 centering as the in-memory
+        /// variant, but uses matmat/rmatvec instead of materialising S.
+        void computeKernelPerturbationTerms(const MatrixOperator& S, arma::mat& A, arma::mat& B) {
+            arma::uword m = S.rows();  // cells (obs)
+            arma::uword n = S.cols();  // genes (var)
+            if (m == 0 || n == 0) {
+                throw std::runtime_error("computeKernelPerturbationTerms: empty matrix");
+            }
+
+            // Gene means (column means of cells × genes) via rmatvec with all-ones over cells.
+            // rmatvec: S' * ones_m = (cells × genes)' * (cells × 1) → genes-length
+            arma::vec ones_m = arma::ones<arma::vec>(m);
+            arma::vec mu_sum(n);
+            S.rmatvec(ones_m, mu_sum);
+            arma::vec mu = mu_sum / static_cast<double>(m);   // gene means, length = n
+
+            double mu_norm = arma::norm(mu, 2);
+            if (mu_norm <= std::numeric_limits<double>::epsilon()) {
+                throw std::runtime_error("computeKernelPerturbationTerms: mean vector has zero norm");
+            }
+
+            arma::vec a1 = mu / mu_norm;                       // genes-length
+            arma::mat rhs(n, 2);                               // genes x 2
+            rhs.col(0) = a1;
+            rhs.col(1).ones();
+            arma::mat projected;
+            S.matmat(rhs, projected);                          // cells x 2
+            arma::vec b1 = -projected.col(0);                 // cells-length
+            arma::vec c = projected.col(1) / static_cast<double>(n);
+
+            double a1_mean = arma::mean(a1);
+            arma::vec a2 = arma::ones<arma::vec>(n);           // genes-length
+            arma::vec b2 = -(a1_mean * b1 + c);
+
+            A = arma::join_rows(a1, a2);   // genes × 2
+            B = arma::join_rows(b1, b2);   // cells × 2
+        }
     } // namespace
-
-    // ---- Operator-backed perturbation computation ----------------------------------------
-
-    void computeKernelPerturbationTerms(const MatrixOperator& S, arma::mat& A, arma::mat& B) {
-        arma::uword m = S.rows();  // cells (obs)
-        arma::uword n = S.cols();  // genes (var)
-        if (m == 0 || n == 0) {
-            throw std::runtime_error("computeKernelPerturbationTerms: empty matrix");
-        }
-
-        // Gene means (column means of cells × genes) via rmatvec with all-ones over cells.
-        // rmatvec: S' * ones_m = (cells × genes)' * (cells × 1) → genes-length
-        arma::vec ones_m = arma::ones<arma::vec>(m);
-        arma::vec mu_sum(n);
-        S.rmatvec(ones_m, mu_sum);
-        arma::vec mu = mu_sum / static_cast<double>(m);   // gene means, length = n
-
-        double mu_norm = arma::norm(mu, 2);
-        if (mu_norm <= std::numeric_limits<double>::epsilon()) {
-            throw std::runtime_error("computeKernelPerturbationTerms: mean vector has zero norm");
-        }
-
-        arma::vec a1 = mu / mu_norm;                       // genes-length
-        arma::mat rhs(n, 2);                               // genes x 2
-        rhs.col(0) = a1;
-        rhs.col(1).ones();
-        arma::mat projected;
-        S.matmat(rhs, projected);                          // cells x 2
-        arma::vec b1 = -projected.col(0);                 // cells-length
-        arma::vec c = projected.col(1) / static_cast<double>(n);
-
-        double a1_mean = arma::mean(a1);
-        arma::vec a2 = arma::ones<arma::vec>(n);           // genes-length
-        arma::vec b2 = -(a1_mean * b1 + c);
-
-        A = arma::join_rows(a1, a2);   // genes × 2
-        B = arma::join_rows(b1, b2);   // cells × 2
-    }
 
     // ---- Core post-SVD kernel assembly ---------------------------------------------------
 
