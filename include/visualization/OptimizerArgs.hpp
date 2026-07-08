@@ -3,6 +3,9 @@
 #ifndef ACTIONET_OPTIMIZERARGS_HPP
 #define ACTIONET_OPTIMIZERARGS_HPP
 
+#include <stdexcept>
+#include <string>
+
 // Constants
 constexpr int OPT_METHOD_ADAM = 1;
 constexpr int OPT_METHOD_SGD = 2;
@@ -29,7 +32,13 @@ public:
     OptimizerArgs(const std::string& method, const float alpha, const float beta1, const float beta2,
                   const float eps)
         : alpha(alpha), beta1(beta1), beta2(beta2), eps(eps) {
-        this->opt_method = (method == "sgd") ? OPT_METHOD_SGD : OPT_METHOD_ADAM;
+        if (method == "adam") {
+            this->opt_method = OPT_METHOD_ADAM;
+        } else if (method == "sgd") {
+            this->opt_method = OPT_METHOD_SGD;
+        } else {
+            throw std::invalid_argument("Invalid optimizer 'method'. Must be one of: adam, sgd");
+        }
     }
 };
 

@@ -143,7 +143,7 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
     std::vector<unsigned int> positive_head(nE);
     std::vector<unsigned int> positive_tail(nE);
     std::vector<float> epochs_per_sample(nE);
-    std::vector<unsigned int> positive_ptr(Ht.n_cols + 1);
+    std::vector<unsigned int> positive_ptr;
 
     int i = 0;
     if (uwot_args.batch == false) {
@@ -155,6 +155,7 @@ EdgeVectors buildEdgeVectors(arma::sp_mat& G, const UwotArgs& uwot_args) {
         }
     }
     else {
+        positive_ptr.resize(Ht.n_cols + 1);
         for (arma::sp_mat::iterator it = Ht.begin(); it != Ht.end(); ++it) {
             epochs_per_sample[i] = w_max / (*it);
             positive_tail[i] = it.row();

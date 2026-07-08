@@ -708,10 +708,10 @@ CSRGraph buildNetworkCore(const float*              X,
                           const BuildNetworkParams& params)
 {
     if (distance_metrics.find(params.distance_metric) == distance_metrics.end()) {
-        throw distMetException;
+        throw std::runtime_error("Invalid distance metric specified for hnswlib; must be one of jsd, l2, ip");
     }
     if (nn_approaches.find(params.algorithm) == nn_approaches.end()) {
-        throw nnApproachException;
+        throw std::runtime_error("Invalid nearest neighbors approach specified;  must be one of k*nn or knn");
     }
     if (params.k < 0) {
         throw std::runtime_error("k must be non-negative");
@@ -770,10 +770,10 @@ buildNetwork(const arma::mat& H, std::string algorithm, std::string distance_met
              double ef, bool mutual_edges_only, int k)
 {
     if (distance_metrics.find(distance_metric) == distance_metrics.end()) {
-        throw distMetException;
+        throw std::runtime_error("Invalid distance metric specified for hnswlib; must be one of jsd, l2, ip");
     }
     if (nn_approaches.find(algorithm) == nn_approaches.end()) {
-        throw nnApproachException;
+        throw std::runtime_error("Invalid nearest neighbors approach specified;  must be one of k*nn or knn");
     }
 
     // H is cells x k (AnnData-native orientation): n_rows = cells, n_cols = k.

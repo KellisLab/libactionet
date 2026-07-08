@@ -128,12 +128,9 @@ namespace actionet {
                       arma::vec& nnz) const;
     
     private:
-        // Grant direct access to the single-pass backed specificity implementation.
-        friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                                const arma::mat& H, int thread_no);
-        friend arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
-                                                                const arma::uvec& labels, int thread_no);
-        // Internal scan helpers used by the above friends.
+        // Internal scan helpers used by computeFeatureSpecificity (backed
+        // sparse overloads). Public overloads themselves need no friendship;
+        // they access the operator only through the public API.
         friend void backed_specificity_scan_csr_(const BackedSparseMatrixOperator& op,
                                                  const arma::mat& H_norm_t,
                                                  arma::vec& row_count,

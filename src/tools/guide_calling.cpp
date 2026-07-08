@@ -12,7 +12,6 @@
 #include <random>
 #include <stdexcept>
 #include <vector>
-#include <omp.h>
 
 namespace {
     constexpr double kLog10 = 2.3025850929940456840179914546844;

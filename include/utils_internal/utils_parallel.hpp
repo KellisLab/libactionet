@@ -7,6 +7,10 @@
 #include <cstdio>
 #include <cstdlib>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <sched.h>
 #endif

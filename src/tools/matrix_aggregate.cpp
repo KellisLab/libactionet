@@ -33,6 +33,16 @@ GroupIndex build_group_index(const arma::vec& sample_assignments) {
 
 } // anon namespace
 
+// Shape-check helper for grouped aggregation. The `sample_assignments` vector
+// must match the dimension of `S` selected by `axis`:
+//   axis == 0: one entry per column of S
+//   axis == 1: one entry per row of S
+template <typename MatT>
+static void validate_assignments(const MatT& S, const arma::vec& sa, int axis) {
+    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
+        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+}
+
 // ---- Sums ----
 
 // Sparse input: iterate over nonzeros (works for both mat and sp_mat output)
@@ -89,24 +99,21 @@ static arma::mat grouped_sums_dense(const arma::mat& S, const GroupIndex& gi, in
 // Template instantiations for Sums
 template <>
 arma::mat computeGroupedSums<arma::sp_mat, arma::mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     return grouped_sums_sparse<arma::mat>(S, gi, axis);
 }
 
 template <>
 arma::sp_mat computeGroupedSums<arma::sp_mat, arma::sp_mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     return grouped_sums_sparse<arma::sp_mat>(S, gi, axis);
 }
 
 template <>
 arma::mat computeGroupedSums<arma::mat, arma::mat>(const arma::mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     return grouped_sums_dense(S, gi, axis);
 }
@@ -115,8 +122,7 @@ arma::mat computeGroupedSums<arma::mat, arma::mat>(const arma::mat& S, const arm
 
 template <>
 arma::mat computeGroupedMeans<arma::sp_mat, arma::mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     arma::mat pb = grouped_sums_sparse<arma::mat>(S, gi, axis);
     for (int g = 0; g < gi.n_groups; ++g) {
@@ -129,8 +135,7 @@ arma::mat computeGroupedMeans<arma::sp_mat, arma::mat>(const arma::sp_mat& S, co
 
 template <>
 arma::sp_mat computeGroupedMeans<arma::sp_mat, arma::sp_mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     arma::sp_mat pb = grouped_sums_sparse<arma::sp_mat>(S, gi, axis);
     // Divide each nonzero by its group size (preserves sparsity since sum==0 iff all inputs zero)
@@ -143,8 +148,7 @@ arma::sp_mat computeGroupedMeans<arma::sp_mat, arma::sp_mat>(const arma::sp_mat&
 
 template <>
 arma::mat computeGroupedMeans<arma::mat, arma::mat>(const arma::mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     arma::mat pb = grouped_sums_dense(S, gi, axis);
     for (int g = 0; g < gi.n_groups; ++g) {
@@ -232,24 +236,21 @@ static arma::mat grouped_vars_dense(const arma::mat& S, const GroupIndex& gi, in
 
 template <>
 arma::mat computeGroupedVars<arma::sp_mat, arma::mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     return grouped_vars_sparse<arma::mat>(S, gi, axis);
 }
 
 template <>
 arma::sp_mat computeGroupedVars<arma::sp_mat, arma::sp_mat>(const arma::sp_mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     return grouped_vars_sparse<arma::sp_mat>(S, gi, axis);
 }
 
 template <>
 arma::mat computeGroupedVars<arma::mat, arma::mat>(const arma::mat& S, const arma::vec& sa, int axis) {
-    if ((axis == 0 && sa.n_elem != S.n_cols) || (axis == 1 && sa.n_elem != S.n_rows))
-        throw std::invalid_argument("Length of 'sample_assignments' must match the grouped dimension of S.");
+    validate_assignments(S, sa, axis);
     GroupIndex gi = build_group_index(sa);
     return grouped_vars_dense(S, gi, axis);
 }

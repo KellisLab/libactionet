@@ -9,21 +9,6 @@
 
 static_assert(std::is_integral_v<hnswlib::labeltype>, "HNSW labels must remain integral");
 
-// Exceptions
-// Throw if invalid distance metric has been specified
-inline class invalidDistanceMetric : public std::exception {
-    virtual const char* what() const throw() {
-        return "Invalid distance metric specified for hnswlib; must be one of jsd, l2, ip";
-    }
-} distMetException;
-
-// Throw if invalid nn approach has been specified
-inline class invalidNNApproach : public std::exception {
-    virtual const char* what() const throw() {
-        return "Invalid nearest neighbors approach specified;  must be one of k*nn or knn";
-    }
-} nnApproachException;
-
 // Functions: Must be header only. hnsw is allergic to implementation. Will break linking.
 
 // RAII owner for a (SpaceInterface, HierarchicalNSW) pair.

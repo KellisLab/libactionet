@@ -10,29 +10,32 @@
 #include <stdexcept>
 
 namespace actionet {
+    namespace {
+        // Shared default max_it dispatcher for the algorithm switch used by
+        // both runSVD (in-memory) and runSVD_Operator.
+        int default_max_it(int algorithm) {
+            switch (algorithm) {
+                case ALG_HALKO:
+                case ALG_FENG:
+                    return 5;
+#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
+                case ALG_PRIMME:
+                    return 1000;
+#endif
+                case ALG_IRLB:
+                default:
+                    return 1000;
+            }
+        }
+    } // anonymous namespace
+
     template <typename T>
     arma::field<arma::mat> runSVD(const T& A, int k, int max_it, int seed, const int algorithm, bool verbose) {
         // out: U, sigma, V
         arma::field<arma::mat> out(3);
 
-        // Default maximum iterations:
         if (max_it < 1) {
-            switch (algorithm) {
-                // Halko and Feng
-                case ALG_HALKO:
-                case ALG_FENG:
-                    max_it = 5;
-                    break;
-#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
-                case ALG_PRIMME:
-                    max_it = 1000;
-                    break;
-#endif
-                default:
-                    // IRLB
-                    max_it = 1000;
-                    break;
-            }
+            max_it = default_max_it(algorithm);
         }
 
         if (verbose) {
@@ -66,20 +69,7 @@ namespace actionet {
 
     SVDResult runSVD_Operator(const MatrixOperator& op, int k, int max_it, int seed, int algorithm, bool verbose) {
         if (max_it < 1) {
-            switch (algorithm) {
-                case ALG_HALKO:
-                case ALG_FENG:
-                    max_it = 5;
-                    break;
-#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
-                case ALG_PRIMME:
-                    max_it = 1000;
-                    break;
-#endif
-                default:
-                    max_it = 1000;
-                    break;
-            }
+            max_it = default_max_it(algorithm);
         }
 
         switch (algorithm) {

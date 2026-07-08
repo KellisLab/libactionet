@@ -5,7 +5,7 @@
 
 #include "libactionet_config.hpp"
 #include "visualization/OptimizerArgs.hpp"
-#include "UwotArgs.hpp"
+#include "visualization/UwotArgs.hpp"
 
 namespace actionet {
     /// @brief Compute a graph layout using uwot (convenience wrapper).

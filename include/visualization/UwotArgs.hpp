@@ -174,9 +174,8 @@ public:
             this->cost_func = METHOD_LEOPOLD2;
         }
         else {
-            stderr_printf("Invalid 'method'. Defaulting to 'umap'\n");
-            this->method = "umap";
-            this->cost_func = METHOD_UMAP;
+            throw std::invalid_argument(
+                "Invalid 'method'. Must be one of: umap, tumap, largevis, leopold, leopold2");
         }
     }
 

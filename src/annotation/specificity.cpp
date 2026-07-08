@@ -590,8 +590,8 @@ namespace actionet {
                                                      const arma::mat& H, int thread_no) {
         stdout_printf("Computing feature specificity (backed sparse) ... ");
 
-        const arma::uword n_obs = op.n_obs_;
-        const arma::uword n_var = op.n_var_;
+        const arma::uword n_obs = op.rows();
+        const arma::uword n_var = op.cols();
 
         arma::mat H_norm = normalise_H(H);
 
@@ -599,7 +599,7 @@ namespace actionet {
         arma::mat obs_orig;
         double min_stored;
 
-        if (op.is_csr_) {
+        if (op.isCSR()) {
             backed_specificity_scan_csr_(op, H_norm, row_count, col_count,
                                          row_factor_sum_orig, obs_orig, min_stored, thread_no);
         } else {
@@ -612,7 +612,7 @@ namespace actionet {
         arma::mat Obs = obs_orig;
 
         if (shift > 0.0) {
-            if (op.is_csr_) {
+            if (op.isCSR()) {
                 backed_specificity_support_csr_(op, H_norm, Obs, shift, thread_no);
             } else {
                 backed_specificity_support_csc_(op, H_norm, Obs, shift, thread_no);
@@ -634,8 +634,9 @@ namespace actionet {
     arma::field<arma::mat> computeFeatureSpecificity(BackedSparseMatrixOperator& op,
                                                      const arma::uvec& labels, int thread_no) {
         const arma::uword max_label = arma::max(labels);
-        arma::mat H(op.n_obs_, max_label, arma::fill::zeros);
-        for (arma::uword j = 0; j < op.n_obs_; ++j) {
+        const arma::uword n_obs = op.rows();
+        arma::mat H(n_obs, max_label, arma::fill::zeros);
+        for (arma::uword j = 0; j < n_obs; ++j) {
             if (labels(j) > 0) H(j, labels(j) - 1) = 1.0;
         }
         return computeFeatureSpecificity(op, H, thread_no);
