@@ -1,14 +1,15 @@
 // Matrix operator abstraction for out-of-memory (OOM) SVD and kernel reduction.
 //
 // This header defines a lightweight abstract interface for matrix-vector products
-// without requiring the full matrix to be materialised in memory.  The primary
-// consumer is the PRIMME SVD solver (svd_primme.cpp), which calls matvec/rmatvec
-// repeatedly during iterative eigenvalue computation.
+// without requiring the full matrix to be materialised in memory. The primary
+// consumers are the operator overloads of the randomized/Lanczos SVD algorithms
+// (svd_halko.cpp, svd_feng.cpp, svd_irbla.cpp), which call matvec/rmatvec and
+// matmat/rmatmat repeatedly during iterative solves.
 //
 // Design notes:
-//   - Implementations MUST be safe to call from a single thread only.  PRIMME is
-//     configured in single-threaded mode for the operator path.  Multi-threaded
-//     matvec would require careful coordination with the GIL (Python) or R runtime.
+//   - Implementations MUST be safe to call from a single thread only. Multi-
+//     threaded matvec would require careful coordination with the GIL (Python)
+//     or R runtime.
 //   - pybind11 consumers (actionet-python) pass concrete backed subclasses
 //     (BackedSparseMatrixOperator, BackedDenseMatrixOperator) as
 //     std::shared_ptr<MatrixOperator> and downcast via dispatch_backed_op()
@@ -68,13 +69,6 @@ namespace actionet {
         /// Same contract as matmat: implementations MUST provide an efficient
         /// blocked kernel.
         virtual void rmatmat(const arma::mat& X, arma::mat& Y) const = 0;
-
-        /// @brief Hint for operator-SVD dispatch when algorithm = IRLB.
-        ///
-        /// Backed operators can return true to request a block-capable solver
-        /// backend (currently PRIMME) for better I/O efficiency. In-memory and
-        /// generic operators should keep the default false.
-        virtual bool prefer_block_solver_for_irlb() const { return false; }
     };
 
     /// @brief MatrixOperator adapter for dense Armadillo matrices.

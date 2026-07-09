@@ -71,6 +71,30 @@ This document records **deliberate architectural and operational decisions** for
 
 --- -->
 
+## SVD algorithm strategy
+
+### Public SVD surface: IRLB, Halko, Feng (PRIMME quarantined)
+
+**Decision:**
+
+- The core SVD entry points expose four algorithm codes at the C++ level (`ALG_IRLB`, `ALG_HALKO`, `ALG_FENG`, `ALG_PRIMME`), but PRIMME is quarantined: no auto-selection heuristic picks it, and the front-ends (Python; R follows in a subsequent pass) do not expose it.
+- The backed `IRLB -> PRIMME` fast path in `runSVD_Operator` has been removed. Backed operators requesting `ALG_IRLB` now use the honest `svdIRLB(MatrixOperator&, ...)` overload unconditionally.
+- The `MatrixOperator::prefer_block_solver_for_irlb()` virtual hint and its overrides in `BackedSparseMatrixOperator` / `BackedDenseMatrixOperator` have been deleted.
+- `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, the vendored `src/extern/primme/` tree, and `cmake/ConfigurePRIMME.cmake` remain in the tree and are still built (with the existing R-build filter). Full deletion is tracked in `TODO.md` and gated on the follow-up SVD/GPU work stabilizing.
+
+**Rationale:**
+
+- Sparse `nnz > 2^31 - 1` is 64-bit clean under the force-defined `ARMA_64BIT_WORD` in `libactionet_config.hpp`; PRIMME is no longer needed for realistic omics matrices.
+- The hidden backed dispatch violated the algorithm contract callers had a right to expect.
+- Retaining the PRIMME sources for one release preserves a simple revert path without expanding the public surface.
+
+**Related:**
+
+- Python-front-end plan: `../plans/primme_removal_and_64bit_irlb_*.plan.md`.
+- Broader SVD direction: `../plans/SVD_STRATEGY_REDESIGN_v2.md`, `plans/GPU_BACKEND_PLAN.md`.
+
+---
+
 ## Change management
 
 ### Backward compatibility

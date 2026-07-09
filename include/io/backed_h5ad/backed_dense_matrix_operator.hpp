@@ -82,7 +82,6 @@ namespace actionet {
         void rmatvec(const arma::vec& x, arma::vec& y) const override;
         void matmat(const arma::mat& X, arma::mat& Y) const override;
         void rmatmat(const arma::mat& X, arma::mat& Y) const override;
-        bool prefer_block_solver_for_irlb() const override { return true; }
 
         const std::string& filePath() const { return file_path_; }
         const std::string& groupPath() const { return group_path_; }

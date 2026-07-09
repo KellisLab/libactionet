@@ -3,7 +3,8 @@
   * dual return system across frontends
   * inconsistent return types
 * Document C++ interface
-* GPU backend (see context/GPU_BACKEND_PLAN.md)
+* GPU backend (see plans/GPU_BACKEND_PLAN.md)
+* Delete quarantined PRIMME: `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, `ALG_PRIMME`, `src/extern/primme/`, `include/extern/primme/`, `cmake/ConfigurePRIMME.cmake`, the R-build filter for `svd_primme.cpp`, and any remaining references in wrappers/tests. Gated on the follow-up SVD/GPU work stabilizing. See `context/DECISIONS.md` "SVD algorithm strategy".
 
 ## Secondary
 * Compile to Windows x86
