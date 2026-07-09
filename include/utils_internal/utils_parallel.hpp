@@ -22,7 +22,14 @@
 //      restricts below hardware count — some schedulers (SGE) leave the
 //      affinity mask at 1 core even when more slots are allocated
 //   3. std::thread::hardware_concurrency (full node)
-inline unsigned int get_max_threads() {
+//
+// The result is cached in a function-local static at first call: env-var and
+// affinity are read once per process. This matches the OpenMP runtime's own
+// behavior (OMP_NUM_THREADS is read at library init) and removes the syscall
+// / getenv from every hot-path get_num_threads() invocation. When GPU work
+// lands, this free function will be replaced by an ExecutionPolicy struct.
+namespace detail {
+inline unsigned int compute_max_threads_() {
     unsigned int hw = std::thread::hardware_concurrency();
     if (hw == 0) hw = 1;
 
@@ -46,6 +53,12 @@ inline unsigned int get_max_threads() {
 
     return hw;
 }
+} // namespace detail
+
+inline unsigned int get_max_threads() {
+    static const unsigned int cached = detail::compute_max_threads_();
+    return cached;
+}
 
 namespace actionet {
 
@@ -66,6 +79,19 @@ inline unsigned get_num_threads(unsigned int max_threads = 0, const unsigned int
     }
 
     return (threads_use);
+}
+
+// Nested-OMP guard: returns 1 when called from inside an OpenMP parallel
+// region (avoids thread oversubscription when a parallelisable function is
+// invoked from within an outer parallel loop), otherwise defers to
+// get_num_threads(). Use this at the top of any function that is legal to
+// call both from a serial context and from within an outer parallel region.
+inline unsigned get_num_threads_nested_safe(unsigned int max_threads = 0,
+                                            const unsigned int thread_no = 0) {
+#if defined(_OPENMP)
+    if (omp_in_parallel()) return 1;
+#endif
+    return get_num_threads(max_threads, thread_no);
 }
 
 // Thread-safe progress monitor for parallel loops

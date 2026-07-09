@@ -636,29 +636,27 @@ buildNetworkCore_KNN(const float*                        X,
 
     #pragma omp parallel num_threads(threads_use)
     {
-        std::vector<float>  row_buf;
-        std::vector<DirectedEdge> local_edges;
-        std::vector<std::pair<float, hnswlib::labeltype>> nbrs;
+        AdaptiveScratch sc;
 
         #pragma omp for nowait schedule(static)
         for (long long i = 0; i < n_ll; ++i) {
             const auto src     = static_cast<std::size_t>(i);
             const auto query_k = std::min(n, static_cast<std::size_t>(p.k) + 1);
-            const float* row   = reader.load_row(src, row_buf);
+            const float* row   = reader.load_row(src, sc.row_buf);
 
             auto heap = idx_knn.hnsw->searchKnn(row, query_k);
-            nbrs.clear();
-            nbrs.reserve(heap.size());
+            sc.knn_result.clear();
+            sc.knn_result.reserve(heap.size());
             while (!heap.empty()) {
-                nbrs.push_back(heap.top());
+                sc.knn_result.push_back(heap.top());
                 heap.pop();
             }
-            // nbrs is farthest-first; iterate reversed for closest-first.
+            // sc.knn_result is farthest-first; iterate reversed for closest-first.
             // Self-exclusion by label (not position).
             int added = 0;
-            for (auto it = nbrs.rbegin(); it != nbrs.rend() && added < p.k; ++it) {
+            for (auto it = sc.knn_result.rbegin(); it != sc.knn_result.rend() && added < p.k; ++it) {
                 if (static_cast<std::size_t>(it->second) == src) continue;
-                local_edges.push_back({
+                sc.local_edges.push_back({
                     static_cast<VertexIndex>(src),
                     checked_neighbor_label(static_cast<std::size_t>(it->second),
                                            n,
@@ -672,8 +670,8 @@ buildNetworkCore_KNN(const float*                        X,
         #pragma omp critical
         {
             all_edges.insert(all_edges.end(),
-                             std::make_move_iterator(local_edges.begin()),
-                             std::make_move_iterator(local_edges.end()));
+                             std::make_move_iterator(sc.local_edges.begin()),
+                             std::make_move_iterator(sc.local_edges.end()));
         }
     }
     // idx_knn goes out of scope here — HierarchicalNSW and SpaceInterface deleted.

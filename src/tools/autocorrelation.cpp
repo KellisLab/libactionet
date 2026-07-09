@@ -13,6 +13,64 @@ static arma::uvec thread_safe_randperm(int n, unsigned int seed) {
     return arma::uvec(idx.data(), n);
 }
 
+namespace {
+    // Shared permutation-based null estimator for autocorrelation
+    // statistics.  Computes @p stat = diag(scores' * op * scores) exactly,
+    // then permutes rows of @p normalized_scores independently for each of
+    // @p perm_no draws and re-evaluates the same quadratic form.  Returns
+    // stat, mu, sigma, z of the null distribution.
+    //
+    // @param op                 sparse operator (G for Moran, L for Geary)
+    // @param normalized_scores  cells x scores_no
+    // @param perm_no            number of permutations (>= 0)
+    // @param thread_no          OpenMP thread hint
+    // @param seed_bump          per-call seed offset (distinguishes callers)
+    void run_permutation_stat(const arma::sp_mat& op,
+                              const arma::mat& normalized_scores,
+                              int perm_no, int thread_no,
+                              unsigned int seed_bump,
+                              arma::vec& stat,
+                              arma::vec& mu,
+                              arma::vec& sigma,
+                              arma::vec& z) {
+        const int nV = op.n_rows;
+        const int scores_no = normalized_scores.n_cols;
+
+        stat.zeros(scores_no);
+        int threads_use = actionet::get_num_threads(scores_no, thread_no);
+        #pragma omp parallel for num_threads(threads_use)
+        for (unsigned int i = 0; i < static_cast<unsigned int>(scores_no); ++i) {
+            arma::vec x = normalized_scores.col(i);
+            stat(i) = arma::dot(x, op * x);
+        }
+
+        mu.zeros(scores_no);
+        sigma.zeros(scores_no);
+        z.zeros(scores_no);
+        if (perm_no <= 0) return;
+
+        arma::mat rand_stats(scores_no, perm_no, arma::fill::zeros);
+        threads_use = actionet::get_num_threads(perm_no, thread_no);
+        #pragma omp parallel for num_threads(threads_use)
+        for (unsigned int j = 0; j < static_cast<unsigned int>(perm_no); ++j) {
+            arma::uvec perm = thread_safe_randperm(nV, j * 1000003u + seed_bump);
+            arma::mat score_permuted = normalized_scores.rows(perm);
+
+            arma::vec v(scores_no);
+            for (int i = 0; i < scores_no; ++i) {
+                arma::vec rand_x = score_permuted.col(i);
+                v(i) = arma::dot(rand_x, op * rand_x);
+            }
+            rand_stats.col(j) = v;
+        }
+
+        mu = arma::mean(rand_stats, 1);
+        sigma = arma::stddev(rand_stats, 0, 1);
+        z = (stat - mu) / sigma;
+        z.replace(arma::datum::nan, 0);
+    }
+} // namespace
+
 namespace actionet {
     arma::field<arma::vec>
         autocorrelation_Moran_parametric(const arma::sp_mat& G, const arma::mat& scores, int normalization_method,
@@ -85,7 +143,6 @@ namespace actionet {
         autocorrelation_Moran(const arma::sp_mat& G, const arma::mat& scores, int normalization_method, int perm_no,
                               int thread_no) {
         int nV = G.n_rows;
-        int scores_no = scores.n_cols;
 
         arma::mat normalized_scores = normalize_scores(scores, normalization_method, thread_no);
 
@@ -95,45 +152,12 @@ namespace actionet {
         arma::vec norm_factors = nV / (W * norm_sq);
         norm_factors.replace(arma::datum::nan, 0); // replace each NaN with 0
 
-        arma::vec stat = arma::zeros(scores_no);
-
-        int threads_use = get_num_threads(scores_no, thread_no);
-        #pragma omp parallel for num_threads(threads_use)
-        for (unsigned int i = 0; i < scores_no; i++) {
-            arma::vec x = normalized_scores.col(i);
-            double y = arma::dot(x, G * x);
-            stat(i) = y;
-        }
-
-        arma::vec mu = arma::zeros(scores_no);
-        arma::vec sigma = arma::zeros(scores_no);
-        arma::vec z = arma::zeros(scores_no);
-        if (0 < perm_no) {
-            arma::mat rand_stats = arma::zeros(scores_no, perm_no);
-
-            threads_use = get_num_threads(perm_no, thread_no);
-            #pragma omp parallel for num_threads(threads_use)
-            for (unsigned int j = 0; j < perm_no; j++) {
-                arma::uvec perm = thread_safe_randperm(nV, j * 1000003u + 42u);
-                arma::mat score_permuted = normalized_scores.rows(perm);
-
-                arma::vec v = arma::zeros(scores_no);
-                for (int i = 0; i < scores_no; i++) {
-                    arma::vec rand_x = score_permuted.col(i);
-                    v(i) = arma::dot(rand_x, G * rand_x);
-                }
-                rand_stats.col(j) = v;
-            }
-
-            mu = arma::mean(rand_stats, 1);
-            sigma = arma::stddev(rand_stats, 0, 1);
-            z = (stat - mu) / sigma;
-            z.replace(arma::datum::nan, 0);
-        }
+        arma::vec stat, mu, sigma, z;
+        run_permutation_stat(G, normalized_scores, perm_no, thread_no,
+                             /*seed_bump=*/42u, stat, mu, sigma, z);
         stdout_printf("done\n");
         FLUSH;
 
-        // Summary stats
         arma::field<arma::vec> results(4);
         results(0) = stat % norm_factors;
         results(1) = z;
@@ -147,7 +171,6 @@ namespace actionet {
         autocorrelation_Geary(const arma::sp_mat& G, const arma::mat& scores, int normalization_method, int perm_no,
                               int thread_no) {
         int nV = G.n_rows;
-        int scores_no = scores.n_cols;
         arma::mat normalized_scores = normalize_scores(scores, normalization_method, thread_no);
 
         stdout_printf("Computing auto-correlation over network ... ");
@@ -161,50 +184,15 @@ namespace actionet {
         arma::sp_mat L(-G);
         L.diag() = d;
 
-        arma::vec stat = arma::zeros(scores_no);
-
-
-        int threads_use = get_num_threads(scores_no, thread_no);
-        #pragma omp parallel for num_threads(threads_use)
-        for (unsigned int i = 0; i < scores_no; i++) {
-            arma::vec x = normalized_scores.col(i);
-            double y = arma::dot(x, L * x);
-            stat(i) = y;
-        }
-
-        arma::vec mu = arma::zeros(scores_no);
-        arma::vec sigma = arma::zeros(scores_no);
-        arma::vec z = arma::zeros(scores_no);
-        if (0 < perm_no) {
-            arma::mat rand_stats = arma::zeros(scores_no, perm_no);
-
-
-            threads_use = get_num_threads(perm_no, thread_no);
-            #pragma omp parallel for num_threads(threads_use)
-            for (unsigned int j = 0; j < perm_no; j++) {
-                arma::uvec perm = thread_safe_randperm(nV, j * 1000003u + 137u);
-                arma::mat score_permuted = normalized_scores.rows(perm);
-
-                arma::vec v = arma::zeros(scores_no);
-                for (int i = 0; i < scores_no; i++) {
-                    arma::vec rand_x = score_permuted.col(i);
-                    v(i) = arma::dot(rand_x, L * rand_x);
-                }
-                rand_stats.col(j) = v;
-            }
-
-            mu = arma::mean(rand_stats, 1);
-            sigma = arma::stddev(rand_stats, 0, 1);
-            z = (stat - mu) / sigma;
-            z.replace(arma::datum::nan, 0);
-        }
+        arma::vec stat, mu, sigma, z;
+        run_permutation_stat(L, normalized_scores, perm_no, thread_no,
+                             /*seed_bump=*/137u, stat, mu, sigma, z);
         stdout_printf("done\n");
         FLUSH;
 
-        // Summary stats
         arma::field<arma::vec> results(4);
         results(0) = stat % norm_factors;
-        results(1) = -z;
+        results(1) = -z;   // Geary convention: sign-flipped z
         results(2) = mu;
         results(3) = sigma;
 

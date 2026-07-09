@@ -1,10 +1,12 @@
 #include "tools/matrix_transform.hpp"
 #include "utils_internal/utils_stats.hpp"
 
-// Additional arma::sp_mat-only parameters for normalizeGraph(): fill_diag_if_empty, fill_val
+// Additional arma::sp_mat-only parameters for normalizeGraph(): fill_diag_if_empty, fill_val,
+// out_sums (optional non-owning pointer, filled with the pre-normalization sum_vec).
 // Return type is a reference, MODIFIES IN PLACE
 arma::sp_mat& normalize_matrix_internal(arma::sp_mat& X, const unsigned int p, const unsigned int dim,
-                                       const bool fill_diag_if_empty = false, const double fill_val = 1.0) {
+                                       const bool fill_diag_if_empty = false, const double fill_val = 1.0,
+                                       arma::vec* out_sums = nullptr) {
     if (p > 1) {
         stderr_printf("`p` ignored for sparse input");
     }
@@ -20,6 +22,10 @@ arma::sp_mat& normalize_matrix_internal(arma::sp_mat& X, const unsigned int p, c
         for (arma::sp_mat::const_iterator it = X.begin(); it != X.end(); ++it) {
             sum_vec[it.row()] += std::abs(*it);
         }
+    }
+
+    if (out_sums != nullptr) {
+        *out_sums = sum_vec;
     }
 
     arma::uvec zidx = arma::find(sum_vec == 0);
@@ -120,15 +126,30 @@ namespace actionet {
     template arma::mat scaleMatrix<arma::mat>(arma::mat& X, arma::vec& v, unsigned int dim);
     template arma::sp_mat scaleMatrix<arma::sp_mat>(arma::sp_mat& X, arma::vec& v, unsigned int dim);
 
-    // Graph pre-normalization for PageRank
-    // norm_method 0/1 is standard unit normalization columns/rows with edge-cases.
-    // norm_method 2 symmetrizes graph, i.e. colsums == rowsums.
-    void normalizeGraph(arma::sp_mat& G, int norm_method) {
+    namespace {
+    // Shared implementation for both normalizeGraph overloads.
+    // When out_col_sums != nullptr, it is filled with the pre-normalization
+    // column sums of G. norm_method 0/1 dispatches to normalize_matrix_internal
+    // (which computes column-sums directly when norm_method == 0, and row-sums
+    // when norm_method == 1; the column-sum recovery for the row-normalize
+    // path takes a small dedicated pass).
+    void normalizeGraph_impl_(arma::sp_mat& G, int norm_method, arma::vec* out_col_sums) {
         switch (norm_method) {
             case 0: // Column-normalize
+            {
+                normalize_matrix_internal(G, 1, /*dim=*/0, true, 1.0, out_col_sums);
+            }
+            break;
             case 1: // Row-normalize
             {
-                normalize_matrix_internal(G, 1, norm_method, true, 1.0);
+                if (out_col_sums != nullptr) {
+                    arma::vec col_sums = arma::zeros(G.n_cols);
+                    for (arma::sp_mat::const_iterator it = G.begin(); it != G.end(); ++it) {
+                        col_sums[it.col()] += std::abs(*it);
+                    }
+                    *out_col_sums = std::move(col_sums);
+                }
+                normalize_matrix_internal(G, 1, /*dim=*/1, true, 1.0, nullptr);
             }
             break;
             case 2: // Symmetrize
@@ -144,6 +165,10 @@ namespace actionet {
                     row_sums[it.row()] += (*it);
                 }
 
+                if (out_col_sums != nullptr) {
+                    *out_col_sums = col_sums;
+                }
+
                 row_sums.transform([](double val) { return (val == 0 ? 1 : val); });
                 col_sums.transform([](double val) { return (val == 0 ? 1 : val); });
 
@@ -156,6 +181,18 @@ namespace actionet {
             default:
                 throw std::invalid_argument("Invalid 'norm_method'");
         }
+    }
+    } // anonymous namespace
+
+    // Graph pre-normalization for PageRank
+    // norm_method 0/1 is standard unit normalization columns/rows with edge-cases.
+    // norm_method 2 symmetrizes graph, i.e. colsums == rowsums.
+    void normalizeGraph(arma::sp_mat& G, int norm_method) {
+        normalizeGraph_impl_(G, norm_method, /*out_col_sums=*/nullptr);
+    }
+
+    void normalizeGraph(arma::sp_mat& G, int norm_method, arma::vec& col_sums_out) {
+        normalizeGraph_impl_(G, norm_method, &col_sums_out);
     }
 
     arma::mat normalize_scores(arma::mat scores, int method, int thread_no) {

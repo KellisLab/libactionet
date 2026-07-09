@@ -19,6 +19,31 @@ namespace actionet {
     // ---- Internal helpers (in-memory perturbation computation) ----------------------------
 
     namespace {
+        /// @brief Assemble (A, B) from the gene-mean direction and the two-column projection.
+        ///
+        /// Given the normalised gene-mean direction @p a1 (length n_genes) and the
+        /// caller-materialised projection @p projected (cells x 2), whose columns are
+        /// respectively @c S*a1 and @c S*ones (or their operator-backed equivalents),
+        /// this helper produces the rank-2 centering perturbation:
+        ///   b1 = -projected.col(0)
+        ///   b2 = -(mean(a1) * b1 + projected.col(1) / n_genes)
+        ///   a2 = ones(n_genes)
+        ///   A  = [a1, a2] (genes x 2)
+        ///   B  = [b1, b2] (cells x 2)
+        void assemblePerturbationFromMeansAndProjection(const arma::vec& a1,
+                                                        const arma::mat& projected,
+                                                        arma::uword n_genes,
+                                                        arma::mat& A,
+                                                        arma::mat& B) {
+            arma::vec b1 = -projected.col(0);
+            arma::vec c = projected.col(1) / static_cast<double>(n_genes);
+            double a1_mean = arma::mean(a1);
+            arma::vec a2 = arma::ones<arma::vec>(n_genes);
+            arma::vec b2 = -(a1_mean * b1 + c);
+            A = arma::join_rows(a1, a2);
+            B = arma::join_rows(b1, b2);
+        }
+
         /// @brief Compute centering perturbation terms from a fully materialised matrix.
         ///
         /// S is cells × genes (obs × var).
@@ -44,14 +69,7 @@ namespace actionet {
             rhs.col(0) = a1;
             rhs.col(1).ones();
             arma::mat projected = S * rhs;                // cells x 2
-            arma::vec b1 = -projected.col(0);             // cells-length
-            arma::vec c = projected.col(1) / static_cast<double>(S.n_cols);
-            double a1_mean = arma::mean(a1);
-            arma::vec a2 = arma::ones(S.n_cols);           // genes-length
-            arma::vec b2 = -(a1_mean * b1 + c);
-
-            A = arma::join_rows(a1, a2);   // genes × 2
-            B = arma::join_rows(b1, b2);   // cells × 2
+            assemblePerturbationFromMeansAndProjection(a1, projected, S.n_cols, A, B);
         }
 
         /// @brief Validate that SVD dimensions are self-consistent and compatible with
@@ -110,15 +128,7 @@ namespace actionet {
             rhs.col(1).ones();
             arma::mat projected;
             S.matmat(rhs, projected);                          // cells x 2
-            arma::vec b1 = -projected.col(0);                 // cells-length
-            arma::vec c = projected.col(1) / static_cast<double>(n);
-
-            double a1_mean = arma::mean(a1);
-            arma::vec a2 = arma::ones<arma::vec>(n);           // genes-length
-            arma::vec b2 = -(a1_mean * b1 + c);
-
-            A = arma::join_rows(a1, a2);   // genes × 2
-            B = arma::join_rows(b1, b2);   // cells × 2
+            assemblePerturbationFromMeansAndProjection(a1, projected, n, A, B);
         }
     } // namespace
 

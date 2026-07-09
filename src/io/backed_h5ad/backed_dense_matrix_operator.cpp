@@ -286,6 +286,40 @@ namespace actionet {
         }
     }
 
+    // ---- rowStats -----------------------------------------------------
+
+    void BackedDenseMatrixOperator::rowStats(arma::vec& row_sum,
+                                             arma::vec& row_sum_sq,
+                                             arma::vec& nnz) const {
+        row_sum.zeros(n_obs_);
+        row_sum_sq.zeros(n_obs_);
+        nnz.zeros(n_obs_);
+
+        arma::mat slab;
+        for (arma::uword obs_start = 0; obs_start < n_obs_; obs_start += effective_chunk_size_) {
+            const arma::uword obs_end = std::min(n_obs_, obs_start + effective_chunk_size_);
+            const arma::uword obs_count = obs_end - obs_start;
+            read_slab_(obs_start, obs_count, slab);
+            apply_transforms_(obs_start, slab);
+
+            for (arma::uword r = 0; r < obs_count; ++r) {
+                double s = 0.0, ss = 0.0;
+                double c_nnz = 0.0;
+                for (arma::uword c = 0; c < n_var_; ++c) {
+                    const double v = slab(r, c);
+                    if (v != 0.0) {
+                        s += v;
+                        ss += v * v;
+                        c_nnz += 1.0;
+                    }
+                }
+                row_sum(obs_start + r)    = s;
+                row_sum_sq(obs_start + r) = ss;
+                nnz(obs_start + r)        = c_nnz;
+            }
+        }
+    }
+
     // ---- takeColumns implementations ------------------------------------------------
 
     arma::mat BackedDenseMatrixOperator::takeColumnsDense(

@@ -30,6 +30,30 @@ namespace actionet {
     /// @param norm_method 0 = column (pagerank), 1 = row, 2 = sym_pagerank.
     void normalizeGraph(arma::sp_mat& G, int norm_method = 1);
 
+    /// @brief Normalize a graph adjacency matrix in-place, also returning the
+    ///        pre-normalization column sums.
+    ///
+    /// Fused variant intended for callers (e.g. PageRank pre-processing) that
+    /// need to identify sink columns before scaling. Avoids a second full
+    /// non-zero pass over the input matrix.
+    ///
+    /// The reported column sums are computed with the same per-branch
+    /// accumulation convention that normalizeGraph uses internally:
+    ///   - norm_method 0 (column-normalize): sum of absolute values per column.
+    ///   - norm_method 1 (row-normalize): sum of absolute values per column
+    ///     (computed in a dedicated pass because the internal row-sum pass
+    ///     does not visit columns).
+    ///   - norm_method 2 (symmetric): plain sum per column, matching the
+    ///     symmetric branch's internal accumulation.
+    /// For non-negative edge weights (the supported input for PageRank-style
+    /// diffusion) all three conventions coincide.
+    ///
+    /// @param G                 Graph adjacency matrix (modified in-place).
+    /// @param norm_method       0 = column (pagerank), 1 = row, 2 = sym_pagerank.
+    /// @param col_sums_out      Output vector of length G.n_cols; filled with the
+    ///                          pre-normalization column sums of G.
+    void normalizeGraph(arma::sp_mat& G, int norm_method, arma::vec& col_sums_out);
+
 
     /// @brief Normalize score matrix for downstream scoring.
     ///

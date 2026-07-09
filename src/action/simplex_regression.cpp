@@ -12,7 +12,7 @@ namespace actionet {
         int ncols = static_cast<int>(B.n_cols);
         arma::mat X = arma::zeros(A.n_cols, ncols);
 
-        int nthreads = omp_in_parallel() ? 1 : get_num_threads(ncols);
+        int nthreads = get_num_threads_nested_safe(ncols);
 
         if (computeXtX) {
             double lam2sq = lambda2 * lambda2;

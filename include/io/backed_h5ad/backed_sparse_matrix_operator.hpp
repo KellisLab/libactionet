@@ -128,35 +128,12 @@ namespace actionet {
                       arma::vec& nnz) const;
     
     private:
-        // Internal scan helpers used by computeFeatureSpecificity (backed
-        // sparse overloads). Public overloads themselves need no friendship;
-        // they access the operator only through the public API.
-        friend void backed_specificity_scan_csr_(const BackedSparseMatrixOperator& op,
-                                                 const arma::mat& H_norm_t,
-                                                 arma::vec& row_count,
-                                                 arma::vec& col_count,
-                                                 arma::vec& row_factor_sum_orig,
-                                                 arma::mat& obs_orig,
-                                                 double& min_stored,
-                                                 int thread_no);
-        friend void backed_specificity_scan_csc_(const BackedSparseMatrixOperator& op,
-                                                 const arma::mat& H_norm_t,
-                                                 arma::vec& row_count,
-                                                 arma::vec& col_count,
-                                                 arma::vec& row_factor_sum_orig,
-                                                 arma::mat& obs_orig,
-                                                 double& min_stored,
-                                                 int thread_no);
-        friend void backed_specificity_support_csr_(const BackedSparseMatrixOperator& op,
-                                                    const arma::mat& H_norm_t,
-                                                    arma::mat& obs_out,
-                                                    double shift,
-                                                    int thread_no);
-        friend void backed_specificity_support_csc_(const BackedSparseMatrixOperator& op,
-                                                    const arma::mat& H_norm_t,
-                                                    arma::mat& obs_out,
-                                                    double shift,
-                                                    int thread_no);
+        // Chunk-visitor entry point shared by all backed-sparse specificity
+        // scans. Loads each chunk once and invokes @p visit with the chunk
+        // metadata; the caller performs its own inner iteration over the
+        // buffered data/indices. Public specificity overloads use this
+        // visitor and therefore no longer need friend access.
+        friend struct BackedSparseSpecificityWalker;
         static std::string read_string_attribute_(hid_t object_id, const char* name);
         static std::vector<long long> read_shape_attribute_(hid_t object_id, const char* name);
 

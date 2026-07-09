@@ -9,23 +9,31 @@
 //   - Implementations MUST be safe to call from a single thread only.  PRIMME is
 //     configured in single-threaded mode for the operator path.  Multi-threaded
 //     matvec would require careful coordination with the GIL (Python) or R runtime.
-//   - The PythonMatrixOperator subclass (actionet-python) acquires the GIL on
-//     each call; see wp_utils.h for details.
+//   - pybind11 consumers (actionet-python) pass concrete backed subclasses
+//     (BackedSparseMatrixOperator, BackedDenseMatrixOperator) as
+//     std::shared_ptr<MatrixOperator> and downcast via dispatch_backed_op()
+//     in wp_utils.h; no Python-side subclass of this interface exists.
 //   - Dense and sparse adapters are provided for convenience when the matrix *is*
 //     in memory but a uniform operator interface is desired (e.g. testing).
+//   - matmat / rmatmat are pure-virtual: every subclass must provide an
+//     efficient blocked implementation. The base class does not fall back to
+//     looping matvec because that fallback silently penalised subclasses that
+//     forgot to override (particularly relevant for a future GPU operator
+//     that must choose between batched GEMM and gemv looping explicitly).
 
 #ifndef ACTIONET_MATRIX_OPERATOR_HPP
 #define ACTIONET_MATRIX_OPERATOR_HPP
 
 #include "libactionet_config.hpp"
-#include <stdexcept>
 
 namespace actionet {
 
     /// @brief Abstract matrix operator with forward and transpose products.
     ///
     /// Represents a logical m × n matrix via its action on vectors.
-    /// Subclasses must implement matvec (y = A*x) and rmatvec (y = A'*x).
+    /// Subclasses must implement matvec (y = A*x), rmatvec (y = A'*x),
+    /// matmat (Y = A*X), and rmatmat (Y = A'*X). The block methods have
+    /// no default fallback; see the per-method docs for the rationale.
     class MatrixOperator {
     public:
         virtual ~MatrixOperator() = default;
@@ -48,35 +56,18 @@ namespace actionet {
 
         /// @brief Compute Y = A * X for a dense block of vectors.
         ///
-        /// Default implementation loops over columns and dispatches to matvec.
-        virtual void matmat(const arma::mat& X, arma::mat& Y) const {
-            if (X.n_rows != cols()) {
-                throw std::runtime_error("MatrixOperator::matmat dimension mismatch");
-            }
-
-            Y.set_size(rows(), X.n_cols);
-            arma::vec col_out;
-            for (arma::uword j = 0; j < X.n_cols; ++j) {
-                matvec(X.col(j), col_out);
-                Y.col(j) = col_out;
-            }
-        }
+        /// Implementations MUST provide an efficient blocked kernel. The base
+        /// class does not fall back to looping over matvec: any perf-sensitive
+        /// subclass that forgot to override would silently pay O(k) matvec
+        /// overhead. Future GPU operators must decide whether to dispatch a
+        /// batched GEMM or loop over cuBLAS gemv here explicitly.
+        virtual void matmat(const arma::mat& X, arma::mat& Y) const = 0;
 
         /// @brief Compute Y = A' * X for a dense block of vectors.
         ///
-        /// Default implementation loops over columns and dispatches to rmatvec.
-        virtual void rmatmat(const arma::mat& X, arma::mat& Y) const {
-            if (X.n_rows != rows()) {
-                throw std::runtime_error("MatrixOperator::rmatmat dimension mismatch");
-            }
-
-            Y.set_size(cols(), X.n_cols);
-            arma::vec col_out;
-            for (arma::uword j = 0; j < X.n_cols; ++j) {
-                rmatvec(X.col(j), col_out);
-                Y.col(j) = col_out;
-            }
-        }
+        /// Same contract as matmat: implementations MUST provide an efficient
+        /// blocked kernel.
+        virtual void rmatmat(const arma::mat& X, arma::mat& Y) const = 0;
 
         /// @brief Hint for operator-SVD dispatch when algorithm = IRLB.
         ///

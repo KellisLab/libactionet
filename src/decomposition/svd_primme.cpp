@@ -1,8 +1,9 @@
 // Singular value decomposition (SVD) using PRIMME_SVDS
 //
 // Provides three matvec flavours (sparse, dense, operator) unified through a
-// common PRIMME core routine.  The operator path is the primary entry point for
-// out-of-memory (OOM) SVD used by PythonMatrixOperator.
+// common PRIMME core routine.  The operator path is the primary entry point
+// for out-of-memory (OOM) SVD driven by the backed h5ad operators
+// (BackedSparseMatrixOperator / BackedDenseMatrixOperator).
 
 #include "decomposition/svd_primme.hpp"
 #include "decomposition/svd_main.hpp"

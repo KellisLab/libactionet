@@ -121,41 +121,59 @@ namespace actionet {
     // Backed overloads of computeFeatureStatsVision
     // ------------------------------------------------------------------
 
+    namespace {
+        // Shared body for backed VISION computation (sparse or dense operator).
+        // Both operator types now provide matmat() for stats and rowStats()
+        // for the row_sum / row_sum_sq / nnz recipe below, so the recipe is
+        // literally identical across backends.
+        template <typename OperatorT>
+        arma::mat computeFeatureStatsVision_backed_(OperatorT& op,
+                                                    const arma::sp_mat& G,
+                                                    arma::sp_mat& X,
+                                                    int norm_method,
+                                                    double alpha, int max_it,
+                                                    bool approx, int thread_no,
+                                                    const char* op_label) {
+            const arma::uword n_obs = op.rows();
+            const arma::uword n_var = op.cols();
+            if (n_var != X.n_rows) {
+                throw std::invalid_argument(std::string("Incompatible dimensions (") +
+                                            op_label + ".cols != X.n_rows)");
+            }
+            if (n_obs != G.n_rows) {
+                throw std::invalid_argument(std::string("Incompatible dimensions (") +
+                                            op_label + ".rows != G.n_rows)");
+            }
+
+            arma::mat X_dense(X);
+            arma::mat stats;
+            op.matmat(X_dense, stats);
+
+            arma::vec row_sum, row_sum_sq, nnz_vec;
+            op.rowStats(row_sum, row_sum_sq, nnz_vec);
+
+            arma::vec mu = row_sum / static_cast<double>(n_var);
+
+            // sigma_sq closed form: row_sum_sq is the sum of squares of stored
+            // (transformed) values, but unstored entries contribute 0^2 = 0 so
+            //   sum_all_sq = row_sum_sq
+            //   sigma_sq = (row_sum_sq - 2*mu*row_sum + n_var*mu^2) / (n_var - 1)
+            arma::vec sigma_sq = (row_sum_sq - 2.0 * mu % row_sum +
+                                  static_cast<double>(n_var) * arma::square(mu)) /
+                                 static_cast<double>(n_var - 1);
+
+            return vision_standardize_and_smooth_(stats, mu, sigma_sq, X, G,
+                                                  norm_method, alpha, max_it, approx, thread_no);
+        }
+    } // namespace
+
     arma::mat computeFeatureStatsVision(BackedSparseMatrixOperator& op,
                                         const arma::sp_mat& G, arma::sp_mat& X,
                                         int norm_method, double alpha,
                                         int max_it, bool approx,
                                         int thread_no) {
-        const arma::uword n_obs = op.rows();
-        const arma::uword n_var = op.cols();
-        if (n_var != X.n_rows) {
-            throw std::invalid_argument("Incompatible dimensions (op.cols != X.n_rows)");
-        }
-        if (n_obs != G.n_rows) {
-            throw std::invalid_argument("Incompatible dimensions (op.rows != G.n_rows)");
-        }
-
-        // Pass 1: stats = S @ X via matmat
-        arma::mat X_dense(X);
-        arma::mat stats;
-        op.matmat(X_dense, stats);
-
-        // Fused pass: row_sum, row_sum_sq, nnz in one NNZ-only scan.
-        arma::vec row_sum, row_sum_sq, nnz_vec;
-        op.rowStats(row_sum, row_sum_sq, nnz_vec);
-
-        arma::vec mu = row_sum / static_cast<double>(n_var);
-        arma::vec p_nnz = nnz_vec / static_cast<double>(n_var);
-
-        // sigma_sq = (sum_sq_stored + (n - nnz)*mu^2 - 2*mu*sum_stored + nnz*mu^2) / (n-1)
-        // But sum_stored = row_sum (since unstored = 0), so:
-        // sigma_sq = (row_sum_sq - 2*mu*row_sum + n_var*mu^2) / (n_var - 1)
-        arma::vec sigma_sq = (row_sum_sq - 2.0 * mu % row_sum +
-                              static_cast<double>(n_var) * arma::square(mu)) /
-                             static_cast<double>(n_var - 1);
-
-        return vision_standardize_and_smooth_(stats, mu, sigma_sq, X, G,
-                                              norm_method, alpha, max_it, approx, thread_no);
+        return computeFeatureStatsVision_backed_(op, G, X, norm_method, alpha,
+                                                 max_it, approx, thread_no, "op");
     }
 
     arma::mat computeFeatureStatsVision(BackedDenseMatrixOperator& op,
@@ -163,53 +181,8 @@ namespace actionet {
                                         int norm_method, double alpha,
                                         int max_it, bool approx,
                                         int thread_no) {
-        const arma::uword n_obs = op.rows();
-        const arma::uword n_var = op.cols();
-        if (n_var != X.n_rows) {
-            throw std::invalid_argument("Incompatible dimensions (op.cols != X.n_rows)");
-        }
-        if (n_obs != G.n_rows) {
-            throw std::invalid_argument("Incompatible dimensions (op.rows != G.n_rows)");
-        }
-
-        // stats = S @ X via matmat
-        arma::mat X_dense(X);
-        arma::mat stats;
-        op.matmat(X_dense, stats);
-
-        // Per-cell row_sum via matvec.
-        arma::vec ones_var(n_var, arma::fill::ones);
-        arma::vec row_sum;
-        op.matvec(ones_var, row_sum);
-
-        // For dense-backed, accumulate row_sum_sq and nnz via slab reads.
-        arma::vec row_sum_sq(n_obs, arma::fill::zeros);
-        arma::vec nnz_vec(n_obs, arma::fill::zeros);
-        arma::mat slab;
-        const arma::uword chunk = op.effectiveChunkSize();
-        for (arma::uword obs_start = 0; obs_start < n_obs; obs_start += chunk) {
-            const arma::uword obs_end = std::min(n_obs, obs_start + chunk);
-            const arma::uword obs_count = obs_end - obs_start;
-            op.readSlab(obs_start, obs_count, slab);
-            for (arma::uword r = 0; r < obs_count; ++r) {
-                for (arma::uword c = 0; c < n_var; ++c) {
-                    double v = slab(r, c);
-                    if (v != 0.0) {
-                        row_sum_sq(obs_start + r) += v * v;
-                        nnz_vec(obs_start + r) += 1.0;
-                    }
-                }
-            }
-        }
-
-        arma::vec mu = row_sum / static_cast<double>(n_var);
-
-        arma::vec sigma_sq = (row_sum_sq - 2.0 * mu % row_sum +
-                              static_cast<double>(n_var) * arma::square(mu)) /
-                             static_cast<double>(n_var - 1);
-
-        return vision_standardize_and_smooth_(stats, mu, sigma_sq, X, G,
-                                              norm_method, alpha, max_it, approx, thread_no);
+        return computeFeatureStatsVision_backed_(op, G, X, norm_method, alpha,
+                                                 max_it, approx, thread_no, "op");
     }
 
     // ------------------------------------------------------------------

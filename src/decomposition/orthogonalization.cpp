@@ -141,27 +141,39 @@ namespace {
 
 namespace actionet {
 
+    namespace {
+        // Shared body for the in-memory templated orthogonalize* variants.
+        // The only difference between batch and basal is how the initial
+        // subspace @c Z is constructed: batch uses @c S.t() * design, basal
+        // uses @c basal_state directly. After orthonormalisation the flow
+        // is identical (A = Z, B = -S*Z, deflate).
+        template <typename T>
+        arma::field<arma::mat> orthogonalize_common_(T& S,
+                                                     arma::field<arma::mat>& reduction_results,
+                                                     arma::mat&& Z_init,
+                                                     const char* label) {
+            stdout_printf("Orthogonalizing %s:\n", label);
+            FLUSH;
+
+            arma::mat Z = std::move(Z_init);
+            orthonormalize_columns_(Z);
+
+            // S is cells x genes.  B = -(S * Z): (cells x genes)(genes x q) = cells x q
+            arma::mat A = Z;
+            arma::mat B = arma::mat(S * Z);
+            B *= -1.0;
+
+            arma::field<arma::mat> perturbed_SVD = deflate_reduction_field_(reduction_results, A, B);
+            FLUSH;
+            return perturbed_SVD;
+        }
+    } // namespace
+
 template <typename T>
 arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& reduction_results, arma::mat& design) {
-        stdout_printf("Orthogonalizing batch effect:\n");
-        FLUSH;
-
-        // S is cells × genes (Plan 02).  design is cells × q.
-        // Z = S.t() * design: (cells × genes)' * (cells × q) = genes × q
-        arma::mat Z = arma::mat(S.t() * design);
-
-        // Orthonormalise Z; uses GS for small c and Householder QR otherwise.
-        orthonormalize_columns_(Z);
-
-        // B = -(S * Z): (cells × genes)(genes × q) = cells × q  — direct, no extra transpose
-        arma::mat A = Z;
-        arma::mat B = arma::mat(S * Z);
-        B *= -1.0;
-
-        arma::field<arma::mat> perturbed_SVD = deflate_reduction_field_(reduction_results, A, B);
-        FLUSH;
-        return (perturbed_SVD);
-    }
+    // Z = S.t() * design: (cells x genes)' * (cells x q) = genes x q
+    return orthogonalize_common_(S, reduction_results, arma::mat(S.t() * design), "batch effect");
+}
 
     template arma::field<arma::mat>
         orthogonalizeBatchEffect<arma::mat>(arma::mat& S, arma::field<arma::mat>& SVD_results, arma::mat& design);
@@ -173,20 +185,7 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
     template <typename T>
     arma::field<arma::mat> orthogonalizeBasal(T& S, arma::field<arma::mat>& reduction_results,
                                               arma::mat& basal_state) {
-        stdout_printf("Orthogonalizing basal:\n");
-        FLUSH;
-
-        arma::mat Z = basal_state;
-        orthonormalize_columns_(Z);
-
-        // S is cells × genes.  B = -(S * Z): (cells × genes)(genes × q) = cells × q
-        arma::mat A = Z;
-        arma::mat B = arma::mat(S * Z);
-        B *= -1.0;
-
-        arma::field<arma::mat> perturbed_SVD = deflate_reduction_field_(reduction_results, A, B);
-        FLUSH;
-        return (perturbed_SVD);
+        return orthogonalize_common_(S, reduction_results, arma::mat(basal_state), "basal");
     }
 
     template arma::field<arma::mat>
@@ -251,44 +250,53 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
 
     // ---- Operator-backed orthogonalization ------------------------------------------------
 
+    namespace {
+        // Shared body for operator-backed orthogonalization. Batch initialises
+        // Z via @c S.rmatmat(design, Z); basal initialises Z directly from the
+        // caller-supplied basal_state. The rest (orthonormalise, B = -S*Z,
+        // deflate) is identical.
+        KernelReductionResult orthogonalize_common_op_(const MatrixOperator& S,
+                                                       const KernelReductionResult& reduction,
+                                                       arma::mat&& Z_init,
+                                                       const char* label) {
+            stdout_printf("Orthogonalizing %s (operator):\n", label);
+            FLUSH;
+
+            SVDResult svd = svd_from_reduction_(reduction);
+            PerturbedSVDResult prior_buf;
+            const PerturbedSVDResult* prior_ptr = nullptr;
+            if (has_prior_history_(reduction)) {
+                prior_buf = prior_from_reduction_(reduction);
+                prior_ptr = &prior_buf;
+            }
+
+            arma::mat Z = std::move(Z_init);
+            orthonormalize_columns_(Z);
+
+            // B = -(S * Z): matmat computes S * X -> cells x q
+            arma::mat B;
+            S.matmat(Z, B);
+            B *= -1.0;
+
+            stdout_printf("\tDeflating reduction ... ");
+            FLUSH;
+            PerturbedSVDResult result = deflate_reduction_struct_(svd, prior_ptr, Z, B);
+            stdout_printf("done\n");
+            FLUSH;
+
+            return reduction_from_perturbed_(result);
+        }
+    } // namespace
+
     KernelReductionResult orthogonalizeBatchEffect_Operator(
         const MatrixOperator& S,
         const KernelReductionResult& reduction,
         const arma::mat& design) {
 
-        stdout_printf("Orthogonalizing batch effect (operator):\n");
-        FLUSH;
-
-        SVDResult svd = svd_from_reduction_(reduction);
-        PerturbedSVDResult prior_buf;
-        const PerturbedSVDResult* prior_ptr = nullptr;
-        if (has_prior_history_(reduction)) {
-            prior_buf = prior_from_reduction_(reduction);
-            prior_ptr = &prior_buf;
-        }
-
-        // S is cells × genes (obs × var).  design is (n_obs × q).
-        // Z = S.t() * design = S' * design: rmatmat computes S' * X where X is (n_obs × q) → (n_var × q)
-        // Old (genes × cells): S.matmat(design, Z) → (genes × cells)(cells × q) = genes × q
-        // New (cells × genes): S.rmatmat(design, Z) → (cells × genes)'(cells × q) = genes × q
+        // Z = S.t() * design: rmatmat computes S' * X where X is (n_obs x q) -> (n_var x q)
         arma::mat Z;
         S.rmatmat(design, Z);
-        orthonormalize_columns_(Z);
-
-        // B = -(S * Z): matmat computes S * X where X is (n_var × q) → (n_obs × q) = cells × q
-        // Old (genes × cells): S.rmatmat(Z, B_raw) → (genes × cells)'(genes × q) = cells × q
-        // New (cells × genes): S.matmat(Z, B_raw)  → (cells × genes)(genes × q) = cells × q
-        arma::mat B;
-        S.matmat(Z, B);
-        B *= -1.0;
-
-        stdout_printf("\tDeflating reduction ... ");
-        FLUSH;
-        PerturbedSVDResult result = deflate_reduction_struct_(svd, prior_ptr, Z, B);
-        stdout_printf("done\n");
-        FLUSH;
-
-        return reduction_from_perturbed_(result);
+        return orthogonalize_common_op_(S, reduction, std::move(Z), "batch effect");
     }
 
     KernelReductionResult orthogonalizeBasal_Operator(
@@ -296,34 +304,7 @@ arma::field<arma::mat> orthogonalizeBatchEffect(T& S, arma::field<arma::mat>& re
         const KernelReductionResult& reduction,
         const arma::mat& basal_state) {
 
-        stdout_printf("Orthogonalizing basal (operator):\n");
-        FLUSH;
-
-        SVDResult svd = svd_from_reduction_(reduction);
-        PerturbedSVDResult prior_buf;
-        const PerturbedSVDResult* prior_ptr = nullptr;
-        if (has_prior_history_(reduction)) {
-            prior_buf = prior_from_reduction_(reduction);
-            prior_ptr = &prior_buf;
-        }
-
-        arma::mat Z = basal_state;
-        orthonormalize_columns_(Z);
-
-        // B = -(S * Z): matmat computes S * X → cells × q
-        // Old (genes × cells): S.rmatmat(Z, B_raw) → (genes × cells)'(genes × q) = cells × q
-        // New (cells × genes): S.matmat(Z, B_raw)  → (cells × genes)(genes × q) = cells × q
-        arma::mat B;
-        S.matmat(Z, B);
-        B *= -1.0;
-
-        stdout_printf("\tDeflating reduction ... ");
-        FLUSH;
-        PerturbedSVDResult result = deflate_reduction_struct_(svd, prior_ptr, Z, B);
-        stdout_printf("done\n");
-        FLUSH;
-
-        return reduction_from_perturbed_(result);
+        return orthogonalize_common_op_(S, reduction, arma::mat(basal_state), "basal");
     }
 
 } // namespace actionet

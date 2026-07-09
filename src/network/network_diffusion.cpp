@@ -16,8 +16,11 @@ struct PreparedGraph {
 PreparedGraph prepareGraph_(const arma::sp_mat& G, int norm_method, double alpha) {
     PreparedGraph pg;
     pg.Gn = G;
-    arma::vec cs = arma::vec(arma::trans(arma::sum(pg.Gn, 0)));
-    actionet::normalizeGraph(pg.Gn, norm_method);
+    // Fused: normalizeGraph reports the pre-normalization column sums from
+    // its internal accumulation pass, eliminating the separate arma::sum(pg.Gn, 0)
+    // pass that used to run before normalization.
+    arma::vec cs;
+    actionet::normalizeGraph(pg.Gn, norm_method, cs);
     pg.Gn *= alpha;
 
     const size_t n = G.n_rows;
@@ -29,14 +32,32 @@ PreparedGraph prepareGraph_(const arma::sp_mat& G, int norm_method, double alpha
 }
 
 // ----------------------------------------------------------------
-// _prepared variants: operate on a pre-prepared graph (no mutation)
+// Templated power-iteration diffusion on a prepared graph.
+// Handles dense and sparse X0 via a single templated function:
+//   * arma::mat: caller-normalised (l1) X0, used directly.
+//   * arma::sp_mat: normalise here (avoid dense copy), materialise X_out
+//     from the normalised sparse matrix, cache a scaled dense copy of
+//     X0 in the inner loop.
 // ----------------------------------------------------------------
-
+template <typename XT>
 arma::mat diffusionPowerIter_prepared(const PreparedGraph& pg,
-                                      const arma::mat& X0_norm,
+                                      const XT& X0_norm_or_raw,
                                       int max_it, int thread_no) {
     const double n_dbl = static_cast<double>(pg.Gn.n_rows);
-    arma::mat X_out = X0_norm;
+
+    arma::mat X_out;
+    // Precomputed reference term reused every outer iteration; equal to
+    // n_dbl * (l1-normalised X0).
+    arma::mat X0_scaled_dense;
+    const bool sparse_input = arma::is_SpMat<XT>::value;
+
+    if constexpr (arma::is_SpMat<XT>::value) {
+        arma::sp_mat X0_norm = arma::normalise(X0_norm_or_raw, 1, 0);
+        X_out = arma::mat(X0_norm);
+        X0_scaled_dense = arma::mat(X0_norm * n_dbl);
+    } else {
+        X_out = X0_norm_or_raw;
+    }
 
     int threads_use = actionet::get_num_threads(X_out.n_cols, thread_no);
 
@@ -44,45 +65,34 @@ arma::mat diffusionPowerIter_prepared(const PreparedGraph& pg,
         #pragma omp parallel for num_threads(threads_use) schedule(static)
         for (size_t i = 0; i < X_out.n_cols; i++) {
             arma::vec y = pg.Gn * X_out.col(i);
-            X_out.col(i) = y + (X0_norm.col(i) * n_dbl) * arma::as_scalar(pg.zt * X_out.col(i));
+            if constexpr (arma::is_SpMat<XT>::value) {
+                X_out.col(i) = y + X0_scaled_dense.col(i) *
+                                        arma::as_scalar(pg.zt * X_out.col(i));
+            } else {
+                X_out.col(i) = y + (X0_norm_or_raw.col(i) * n_dbl) *
+                                        arma::as_scalar(pg.zt * X_out.col(i));
+            }
         }
     }
 
+    (void)sparse_input;
     return X_out;
 }
 
-arma::mat diffusionPowerIterSparse_prepared(const PreparedGraph& pg,
-                                             const arma::sp_mat& X0,
-                                             int max_it, int thread_no) {
-    const double n_dbl = static_cast<double>(pg.Gn.n_rows);
-
-    arma::sp_mat X0_norm = arma::normalise(X0, 1, 0);
-    arma::mat X_out(X0_norm);
-    arma::sp_mat X0_scaled = X0_norm * n_dbl;
-
-    int threads_use = actionet::get_num_threads(X_out.n_cols, thread_no);
-
-    for (int it = 0; it < max_it; it++) {
-        #pragma omp parallel for num_threads(threads_use) schedule(static)
-        for (size_t i = 0; i < X_out.n_cols; i++) {
-            arma::vec y = pg.Gn * X_out.col(i);
-            arma::vec x0_col(X0_scaled.col(i));
-            X_out.col(i) = y + x0_col * arma::as_scalar(pg.zt * X_out.col(i));
-        }
-    }
-
-    return X_out;
-}
-
-arma::mat diffusionChebyshev_prepared(const arma::sp_mat& Gn_unscaled,
-                                       const arma::mat& X0,
-                                       double alpha, int max_it,
-                                       double tol, int thread_no) {
+// Chebyshev-accelerated diffusion.  Takes @c one_minus_alpha explicitly so
+// the caller does not have to encode the "prepared" semantics in the
+// argument name.  Preludes the graph normalisation internally so the two
+// call sites don't have to.
+arma::mat diffusionChebyshev(const arma::sp_mat& G,
+                             const arma::mat& X0,
+                             double one_minus_alpha, int max_it,
+                             double tol, int norm_method, int thread_no) {
     // Chebyshev uses (1 - alpha) internally and only needs the
-    // column-normalized graph (no alpha scaling), so the caller passes
-    // a graph that has been normalizeGraph'd but NOT scaled by alpha.
-    // alpha here is already flipped: caller passes (1 - original_alpha).
+    // column-normalized graph (no alpha scaling).
+    arma::sp_mat Gn_unscaled = G;
+    actionet::normalizeGraph(Gn_unscaled, norm_method);
 
+    const double alpha = one_minus_alpha;
     arma::mat buf_a = X0;
     arma::mat buf_b = (1.0 - alpha) * actionet::spmat_mat_product_parallel(Gn_unscaled, buf_a, thread_no) + alpha * X0;
     double mu_pp = 1.0, mu_p = 1.0 / (1.0 - alpha);
@@ -136,14 +146,11 @@ namespace actionet {
             throw std::invalid_argument("'alpha' must be in (0,1)");
 
         if (approx) {
-            // Chebyshev needs normalized-only graph (no alpha scaling).
-            arma::sp_mat Gn = G;
-            normalizeGraph(Gn, norm_method);
-            return diffusionChebyshev_prepared(Gn, X0, 1.0 - alpha, max_it, tol, thread_no);
+            return diffusionChebyshev(G, X0, 1.0 - alpha, max_it, tol, norm_method, thread_no);
         }
         PreparedGraph pg = prepareGraph_(G, norm_method, alpha);
         arma::mat X0_norm = arma::normalise(X0, 1, 0);
-        return diffusionPowerIter_prepared(pg, X0_norm, max_it, thread_no);
+        return diffusionPowerIter_prepared<arma::mat>(pg, X0_norm, max_it, thread_no);
     }
 
     // Sparse input specialisation.
@@ -156,12 +163,10 @@ namespace actionet {
             throw std::invalid_argument("'alpha' must be in (0,1)");
 
         if (approx) {
-            arma::sp_mat Gn = G;
-            normalizeGraph(Gn, norm_method);
-            return diffusionChebyshev_prepared(Gn, arma::mat(X0), 1.0 - alpha, max_it, tol, thread_no);
+            return diffusionChebyshev(G, arma::mat(X0), 1.0 - alpha, max_it, tol, norm_method, thread_no);
         }
         PreparedGraph pg = prepareGraph_(G, norm_method, alpha);
-        return diffusionPowerIterSparse_prepared(pg, X0, max_it, thread_no);
+        return diffusionPowerIter_prepared<arma::sp_mat>(pg, X0, max_it, thread_no);
     }
 
 } // namespace actionet

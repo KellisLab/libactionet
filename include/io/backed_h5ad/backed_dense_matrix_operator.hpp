@@ -115,6 +115,20 @@ namespace actionet {
             apply_transforms_(obs_start, slab);
         }
 
+        /// @brief Compute fused per-row statistics in a single slab pass.
+        ///
+        /// Reads each observation-chunk once (applying the configured
+        /// row_scale + log1p transform), accumulating row_sum, row_sum_sq
+        /// and the count of nonzero entries. Signature mirrors the
+        /// BackedSparseMatrixOperator counterpart so callers can be
+        /// templated across the two operator types.
+        ///
+        /// @param[out] row_sum     Sum of (transformed) values per row.
+        /// @param[out] row_sum_sq  Sum of squared (transformed) values per row.
+        /// @param[out] nnz         Count of nonzero entries per row.
+        void rowStats(arma::vec& row_sum, arma::vec& row_sum_sq,
+                      arma::vec& nnz) const;
+
     private:
         static std::vector<long long> read_shape_(hid_t dataset_id);
 
