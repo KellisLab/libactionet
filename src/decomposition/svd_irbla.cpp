@@ -1,12 +1,15 @@
 // Singular value decomposition (SVD) algorithms
-// IRLB implementation - Note: PRIMME is preferred for large sparse matrices
+// IRLB implementation.
 #include "decomposition/svd_irbla.hpp"
 #include "utils_internal/utils_decomp.hpp"
 #include "aarand/aarand.hpp"
 #include "blas_deps.hpp"
 #include <cstring>
-#include <vector>
 #include <functional>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
 
 namespace actionet {
 namespace {
@@ -100,8 +103,38 @@ void operator_matvec(char transpose, const MatrixOperator& A,
     }
 }
 
+// Guard: IRLB narrows the row/col dimensions to `int` for the CBLAS calls on
+// the (dim+7)-column sketch buffers. Sparse `nnz` is 64-bit clean via arma
+// (see the header comment on `svdIRLB_core`), but a per-axis dimension larger
+// than `INT_MAX` would silently overflow the BLAS ldm/ldn arguments.
+void check_irlb_axis_dimensions(arma::uword rows, arma::uword cols, const char* label) {
+    constexpr arma::uword INT_MAX_UW = static_cast<arma::uword>(std::numeric_limits<int>::max());
+    if (rows > INT_MAX_UW || cols > INT_MAX_UW) {
+        std::ostringstream msg;
+        msg << "svdIRLB (" << label << "): matrix dimension exceeds INT_MAX "
+            << "(rows=" << rows << ", cols=" << cols
+            << ", INT_MAX=" << INT_MAX_UW << "). "
+            << "Sparse nnz > 2^31 - 1 is supported, but per-axis dimensions "
+               "above INT_MAX (~2.1B) are not yet supported by any SVD algorithm.";
+        throw std::runtime_error(msg.str());
+    }
+}
+
 // Unified IRLB core: Lanczos bidiagonalization with implicit restarts.
 // The matvec callback abstracts over sparse, dense, and operator-backed matrices.
+//
+// 64-bit contract:
+//   - Row/column dimensions are passed in as `int`. Callers MUST guard their
+//     inputs so both dimensions fit in `INT_MAX`; this is enforced by the
+//     public overloads below via `check_irlb_axis_dimensions`.
+//   - Sparse `nnz > INT32_MAX` is fully supported: `arma::sp_mat` uses 64-bit
+//     indices under `ARMA_64BIT_WORD` (force-defined for libactionet builds in
+//     `libactionet_config.hpp`), and the sparse matvec path routes through
+//     `arma::sp_mat::operator*(vec)`, which is 64-bit clean. The CBLAS calls
+//     inside this routine operate on the (dim+7)-column sketches
+//     (`m * work`, `n * work`), not on the full input, so as long as each axis
+//     fits in `INT_MAX / work` (~50M for the default `work ≈ 40`) they stay
+//     inside the 32-bit BLAS API.
 arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
                                     int seed, bool verbose,
                                     const char* label,
@@ -325,21 +358,26 @@ arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
 // --- Public overloads: thin wrappers that construct the appropriate matvec ---
 
 arma::field<arma::mat> svdIRLB(const arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {
+    check_irlb_axis_dimensions(A.n_rows, A.n_cols, "sparse");
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         sparse_matvec(t, A, x, out);
     };
-    return svdIRLB_core(A.n_rows, A.n_cols, dim, iters, seed, verbose, "sparse", mv);
+    return svdIRLB_core(static_cast<int>(A.n_rows), static_cast<int>(A.n_cols),
+                        dim, iters, seed, verbose, "sparse", mv);
 }
 
 arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters, int seed, bool verbose) {
+    check_irlb_axis_dimensions(A.n_rows, A.n_cols, "dense");
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         dense_matvec(t, A, x, out);
     };
-    return svdIRLB_core(A.n_rows, A.n_cols, dim, iters, seed, verbose, "dense", mv);
+    return svdIRLB_core(static_cast<int>(A.n_rows), static_cast<int>(A.n_cols),
+                        dim, iters, seed, verbose, "dense", mv);
 }
 
 arma::field<arma::mat> svdIRLB(const MatrixOperator& A, int dim,
                                 int iters, int seed, bool verbose) {
+    check_irlb_axis_dimensions(A.rows(), A.cols(), "operator");
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         operator_matvec(t, A, x, out);
     };
