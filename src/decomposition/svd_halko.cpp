@@ -1,7 +1,27 @@
 #include "decomposition/svd_halko.hpp"
 #include "utils_internal/utils_decomp.hpp"
 
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+
 namespace actionet {
+namespace {
+
+void check_halko_axis_dimensions(arma::uword rows, arma::uword cols, const char* label) {
+    const arma::uword max_int = static_cast<arma::uword>(std::numeric_limits<int>::max());
+    if (rows <= max_int && cols <= max_int) {
+        return;
+    }
+
+    std::ostringstream oss;
+    oss << label << " dimensions (" << rows << " x " << cols
+        << ") exceed the current Halko SVD per-axis limit. Row and column "
+           "counts above INT_MAX (~2.1B) are not yet supported.";
+    throw std::overflow_error(oss.str());
+}
+
+} // namespace
 
 template <typename T>
 arma::field<arma::mat> svdHalko(const T& A, int dim, int iters, int seed, bool verbose) {
@@ -9,8 +29,13 @@ arma::field<arma::mat> svdHalko(const T& A, int dim, int iters, int seed, bool v
 
     arma::uword m = A.n_rows;
     arma::uword n = A.n_cols;
+    if (m < 2 || n < 2) {
+        return out;
+    }
+    check_halko_axis_dimensions(m, n, "Halko");
 
     const arma::uword mn_min = std::min(m, n);
+    if (dim < 1) dim = 1;
     if (static_cast<arma::uword>(dim) + 2 > mn_min)
         dim = static_cast<int>(mn_min) - 2;
     if (dim < 1) dim = 1;
@@ -22,7 +47,9 @@ arma::field<arma::mat> svdHalko(const T& A, int dim, int iters, int seed, bool v
     arma::mat U, V, X;
 
     if (verbose) {
-        stdout_printf("Halko -- A: %d x %d\n", (int)A.n_rows, (int)A.n_cols);
+        stdout_printf("Halko -- A: %llu x %llu\n",
+                      static_cast<unsigned long long>(A.n_rows),
+                      static_cast<unsigned long long>(A.n_cols));
         FLUSH;
     }
 
@@ -106,6 +133,7 @@ arma::field<arma::mat> svdHalko(const MatrixOperator& A, int dim, int iters,
     if (rows_uw < 2 || cols_uw < 2) {
         return out;
     }
+    check_halko_axis_dimensions(rows_uw, cols_uw, "Halko operator");
     const int m = static_cast<int>(rows_uw);
     const int n = static_cast<int>(cols_uw);
 

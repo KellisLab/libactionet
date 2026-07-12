@@ -1,6 +1,13 @@
 
 ## GPU backend
 
+> Historical note. This file records decisions from the scrapped PRIMME-based
+> GPU attempt and has been superseded for new GPU-backed SVD work. In
+> particular, disk-backed GPU SVD is now a first-class requirement; do not use
+> the old "operator-backed stays CPU-only permanently" entry as current
+> guidance. See `GPU_BACKEND_PLAN.md` and
+> `../../plans/GPU_BACKED_SVD_AGENT_LAUNCHPAD.md`.
+
 See [`GPU_BACKEND_PLAN.md`](GPU_BACKEND_PLAN.md) for the full roadmap
 and the post-mortem of the scrapped first attempt (`dev-gpu-v2`
 branch, July 2026). The decisions below are the settled meta-decisions

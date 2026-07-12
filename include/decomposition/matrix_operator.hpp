@@ -19,8 +19,9 @@
 //   - matmat / rmatmat are pure-virtual: every subclass must provide an
 //     efficient blocked implementation. The base class does not fall back to
 //     looping matvec because that fallback silently penalised subclasses that
-//     forgot to override (particularly relevant for a future GPU operator
-//     that must choose between batched GEMM and gemv looping explicitly).
+//     forgot to override. Future GPU SVD work should introduce an explicit
+//     product/chunk backend instead of treating this CPU host interface as the
+//     device-memory boundary.
 
 #ifndef ACTIONET_MATRIX_OPERATOR_HPP
 #define ACTIONET_MATRIX_OPERATOR_HPP
@@ -60,8 +61,8 @@ namespace actionet {
         /// Implementations MUST provide an efficient blocked kernel. The base
         /// class does not fall back to looping over matvec: any perf-sensitive
         /// subclass that forgot to override would silently pay O(k) matvec
-        /// overhead. Future GPU operators must decide whether to dispatch a
-        /// batched GEMM or loop over cuBLAS gemv here explicitly.
+        /// overhead. This remains a CPU host-matrix contract; GPU SVD work
+        /// should use a separate device-aware product backend.
         virtual void matmat(const arma::mat& X, arma::mat& Y) const = 0;
 
         /// @brief Compute Y = A' * X for a dense block of vectors.

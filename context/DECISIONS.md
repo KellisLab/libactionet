@@ -73,25 +73,28 @@ This document records **deliberate architectural and operational decisions** for
 
 ## SVD algorithm strategy
 
-### Public SVD surface: IRLB, Halko, Feng (PRIMME quarantined)
+### Public Python SVD surface: IRLB, Halko (Feng and PRIMME quarantined)
 
 **Decision:**
 
-- The core SVD entry points expose four algorithm codes at the C++ level (`ALG_IRLB`, `ALG_HALKO`, `ALG_FENG`, `ALG_PRIMME`), but PRIMME is quarantined: no auto-selection heuristic picks it, and the front-ends (Python; R follows in a subsequent pass) do not expose it.
+- The public Python SVD API exposes only `"irlb"` and `"halko"` plus `"auto"`.
+- `"auto"` selects IRLB for sparse in-memory inputs, Halko for dense in-memory inputs, and Halko for backed operator inputs.
+- The core SVD entry points still expose four algorithm codes at the C++ level (`ALG_IRLB`, `ALG_HALKO`, `ALG_FENG`, `ALG_PRIMME`), but Feng and PRIMME are quarantined from Python. The Python pybind layer rejects raw algorithm IDs other than `ALG_IRLB` and `ALG_HALKO`.
 - The backed `IRLB -> PRIMME` fast path in `runSVD_Operator` has been removed. Backed operators requesting `ALG_IRLB` now use the honest `svdIRLB(MatrixOperator&, ...)` overload unconditionally.
 - The `MatrixOperator::prefer_block_solver_for_irlb()` virtual hint and its overrides in `BackedSparseMatrixOperator` / `BackedDenseMatrixOperator` have been deleted.
-- `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, the vendored `src/extern/primme/` tree, and `cmake/ConfigurePRIMME.cmake` remain in the tree and are still built (with the existing R-build filter). Full deletion is tracked in `TODO.md` and gated on the follow-up SVD/GPU work stabilizing.
+- `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, the vendored `src/extern/primme/` tree, `svd_feng.{cpp,hpp}`, and the corresponding C++ dispatch cases remain in the tree for one release window. Full deletion is tracked in `TODO.md` and gated on the follow-up SVD/GPU work stabilizing.
 
 **Rationale:**
 
 - Sparse `nnz > 2^31 - 1` is 64-bit clean under the force-defined `ARMA_64BIT_WORD` in `libactionet_config.hpp`; PRIMME is no longer needed for realistic omics matrices.
 - The hidden backed dispatch violated the algorithm contract callers had a right to expect.
-- Retaining the PRIMME sources for one release preserves a simple revert path without expanding the public surface.
+- Retaining the quarantined Feng/PRIMME sources for one release preserves a simple revert path without expanding the Python surface.
 
 **Related:**
 
-- Python-front-end plan: `../plans/primme_removal_and_64bit_irlb_*.plan.md`.
-- Broader SVD direction: `../plans/SVD_STRATEGY_REDESIGN_v2.md`, `plans/GPU_BACKEND_PLAN.md`.
+- Python-front-end decision record: `../../context/DECISIONS.md`.
+- GPU-backed SVD launchpad: `../../plans/GPU_BACKED_SVD_AGENT_LAUNCHPAD.md`.
+- C++/build GPU roadmap: `../plans/GPU_BACKEND_PLAN.md`.
 
 ---
 

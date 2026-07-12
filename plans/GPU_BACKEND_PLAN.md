@@ -53,10 +53,10 @@ The stated minimum software, hardware, and driver versions are hard constraints.
 
 GPU-capable entry points should expose a small backend policy:
 
-- `compute_backend`: automatic, CPU, or GPU.
-- `device_id`: CUDA device ordinal.
-- `allow_cpu_fallback`: whether unavailable or failed GPU execution may fall
-  back to CPU.
+- requested backend: automatic, CPU, or CUDA.
+- device selection: CUDA device ordinal when relevant.
+- fallback policy: whether unavailable or failed GPU execution may fall back
+  to CPU.
 
 The exact C++ names and wrapper details may change, but the contract should
 remain:
@@ -82,19 +82,17 @@ Current direction:
 - Implement CPU/GPU differences at the matrix-product and data-streaming
   layer, not as separate public SVD methods.
 - Do not use PRIMME as the GPU vehicle.
-- Remove PRIMME from default/public SVD strategy once replacement coverage is
-  in place.
+- Keep PRIMME and Feng out of the Python SVD surface. Their remaining C++ code
+  is quarantined for a later deletion pass and is not part of the GPU design.
 
 Open choices:
 
 - Whether the first production GPU implementation uses only CUDA toolkit
   primitives, RAFT/RAPIDS components, or a hybrid.
 - How much of the backed-data transform pipeline should run on CPU versus GPU.
-- Whether CPU sparse `auto` should remain IRLB or move to the same randomized
-  SVD family for strategy consistency.
 
-See the Python-front-end strategy note at
-`plans/SVD_STRATEGY_REDESIGN.md` for the current SVD discussion.
+See the Python-front-end launchpad at
+`../../plans/GPU_BACKED_SVD_AGENT_LAUNCHPAD.md` for the current SVD discussion.
 
 ## Disk-backed GPU Principle
 
@@ -159,9 +157,11 @@ This is intentionally high-level. Detailed phase plans should be written only
 when the relevant design choices are settled.
 
 1. Clean up SVD strategy.
-   - Remove PRIMME from automatic/default selection.
-   - Preserve realistic 64-bit sparse CPU support through non-PRIMME paths.
-   - Remove surprising hidden algorithm dispatches.
+   - Completed for Python: public SVD algorithms are `auto`, `irlb`, and
+     `halko`; PRIMME/Feng are quarantined and no hidden backed IRLB dispatch
+     remains.
+   - Remaining cleanup is final deletion of quarantined C++ code after the
+     refactor stabilizes.
 
 2. Define the shared SVD/product abstraction.
    - Keep the randomized SVD algorithm independent of storage and execution

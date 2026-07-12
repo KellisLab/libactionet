@@ -10,12 +10,16 @@
 #include "libactionet_config.hpp"
 #include "decomposition/matrix_operator.hpp"
 
-// SVD algorithm options
+// SVD algorithm options.
+//
+// ALG_FENG and ALG_PRIMME remain compiled temporarily for legacy C++/R
+// compatibility. Python bindings validate their public surface separately and
+// accept only ALG_IRLB and ALG_HALKO.
 namespace actionet {
     constexpr int ALG_IRLB   = 0;
     constexpr int ALG_HALKO  = 1;
-    constexpr int ALG_FENG   = 2;
-    constexpr int ALG_PRIMME = 3;  // PRIMME_SVDS (recommended for large sparse matrices >2^31 elements)
+    constexpr int ALG_FENG   = 2;  // legacy/quarantined randomized method
+    constexpr int ALG_PRIMME = 3;  // legacy/quarantined PRIMME_SVDS method
 }
 
 // Exported
@@ -67,7 +71,9 @@ namespace actionet {
     /// @param k Number of singular vectors/values.
     /// @param max_it Maximum iterations (0 = auto).
     /// @param seed Random seed.
-    /// @param algorithm SVD algorithm code (ALG_IRLB, ALG_HALKO, ALG_FENG, ALG_PRIMME).
+    /// @param algorithm SVD algorithm code. Python callers expose only
+    ///        ALG_IRLB and ALG_HALKO; legacy C++/R paths may still pass
+    ///        ALG_FENG or ALG_PRIMME during the quarantine window.
     /// @param verbose Print progress messages.
     ///
     /// @return Field containing {U, sigma, V}.
@@ -88,9 +94,9 @@ namespace actionet {
 
     /// @brief Compute truncated SVD with a matrix operator and explicit algorithm.
     ///
-    /// Dispatches to the Halko/Feng/PRIMME/IRLB operator overloads based on
-    /// @p algorithm. Backed operators may request an internal IRLB fast path
-    /// via a block-capable backend.
+    /// Dispatches to the selected operator overload. Backed operators do not
+    /// have a hidden PRIMME fast path: ALG_IRLB calls the MatrixOperator IRLB
+    /// implementation directly, and ALG_HALKO calls Halko.
     ///
     /// @note Default is @c ALG_HALKO — this differs from the in-memory
     /// @c runSVD default (@c ALG_IRLB).  Halko is preferred for backed
@@ -102,7 +108,9 @@ namespace actionet {
     /// @param k         Number of singular vectors/values to compute.
     /// @param max_it    Maximum iterations (0 = auto).
     /// @param seed      Random seed.
-    /// @param algorithm SVD algorithm code (ALG_IRLB, ALG_HALKO, ALG_FENG, ALG_PRIMME).
+    /// @param algorithm SVD algorithm code. Python callers expose only
+    ///        ALG_IRLB and ALG_HALKO; legacy C++/R paths may still pass
+    ///        ALG_FENG or ALG_PRIMME during the quarantine window.
     /// @param verbose   Print progress messages if true.
     ///
     /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.
