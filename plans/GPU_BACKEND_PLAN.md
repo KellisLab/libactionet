@@ -1,6 +1,6 @@
 # NVIDIA GPU Backend for `libactionet` (v2 roadmap)
 
-Status: draft, 2026-07-09.
+Status: active roadmap, reviewed 2026-07-12.
 
 This document supersedes the earlier PRIMME-centered GPU roadmap. That older
 plan was too implementation-specific and now contradicts the current SVD
@@ -35,19 +35,25 @@ PRIMME is no longer the intended GPU foundation.
 
 ## Platform Constraints
 
-These constraints are current defaults, not detailed implementation guidance:
+These constraints are part of the current implementation contract:
 
-- Linux x86_64 with NVIDIA GPUs is the production target.
-- Windows via WSL2 is a supported development/test environment.
-- macOS remains CPU-only.
+- Linux x86_64 with NVIDIA GPUs is the production/runtime target.
+- Linux x86_64 without a GPU must build and behave like the CPU-only baseline.
+- Windows 11 + WSL2 with an NVIDIA GPU is the required developer test
+  environment for GPU branches.
+- macOS remains CPU-only and is the primary non-CUDA regression target.
 - Native Windows is out of scope.
-- CUDA 12.2 is the minimum CUDA target.
-- Supported GPUs should be SM 8.0 (Ampere) or newer. This is the minimum supported by cuVS / RAPIDS.
-- CUDA 13.2 is the recommended CUDA target. This is the latest CUDA version that is supported by the dev environment.
+- CUDA 12.2 is the minimum CUDA toolkit target. Do not add a CUDA 11.x fallback.
+- Supported GPUs are SM 8.0 (Ampere) or newer.
+- Default CUDA architecture lists should cover Ampere, Ada, and Hopper
+  (`80;86;89;90`) unless a build intentionally narrows the list for a specific
+  deployment. Such narrowing does not lower the supported hardware floor.
 - GPU support is optional at build time and disabled by default.
 - R-facing GPU support is deferred; Python is the first supported front-end.
 
-The stated minimum software, hardware, and driver versions are hard constraints.
+CUDA versions newer than 12.2 may be used by developers, but they are not a
+project recommendation or support floor until validated on the target
+Linux/WSL2 hardware and recorded here.
 
 ## Runtime Contract
 
@@ -87,12 +93,14 @@ Current direction:
 
 Open choices:
 
-- Whether the first production GPU implementation uses only CUDA toolkit
-  primitives, RAFT/RAPIDS components, or a hybrid.
+- The first production implementation should start from CUDA toolkit primitives
+  and the package-native product/streaming boundary. RAFT/RAPIDS may be
+  evaluated later as an optional spike or reference backend, but it is not a
+  default dependency.
 - How much of the backed-data transform pipeline should run on CPU versus GPU.
 
 See the Python-front-end launchpad at
-`../../plans/GPU_BACKED_SVD_AGENT_LAUNCHPAD.md` for the current SVD discussion.
+`../../../plans/GPU_BACKED_SVD_AGENT_LAUNCHPAD.md` for the current SVD discussion.
 
 ## Disk-backed GPU Principle
 
@@ -175,8 +183,8 @@ when the relevant design choices are settled.
 
 4. Prototype GPU SVD product backends.
    - Cover in-memory and disk-backed data in the same design effort.
-   - Compare native CUDA and optional higher-level library approaches if both
-     remain plausible.
+   - Implement the native CUDA path first; evaluate optional higher-level
+     libraries only after the product and chunk-stream boundaries exist.
    - Validate on real hardware before committing to public API behavior.
 
 5. Harden and expose.
