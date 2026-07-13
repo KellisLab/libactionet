@@ -19,7 +19,7 @@ Any change here may impact both wrappers and downstream pipelines.
   - `action/`, `annotation/`, `decomposition/`, `io/`, `network/`, `tools/`, `visualization/` — module headers
   - `utils_internal/` — internal helpers (not part of public API contract)
 - `src/` — core implementations (mirrors `include/` structure)
-- `cmake/` — CMake modules (`ConfigureApple`, `ConfigureBLAS`, `ConfigureOpenMP`, `ConfigurePRIMME`, `ConfigureR`)
+- `cmake/` — CMake modules (`ConfigureApple`, `ConfigureBLAS`, `ConfigureOpenMP`, `ConfigureR`)
 - `CMakeLists.txt` — root build file
 - `docs/` — algorithm and API documentation
 - `context/` — agent context files and decision records

@@ -3,7 +3,7 @@
 // This header defines a lightweight abstract interface for matrix-vector products
 // without requiring the full matrix to be materialised in memory. The primary
 // consumers are the operator overloads of the randomized/Lanczos SVD algorithms
-// (svd_halko.cpp, svd_feng.cpp, svd_irbla.cpp), which call matvec/rmatvec and
+// (svd_halko.cpp, svd_irbla.cpp), which call matvec/rmatvec and
 // matmat/rmatmat repeatedly during iterative solves.
 //
 // Design notes:

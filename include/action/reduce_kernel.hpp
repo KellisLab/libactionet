@@ -92,8 +92,6 @@ namespace actionet {
                                                        bool verbose = true);
 
     /// @brief Compute reduced ACTION kernel from operator-backed matrix (cells × genes) using selected SVD.
-    ///
-    /// @note Unavailable in R builds (PRIMME is Python-only in v1).
     KernelReductionResult reduceKernel_Operator(const MatrixOperator& S, int k, int svd_alg = ALG_HALKO,
                                                 int max_it = 0, int seed = 0, bool verbose = true);
 

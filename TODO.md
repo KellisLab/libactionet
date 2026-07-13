@@ -4,7 +4,7 @@
   * inconsistent return types
 * Document C++ interface
 * GPU backend (see plans/GPU_BACKEND_PLAN.md)
-* Delete quarantined PRIMME: `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, `ALG_PRIMME`, `src/extern/primme/`, `include/extern/primme/`, `cmake/ConfigurePRIMME.cmake`, the R-build filter for `svd_primme.cpp`, and any remaining references in wrappers/tests. Gated on the follow-up SVD/GPU work stabilizing. See `context/DECISIONS.md` "SVD algorithm strategy".
+* Patch `actionet-r` package: remove `algorithm=2` (Feng) and `algorithm=3` (PRIMME) bindings from `wr_decomposition.cpp` (Roxygen entries, `C_runSVDSparse`/`C_runSVDDense` guards). `libactionet` no longer provides those SVD algorithms. Note: the `wrappers_r/` files inside this submodule are reference-only copies and were intentionally left untouched during the PRIMME/Feng deletion.
 
 ## Secondary
 * Compile to Windows x86
@@ -69,7 +69,7 @@
 * pybind 11 wrappers
 * Consolidate svdIRLB()
 * Backed SVD
-  * Operator-based PRIMME, Halko, Feng, and IRLB paths
+  * Operator-based Halko and IRLB paths
   * HDF5-backed sparse and dense matrix operators
   * Chunked I/O with configurable byte budget
 * Backed network construction

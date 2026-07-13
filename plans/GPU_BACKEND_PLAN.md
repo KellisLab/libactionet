@@ -88,8 +88,8 @@ Current direction:
 - Implement CPU/GPU differences at the matrix-product and data-streaming
   layer, not as separate public SVD methods.
 - Do not use PRIMME as the GPU vehicle.
-- Keep PRIMME and Feng out of the Python SVD surface. Their remaining C++ code
-  is quarantined for a later deletion pass and is not part of the GPU design.
+- Keep PRIMME and Feng out of the Python SVD surface. Their C++ code has been
+  fully deleted and must not be reintroduced.
 
 Open choices:
 
@@ -166,10 +166,8 @@ when the relevant design choices are settled.
 
 1. Clean up SVD strategy.
    - Completed for Python: public SVD algorithms are `auto`, `irlb`, and
-     `halko`; PRIMME/Feng are quarantined and no hidden backed IRLB dispatch
-     remains.
-   - Remaining cleanup is final deletion of quarantined C++ code after the
-     refactor stabilizes.
+     `halko`; PRIMME/Feng have been fully deleted from the C++ core and no
+     hidden backed IRLB dispatch remains.
 
 2. Define the shared SVD/product abstraction.
    - Keep the randomized SVD algorithm independent of storage and execution

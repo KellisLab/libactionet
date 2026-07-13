@@ -11,15 +11,9 @@
 #include "decomposition/matrix_operator.hpp"
 
 // SVD algorithm options.
-//
-// ALG_FENG and ALG_PRIMME remain compiled temporarily for legacy C++/R
-// compatibility. Python bindings validate their public surface separately and
-// accept only ALG_IRLB and ALG_HALKO.
 namespace actionet {
     constexpr int ALG_IRLB   = 0;
     constexpr int ALG_HALKO  = 1;
-    constexpr int ALG_FENG   = 2;  // legacy/quarantined randomized method
-    constexpr int ALG_PRIMME = 3;  // legacy/quarantined PRIMME_SVDS method
 }
 
 // Exported
@@ -71,31 +65,17 @@ namespace actionet {
     /// @param k Number of singular vectors/values.
     /// @param max_it Maximum iterations (0 = auto).
     /// @param seed Random seed.
-    /// @param algorithm SVD algorithm code. Python callers expose only
-    ///        ALG_IRLB and ALG_HALKO; legacy C++/R paths may still pass
-    ///        ALG_FENG or ALG_PRIMME during the quarantine window.
+    /// @param algorithm SVD algorithm code. Must be ALG_IRLB or ALG_HALKO.
     /// @param verbose Print progress messages.
     ///
     /// @return Field containing {U, sigma, V}.
     template <typename T>
     arma::field<arma::mat> runSVD(const T& A, int k, int max_it = 0, int seed = 0, int algorithm = ALG_IRLB, bool verbose = true);
 
-    /// @brief Compute truncated SVD using PRIMME via matrix operator callbacks.
-    ///
-    /// @param op Input matrix operator.
-    /// @param k Number of singular vectors/values.
-    /// @param max_it Maximum iterations (0 = auto).
-    /// @param seed Random seed.
-    /// @param verbose Print progress messages.
-    ///
-    /// @return Structured SVD result.
-    SVDResult runSVD_PRIMME_Operator(const MatrixOperator& op, int k, int max_it = 0,
-                                     int seed = 0, bool verbose = true);
-
     /// @brief Compute truncated SVD with a matrix operator and explicit algorithm.
     ///
     /// Dispatches to the selected operator overload. Backed operators do not
-    /// have a hidden PRIMME fast path: ALG_IRLB calls the MatrixOperator IRLB
+    /// have a hidden fast path: ALG_IRLB calls the MatrixOperator IRLB
     /// implementation directly, and ALG_HALKO calls Halko.
     ///
     /// @note Default is @c ALG_HALKO — this differs from the in-memory
@@ -108,9 +88,7 @@ namespace actionet {
     /// @param k         Number of singular vectors/values to compute.
     /// @param max_it    Maximum iterations (0 = auto).
     /// @param seed      Random seed.
-    /// @param algorithm SVD algorithm code. Python callers expose only
-    ///        ALG_IRLB and ALG_HALKO; legacy C++/R paths may still pass
-    ///        ALG_FENG or ALG_PRIMME during the quarantine window.
+    /// @param algorithm SVD algorithm code. Must be ALG_IRLB or ALG_HALKO.
     /// @param verbose   Print progress messages if true.
     ///
     /// @return Structured SVD result {U (m×k), sigma (k), V (n×k)}.

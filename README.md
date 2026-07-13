@@ -9,7 +9,7 @@ libactionet uses native [Armadillo](http://arma.sourceforge.net/) sparse matrix 
 - **Memory efficiency**: ~50% lower peak memory vs. previous CHOLMOD-based implementation
 - **Simplified dependencies**: No external SuiteSparse/CHOLMOD requirement
 
-For large sparse matrix SVD, [PRIMME](https://github.com/primme/primme) is used, which also leverages native Armadillo operations.
+For large sparse matrix SVD, IRLB provides a 64-bit-clean iterative Lanczos path (Armadillo is force-configured with `ARMA_64BIT_WORD`, so `arma::sp_mat` handles matrices with >2³¹ non-zero elements natively).
 
 HDF5-backed (out-of-core) operators allow SVD, kernel reduction, specificity, and annotation on datasets that exceed available memory, reading from `.h5ad` files via chunked I/O.
 
@@ -43,7 +43,7 @@ include/             Public C++ headers (API surface consumed by bindings)
   extern/            Third-party headers (drop-in, do not modify)
 src/                 Core implementations (mirrors include/ structure)
   extern/            Third-party source files
-cmake/               CMake modules (Apple, BLAS, OpenMP, PRIMME, R configuration)
+cmake/               CMake modules (Apple, BLAS, OpenMP, R configuration)
 docs/                Algorithm and API documentation
 context/             Agent context and project decision records
 wrappers_r/          Reference copy of Rcpp wrapper code (primary R package lives separately)
@@ -81,7 +81,7 @@ cmake --build . -j$(nproc)
 - The R wrapper's `configure` script passes R's `SHLIB_OPENMP_*` into `LIBACTIONET_OPENMP_*`. If R reports no OpenMP flags, standard OpenMP detection is attempted; the build will fail if no OpenMP runtime is found.
 - BLAS/LAPACK come from R (`R CMD config BLAS_LIBS/LAPACK_LIBS`) unless the user overrides `BLA_VENDOR`.
 - On macOS, Accelerate is the default via R; OpenMP requires an OpenMP-enabled R toolchain (e.g., LLVM + libomp).
-- PRIMME and HDF5-backed operators are excluded from R builds (R does not support >2^31 element matrices).
+- HDF5-backed operators are excluded from R builds (R does not support >2^31 element matrices).
 
 ## Python Package Build Notes
 - `actionet-python` includes libactionet as a submodule and is automatically installed.
@@ -112,7 +112,7 @@ cmake --build . -j$(nproc)
 ## Public API (C++)
 All public symbols are exposed under the `actionet` namespace via `include/libactionet.hpp`.
 
-- **Decomposition / SVD**: `runSVD`, `runSVD_Operator`, `runSVD_PRIMME_Operator`, `perturbedSVD`,
+- **Decomposition / SVD**: `runSVD`, `runSVD_Operator`, `perturbedSVD`,
   plus result structs (`SVDResult`, `PerturbedSVDResult`) and the `MatrixOperator` interface (`DenseMatrixOperator`, `SparseMatrixOperator`)
 - **Batch orthogonalization**: `orthogonalizeBatchEffect`, `orthogonalizeBasal` (in-memory and operator-backed variants)
 - **Kernel reduction**: `reduceKernel`, `reduceKernel_Operator`, `reduceKernelFromSVD`, `reduceKernelFromSVD_Operator`, `reduceKernelFromSVD_InMemory`, `applyKernelPostSVD`, plus `KernelReductionResult`

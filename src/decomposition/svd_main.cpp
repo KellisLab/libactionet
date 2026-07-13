@@ -1,11 +1,7 @@
 // Singular value decomposition (SVD) algorithms
 #include "decomposition/svd_main.hpp"
 #include "decomposition/svd_irbla.hpp"
-#include "decomposition/svd_feng.hpp"
 #include "decomposition/svd_halko.hpp"
-#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
-#include "decomposition/svd_primme.hpp"
-#endif
 #include "utils_internal/utils_decomp.hpp"
 #include <stdexcept>
 
@@ -16,12 +12,7 @@ namespace actionet {
         int default_max_it(int algorithm) {
             switch (algorithm) {
                 case ALG_HALKO:
-                case ALG_FENG:
                     return 5;
-#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
-                case ALG_PRIMME:
-                    return 1000;
-#endif
                 case ALG_IRLB:
                 default:
                     return 1000;
@@ -46,14 +37,6 @@ namespace actionet {
             case ALG_HALKO:
                 out = svdHalko(A, k, max_it, seed, verbose);
                 break;
-            case ALG_FENG:
-                out = svdFeng(A, k, max_it, seed, verbose);
-                break;
-#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
-            case ALG_PRIMME:
-                out = svdPRIMME(A, k, max_it, seed, verbose);
-                break;
-#endif
             case ALG_IRLB:
             default:
                 out = svdIRLB(A, k, max_it, seed, verbose);
@@ -75,12 +58,6 @@ namespace actionet {
         switch (algorithm) {
             case ALG_HALKO:
                 return svdResultFromField(svdHalko(op, k, max_it, seed, verbose));
-            case ALG_FENG:
-                return svdResultFromField(svdFeng(op, k, max_it, seed, verbose));
-#if !defined(LIBACTIONET_BUILD_R) || LIBACTIONET_BUILD_R == 0
-            case ALG_PRIMME:
-                return runSVD_PRIMME_Operator(op, k, max_it, seed, verbose);
-#endif
             case ALG_IRLB:
             default: {
                 arma::field<arma::mat> result = svdIRLB(op, k, max_it, seed, verbose);

@@ -7,7 +7,6 @@ include(ConfigureApple)
 include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
-include(ConfigurePRIMME)
 
 find_package(HDF5 REQUIRED COMPONENTS C)
 
@@ -49,12 +48,6 @@ file(GLOB_RECURSE SOURCES_IO CONFIGURE_DEPENDS src/io/*.cpp)
 file(GLOB_RECURSE SOURCES_TOOLS CONFIGURE_DEPENDS src/tools/*.cpp)
 file(GLOB_RECURSE SOURCES_UTILS_INT CONFIGURE_DEPENDS src/utils_internal/*.cpp)
 file(GLOB_RECURSE SOURCES_VISUALIZATION CONFIGURE_DEPENDS src/visualization/*.cpp)
-
-## Exclude PRIMME wrapper from R builds (R doesn't support >2^31 element matrices)
-if (LIBACTIONET_BUILD_R)
-    list(FILTER SOURCES_DECOMPOSITION EXCLUDE REGEX ".*svd_primme\\.cpp$")
-    message(STATUS "Excluding svd_primme.cpp from R build")
-endif()
 
 add_library(actionet STATIC
         ${SOURCES_ACTION}
@@ -125,9 +118,6 @@ else()
     message(WARNING "BLAS or LAPACK not found - build may fail")
 endif()
 
-
-## Configure PRIMME library (large sparse matrix SVD support)
-CONFIGURE_PRIMME(actionet)
 
 target_include_directories(actionet PUBLIC ${HDF5_INCLUDE_DIRS})
 target_link_libraries(actionet PUBLIC ${_HDF5_TARGET})

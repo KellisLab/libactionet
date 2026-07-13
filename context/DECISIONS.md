@@ -73,22 +73,24 @@ This document records **deliberate architectural and operational decisions** for
 
 ## SVD algorithm strategy
 
-### Public Python SVD surface: IRLB, Halko (Feng and PRIMME quarantined)
+### Public Python SVD surface: IRLB, Halko (Feng and PRIMME removed)
 
 **Decision:**
 
 - The public Python SVD API exposes only `"irlb"` and `"halko"` plus `"auto"`.
 - `"auto"` selects IRLB for sparse in-memory inputs, Halko for dense in-memory inputs, and Halko for backed operator inputs.
-- The core SVD entry points still expose four algorithm codes at the C++ level (`ALG_IRLB`, `ALG_HALKO`, `ALG_FENG`, `ALG_PRIMME`), but Feng and PRIMME are quarantined from Python. The Python pybind layer rejects raw algorithm IDs other than `ALG_IRLB` and `ALG_HALKO`.
+- The core SVD entry points expose two algorithm codes at the C++ level (`ALG_IRLB` = 0, `ALG_HALKO` = 1). The Python pybind layer rejects any other raw algorithm ID.
 - The backed `IRLB -> PRIMME` fast path in `runSVD_Operator` has been removed. Backed operators requesting `ALG_IRLB` now use the honest `svdIRLB(MatrixOperator&, ...)` overload unconditionally.
 - The `MatrixOperator::prefer_block_solver_for_irlb()` virtual hint and its overrides in `BackedSparseMatrixOperator` / `BackedDenseMatrixOperator` have been deleted.
-- `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, the vendored `src/extern/primme/` tree, `svd_feng.{cpp,hpp}`, and the corresponding C++ dispatch cases remain in the tree for one release window. Full deletion is tracked in `TODO.md` and gated on the follow-up SVD/GPU work stabilizing.
+- `svd_primme.{cpp,hpp}`, `runSVD_PRIMME_Operator`, the vendored `src/extern/primme/` tree, `cmake/ConfigurePRIMME.cmake`, `svd_feng.{cpp,hpp}`, `ALG_FENG`/`ALG_PRIMME`, and the corresponding C++ dispatch cases have all been deleted.
+- The standalone `actionet-r` package still exposes `algorithm=2` (Feng) and `algorithm=3` (PRIMME) bindings and needs a matching cleanup patch; see `TODO.md`. The `wrappers_r/` files inside this repository are reference-only copies and were intentionally left untouched.
 
 **Rationale:**
 
 - Sparse `nnz > 2^31 - 1` is 64-bit clean under the force-defined `ARMA_64BIT_WORD` in `libactionet_config.hpp`; PRIMME is no longer needed for realistic omics matrices.
 - The hidden backed dispatch violated the algorithm contract callers had a right to expect.
-- Retaining the quarantined Feng/PRIMME sources for one release preserves a simple revert path without expanding the Python surface.
+- Feng did not win any auto-selection tier on the benchmark set and duplicated Halko's randomized category; retaining it added no distinct capability.
+- PRIMME also caused persistent ODR/LTO warnings against Armadillo's BLAS/LAPACK symbols; the deletion obsoletes that defect class.
 
 **Related:**
 
@@ -113,7 +115,7 @@ This document records **deliberate architectural and operational decisions** for
 - Native CUDA toolkit primitives are the default implementation direction.
   RAFT/RAPIDS may be evaluated only as an optional spike after the native
   product/streaming boundary exists.
-- PRIMME and Feng are quarantined legacy code, not GPU implementation routes.
+- PRIMME and Feng have been deleted; they are not GPU implementation routes.
 
 **Platform contract:**
 
