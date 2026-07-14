@@ -35,10 +35,9 @@ namespace actionet {
         arma::mat B;      ///< Accumulated right perturbation (n × p)
     };
 
-    // ---- Legacy field ↔ struct conversion helpers ----------------------------------------
-    // These exist solely to bridge code that still uses arma::field<arma::mat> (e.g. the
-    // templated runSVD, orient_SVD, orthogonalization paths).  New code should prefer the
-    // typed structs directly.
+    // ---- Legacy field → struct conversion helper -----------------------------------------
+    // Exists to bridge code that still returns arma::field<arma::mat> (the templated runSVD,
+    // orient_SVD, orthogonalization paths).  New code should prefer SVDResult directly.
 
     /// @brief Unpack a 3-element arma::field {U, sigma, V} into an SVDResult struct.
     inline SVDResult svdResultFromField(const arma::field<arma::mat>& svd) {
@@ -46,15 +45,6 @@ namespace actionet {
         out.U = svd(0);
         out.sigma = arma::vec(svd(1));
         out.V = svd(2);
-        return out;
-    }
-
-    /// @brief Pack an SVDResult struct into a 3-element arma::field {U, sigma, V}.
-    inline arma::field<arma::mat> svdFieldFromResult(const SVDResult& svd) {
-        arma::field<arma::mat> out(3);
-        out(0) = svd.U;
-        out(1) = svd.sigma;
-        out(2) = svd.V;
         return out;
     }
 

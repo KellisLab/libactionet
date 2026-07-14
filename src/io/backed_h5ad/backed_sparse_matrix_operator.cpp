@@ -512,7 +512,7 @@ namespace actionet {
     void BackedSparseMatrixOperator::rmatmat_csr_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_var_, X.n_cols);
         const arma::uword q = X.n_cols;
-        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
+        const unsigned int threads_use = actionet::get_num_threads_nested_safe(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
             const arma::uword row_end = next_block_end_(row_start, n_obs_);
@@ -547,7 +547,7 @@ namespace actionet {
     void BackedSparseMatrixOperator::matmat_csr_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_obs_, X.n_cols);
         const arma::uword q = X.n_cols;
-        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
+        const unsigned int threads_use = actionet::get_num_threads_nested_safe(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword row_start = 0; row_start < n_obs_;) {
             const arma::uword row_end = next_block_end_(row_start, n_obs_);
@@ -657,7 +657,7 @@ namespace actionet {
     void BackedSparseMatrixOperator::rmatmat_csc_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_var_, X.n_cols);
         const arma::uword q = X.n_cols;
-        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
+        const unsigned int threads_use = actionet::get_num_threads_nested_safe(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword col_start = 0; col_start < n_var_;) {
             const arma::uword col_end = next_block_end_(col_start, n_var_);
@@ -693,7 +693,7 @@ namespace actionet {
     void BackedSparseMatrixOperator::matmat_csc_impl_(const arma::mat& X, arma::mat& Y) const {
         Y.zeros(n_obs_, X.n_cols);
         const arma::uword q = X.n_cols;
-        const unsigned int threads_use = actionet::get_num_threads(static_cast<unsigned int>(q), n_threads_);
+        const unsigned int threads_use = actionet::get_num_threads_nested_safe(static_cast<unsigned int>(q), n_threads_);
 
         for (arma::uword col_start = 0; col_start < n_var_;) {
             const arma::uword col_end = next_block_end_(col_start, n_var_);
@@ -855,7 +855,7 @@ namespace actionet {
             ensure_chunk_transformed_csr_(row_start, row_end, nnz_start);
 
             const arma::uword chunk_rows = row_end - row_start;
-            const unsigned int threads_use = actionet::get_num_threads(
+            const unsigned int threads_use = actionet::get_num_threads_nested_safe(
                 static_cast<unsigned int>(chunk_rows), n_threads_);
 
             #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && chunk_rows > 1)

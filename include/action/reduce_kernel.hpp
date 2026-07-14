@@ -129,7 +129,7 @@ namespace actionet {
     ///
     /// @return Field with 5 elements: {S_r (cells × k), sigma, U (genes × k), A, B}.
     template <typename T>
-    arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg = 0, int max_it = 0,
+    arma::field<arma::mat> reduceKernel(T& S, int k, int svd_alg = ALG_IRLB, int max_it = 0,
                                         int seed = 0, bool verbose = true);
 }
 

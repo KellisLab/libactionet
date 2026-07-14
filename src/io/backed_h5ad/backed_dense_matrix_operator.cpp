@@ -185,7 +185,7 @@ namespace actionet {
         // Parallelise over columns (the outer arma dimension) so each thread
         // writes to a disjoint contiguous span of memory.
         if (apply_log1p_) {
-            const unsigned int threads_use = actionet::get_num_threads(
+            const unsigned int threads_use = actionet::get_num_threads_nested_safe(
                 static_cast<unsigned int>(ncols), n_threads_);
             #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && ncols > 1)
             for (arma::sword cs = 0; cs < static_cast<arma::sword>(ncols); ++cs) {

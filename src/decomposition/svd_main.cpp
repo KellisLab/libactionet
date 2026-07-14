@@ -3,6 +3,7 @@
 #include "decomposition/svd_irbla.hpp"
 #include "decomposition/svd_halko.hpp"
 #include "utils_internal/utils_decomp.hpp"
+#include <sstream>
 #include <stdexcept>
 
 namespace actionet {
@@ -14,15 +15,27 @@ namespace actionet {
                 case ALG_HALKO:
                     return 5;
                 case ALG_IRLB:
+                    return 1000;
                 default:
                     return 1000;
             }
+        }
+
+        // Enforce the header contract that ``algorithm`` is one of the two
+        // supported codes.  Retired algorithm ids (Feng=2, PRIMME=3) or any
+        // other unknown code should surface as an error rather than silently
+        // falling through to IRLB.
+        [[noreturn]] void throw_unknown_svd_algorithm(int algorithm, const char* label) {
+            std::ostringstream oss;
+            oss << label << ": unsupported SVD algorithm id " << algorithm
+                << "; valid ids are ALG_IRLB (" << ALG_IRLB << ") and ALG_HALKO ("
+                << ALG_HALKO << ").";
+            throw std::invalid_argument(oss.str());
         }
     } // anonymous namespace
 
     template <typename T>
     arma::field<arma::mat> runSVD(const T& A, int k, int max_it, int seed, const int algorithm, bool verbose) {
-        // out: U, sigma, V
         arma::field<arma::mat> out(3);
 
         if (max_it < 1) {
@@ -38,8 +51,10 @@ namespace actionet {
                 out = svdHalko(A, k, max_it, seed, verbose);
                 break;
             case ALG_IRLB:
-            default:
                 out = svdIRLB(A, k, max_it, seed, verbose);
+                break;
+            default:
+                throw_unknown_svd_algorithm(algorithm, "runSVD");
         }
 
         return out;
@@ -58,11 +73,12 @@ namespace actionet {
         switch (algorithm) {
             case ALG_HALKO:
                 return svdResultFromField(svdHalko(op, k, max_it, seed, verbose));
-            case ALG_IRLB:
-            default: {
+            case ALG_IRLB: {
                 arma::field<arma::mat> result = svdIRLB(op, k, max_it, seed, verbose);
                 return svdResultFromField(result);
             }
+            default:
+                throw_unknown_svd_algorithm(algorithm, "runSVD_Operator");
         }
     }
 

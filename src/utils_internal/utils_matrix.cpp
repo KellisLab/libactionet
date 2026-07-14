@@ -17,7 +17,7 @@ arma::mat spmat_mat_product_parallel(const arma::sp_mat& A, const arma::mat& B, 
     size_t N = B.n_cols;
     arma::mat res(A.n_rows, N);
 
-    int threads_use = get_num_threads(N, thread_no);
+    int threads_use = get_num_threads_nested_safe(N, thread_no);
 
     #pragma omp parallel for num_threads(threads_use)
     for (size_t j = 0; j < N; ++j) {

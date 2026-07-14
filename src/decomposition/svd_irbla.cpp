@@ -6,9 +6,6 @@
 #include "blas_deps.hpp"
 #include <cstring>
 #include <functional>
-#include <limits>
-#include <sstream>
-#include <stdexcept>
 #include <vector>
 
 namespace actionet {
@@ -107,18 +104,9 @@ void operator_matvec(char transpose, const MatrixOperator& A,
 // the (dim+7)-column sketch buffers. Sparse `nnz` is 64-bit clean via arma
 // (see the header comment on `svdIRLB_core`), but a per-axis dimension larger
 // than `INT_MAX` would silently overflow the BLAS ldm/ldn arguments.
-void check_irlb_axis_dimensions(arma::uword rows, arma::uword cols, const char* label) {
-    constexpr arma::uword INT_MAX_UW = static_cast<arma::uword>(std::numeric_limits<int>::max());
-    if (rows > INT_MAX_UW || cols > INT_MAX_UW) {
-        std::ostringstream msg;
-        msg << "svdIRLB (" << label << "): matrix dimension exceeds INT_MAX "
-            << "(rows=" << rows << ", cols=" << cols
-            << ", INT_MAX=" << INT_MAX_UW << "). "
-            << "Sparse nnz > 2^31 - 1 is supported, but per-axis dimensions "
-               "above INT_MAX (~2.1B) are not yet supported by any SVD algorithm.";
-        throw std::runtime_error(msg.str());
-    }
-}
+//
+// Delegates to the shared `check_svd_axis_dimensions` helper so IRLB and Halko
+// throw the same exception type with the same message shape.
 
 // Unified IRLB core: Lanczos bidiagonalization with implicit restarts.
 // The matvec callback abstracts over sparse, dense, and operator-backed matrices.
@@ -126,7 +114,7 @@ void check_irlb_axis_dimensions(arma::uword rows, arma::uword cols, const char* 
 // 64-bit contract:
 //   - Row/column dimensions are passed in as `int`. Callers MUST guard their
 //     inputs so both dimensions fit in `INT_MAX`; this is enforced by the
-//     public overloads below via `check_irlb_axis_dimensions`.
+//     public overloads below via `check_svd_axis_dimensions`.
 //   - Sparse `nnz > INT32_MAX` is fully supported: `arma::sp_mat` uses 64-bit
 //     indices under `ARMA_64BIT_WORD` (force-defined for libactionet builds in
 //     `libactionet_config.hpp`), and the sparse matvec path routes through
@@ -358,7 +346,7 @@ arma::field<arma::mat> svdIRLB_core(int m, int n, int dim, int iters,
 // --- Public overloads: thin wrappers that construct the appropriate matvec ---
 
 arma::field<arma::mat> svdIRLB(const arma::sp_mat& A, int dim, int iters, int seed, bool verbose) {
-    check_irlb_axis_dimensions(A.n_rows, A.n_cols, "sparse");
+    check_svd_axis_dimensions(A.n_rows, A.n_cols, "svdIRLB (sparse)");
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         sparse_matvec(t, A, x, out);
     };
@@ -367,7 +355,7 @@ arma::field<arma::mat> svdIRLB(const arma::sp_mat& A, int dim, int iters, int se
 }
 
 arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters, int seed, bool verbose) {
-    check_irlb_axis_dimensions(A.n_rows, A.n_cols, "dense");
+    check_svd_axis_dimensions(A.n_rows, A.n_cols, "svdIRLB (dense)");
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         dense_matvec(t, A, x, out);
     };
@@ -377,7 +365,7 @@ arma::field<arma::mat> svdIRLB(const arma::mat& A, int dim, int iters, int seed,
 
 arma::field<arma::mat> svdIRLB(const MatrixOperator& A, int dim,
                                 int iters, int seed, bool verbose) {
-    check_irlb_axis_dimensions(A.rows(), A.cols(), "operator");
+    check_svd_axis_dimensions(A.rows(), A.cols(), "svdIRLB (operator)");
     MatvecFn mv = [&A](char t, const double* x, double* out) {
         operator_matvec(t, A, x, out);
     };

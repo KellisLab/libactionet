@@ -1,5 +1,9 @@
 #include "utils_internal/utils_decomp.hpp"
 
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+
 namespace actionet {
 
 void gram_schmidt(arma::mat &A) {
@@ -55,6 +59,34 @@ void orient_SVD(arma::field<arma::mat>& SVD_res) {
             U.col(i) *= -1;
             V.col(i) *= -1;
         }
+    }
+}
+
+void check_svd_axis_dimensions(arma::uword rows, arma::uword cols, const char* label) {
+    constexpr arma::uword INT_MAX_UW = static_cast<arma::uword>(std::numeric_limits<int>::max());
+    if (rows <= INT_MAX_UW && cols <= INT_MAX_UW) {
+        return;
+    }
+
+    std::ostringstream msg;
+    msg << label << ": matrix dimension exceeds INT_MAX "
+        << "(rows=" << rows << ", cols=" << cols
+        << ", INT_MAX=" << INT_MAX_UW << "). "
+        << "Per-axis dimensions above INT_MAX (~2.1B) are not yet supported "
+           "by any SVD algorithm.";
+    throw std::overflow_error(msg.str());
+}
+
+void clamp_halko_dim(arma::uword rows, arma::uword cols, int& dim) {
+    const arma::uword mn_min = std::min(rows, cols);
+    if (dim < 1) {
+        dim = 1;
+    }
+    if (static_cast<arma::uword>(dim) + 2 > mn_min) {
+        dim = static_cast<int>(mn_min) - 2;
+    }
+    if (dim < 1) {
+        dim = 1;
     }
 }
 
