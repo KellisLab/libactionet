@@ -1,4 +1,5 @@
 #include "utils_internal/utils_active_set.hpp"
+#include "utils_internal/utils_action_numeric_policy.hpp"
 #include "utils_internal/utils_small_dense.hpp"
 #include <cassert>
 
@@ -7,6 +8,7 @@
 namespace actionet {
 
 namespace small_dense = utils_internal::small_dense;
+namespace numeric_policy = utils_internal::action_numeric_policy;
 
 /* **************************
  * Active-Set Method with direct inversion, with update(matrix inversion lemma)
@@ -133,7 +135,7 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
             if (std::abs(PRed[i]) > maxPRed)
                 maxPRed = std::abs(PRed[i]);
         }
-        if (maxPRed < 1e-10) {
+        if (maxPRed < numeric_policy::active_set_zero_step_tolerance) {
             // P = 0, no advance possible
             bool isOpt = true;
             double lamMin = -epsilon;
@@ -383,7 +385,7 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
             if (std::abs(PRed[i]) > maxPRed)
                 maxPRed = std::abs(PRed[i]);
         }
-        if (maxPRed < 1e-10) {
+        if (maxPRed < numeric_policy::active_set_zero_step_tolerance) {
             // P = 0, no advance possible
             bool isOpt = true;
             double lamMin = -epsilon;

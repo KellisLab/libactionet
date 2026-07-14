@@ -1,16 +1,13 @@
 // Solves the standard Archetypal Analysis (AA) problem
 #include "action/aa.hpp"
 #include "action/simplex_regression.hpp"
+#include "utils_internal/utils_action_numeric_policy.hpp"
 #include "utils_internal/utils_small_dense.hpp"
 
 namespace actionet {
 
     namespace small_dense = utils_internal::small_dense;
-
-    // Squared-norm threshold below which the current archetype h-column is
-    // considered singular and re-seeded from the residual argmax.
-    // Note: the literal `10e-8` reads as `1e-7`, not `1e-8`; naming makes intent explicit.
-    static constexpr double AA_SINGULAR_THRESHOLD = 1e-7;
+    namespace numeric_policy = utils_internal::action_numeric_policy;
 
     arma::field<arma::mat> runAA(const arma::mat &A, const arma::mat &W0, int max_it, double tol) {
         int sample_no = A.n_cols;
@@ -40,7 +37,7 @@ namespace actionet {
                 double norm_sq = small_dense::dot(
                     static_cast<int>(h.n_elem), h.memptr(), 1,
                     h.memptr(), 1, true);
-                if (norm_sq < AA_SINGULAR_THRESHOLD) {
+                if (norm_sq < numeric_policy::aa_singular_squared_norm) {
                     // singular
                     int max_res_idx = arma::index_max(arma::rowvec(arma::sum(arma::square(R), 0)));
                     W.col(i) = A.col(max_res_idx);

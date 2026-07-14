@@ -1,14 +1,18 @@
 // Simplex regression algorithm
 #include "action/simplex_regression.hpp"
 #include "utils_internal/utils_active_set.hpp"
+#include "utils_internal/utils_action_numeric_policy.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include "utils_internal/utils_small_dense.hpp"
 
 namespace actionet {
 
+    namespace numeric_policy = utils_internal::action_numeric_policy;
+
     arma::mat runSimplexRegression(const arma::mat &A, const arma::mat &B, bool computeXtX) {
 
-        double lambda2 = 1e-5, epsilon = 1e-5;
+        constexpr double lambda2 = numeric_policy::simplex_l2_regularization;
+        constexpr double epsilon = numeric_policy::simplex_optimality_tolerance;
 
         int ncols = static_cast<int>(B.n_cols);
         arma::mat X = arma::zeros(A.n_cols, ncols);

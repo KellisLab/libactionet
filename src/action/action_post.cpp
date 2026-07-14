@@ -1,9 +1,12 @@
 #include "action/action_post.hpp"
 #include "action/spa.hpp"
 #include "action/simplex_regression.hpp"
+#include "utils_internal/utils_action_numeric_policy.hpp"
 #include "utils_internal/utils_stats.hpp"
 
 namespace actionet {
+    namespace numeric_policy = utils_internal::action_numeric_policy;
+
     ResCollectArch collectArchetypes(arma::mat& C_stacked, arma::mat& H_stacked,
                                      double spec_th, int min_obs) {
         size_t total_archs = H_stacked.n_rows;
@@ -69,18 +72,19 @@ namespace actionet {
 
         // Find landmark cells
         // i.e., closest cells to each multi-level archetype (its projection on to the cell space)
-        double epsilon = 1e-3;
         int bad_archs = 0;
         for (size_t i = 0; i < total_archs; i++) {
             const arma::subview_row<double> h = H_stacked.row(i);
             const arma::subview_col<double> c = C_stacked.col(i);
             double h_max = h.max();
 
-            arma::uvec h_landmarks = arma::find((h_max - h) < epsilon);
-            arma::uvec c_landmarks = arma::find(c > 0);
+            arma::uvec h_landmarks = arma::find(
+                (h_max - h) < numeric_policy::landmark_proximity_tolerance);
+            arma::uvec c_landmarks = arma::find(
+                c > numeric_policy::simplex_coefficient_support_tolerance);
             arma::uvec common_landmarks = arma::intersect(h_landmarks, c_landmarks);
 
-            if (0 < common_landmarks.n_elem) { // They don't agree on any samples!
+            if (0 < common_landmarks.n_elem) { // At least one supported cell agrees.
                 continue;
             }
             else { // Potentially noisy archetype
@@ -93,7 +97,10 @@ namespace actionet {
         FLUSH;
 
         arma::urowvec membership_counts =
-            arma::sum(arma::conv_to<arma::umat>::from(C_stacked > 1e-6), 0);
+            arma::sum(
+                arma::conv_to<arma::umat>::from(
+                    C_stacked > numeric_policy::simplex_coefficient_support_tolerance),
+                0);
         arma::uvec trivial_idx = arma::find(membership_counts < (arma::uword)min_obs);
         pruned(trivial_idx).ones();
 

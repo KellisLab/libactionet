@@ -1,7 +1,10 @@
 // Successive projection algorithm (SPA)
 #include "action/spa.hpp"
+#include "utils_internal/utils_action_numeric_policy.hpp"
 
 namespace actionet {
+    namespace numeric_policy = utils_internal::action_numeric_policy;
+
     ResSPA runSPA(const arma::mat& A, int k) {
         ResSPA res;
 
@@ -15,8 +18,6 @@ namespace actionet {
         arma::mat U(A.n_rows, k);
 
         arma::vec norm_trace = arma::zeros(k);
-        double eps = 1e-16;
-
         int selected = 0; // Actual number of columns selected (may be < k on early break).
         for (int i = 1; i <= k; i++) {
             // Find the column with maximum norm. In case of having more than one column
@@ -25,7 +26,9 @@ namespace actionet {
             double a = arma::max(normM);
             norm_trace(i - 1) = a;
 
-            arma::uvec b = arma::find((a * arma::ones(1, n) - normM) / a <= eps);
+            arma::uvec b = arma::find(
+                (a * arma::ones(1, n) - normM) / a
+                <= numeric_policy::spa_relative_tie_tolerance);
             if (b.n_elem == 0) {
                 break;
             }

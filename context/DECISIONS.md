@@ -146,6 +146,41 @@ This document records **deliberate architectural and operational decisions** for
 
 ---
 
+## ACTION numerical decision stability
+
+### Shared internal policy for meaningful simplex support
+
+**Decision:**
+
+- Keep ACTION's numerical decision constants in the private
+  `include/utils_internal/utils_action_numeric_policy.hpp` header so CPU and
+  future GPU implementations share the same semantics.
+- Treat a simplex coefficient as support only when it is strictly greater
+  than `1e-6`. Use this predicate for both landmark reproducibility and
+  trivial-membership counting.
+- Preserve all other SPA, AA, active-set, landmark, specificity, merge, and
+  assignment thresholds and comparisons.
+- Require exact discrete decisions on controlled inputs and numerical, not
+  bitwise, C/H parity.
+
+**Rationale:**
+
+- In the MKL old/current comparison, a `7.22e-16` change in normalized ACTION
+  input moved one coefficient from zero to `1.73e-18`. The previous exact
+  positivity check retained an otherwise unreproducible archetype.
+- The existing `1e-6` membership cutoff already defines meaningful simplex
+  mass. Reusing it removes the inconsistent roundoff-sensitive decision
+  without clamping or changing returned C/H matrices.
+- The comparison has identical computational complexity to `C > 0`; no
+  performance regression is expected.
+
+**Related:**
+
+- `../../../plans/openblas_threading_fix_handoff.md`
+- `../../../tests/test_action_small_dense_kernels.py`
+
+---
+
 ## GPU backend scope and platform
 
 ### NVIDIA CUDA backend: optional, Python-first, SVD-first
