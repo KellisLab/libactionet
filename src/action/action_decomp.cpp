@@ -38,6 +38,7 @@ namespace actionet {
 
         #pragma omp parallel for num_threads(threads_use)
         for (int k = k_min; k <= k_max; k++) {
+            OuterParallelRegionScope outer_parallel_scope;
             ResSPA SPA_res = runSPA(S_r, k);
             trace.selected_cols[k] = std::move(SPA_res.selected_cols);
 

@@ -62,6 +62,25 @@ inline unsigned int get_max_threads() {
 
 namespace actionet {
 
+namespace detail {
+inline unsigned int& outer_parallel_depth_() {
+    static thread_local unsigned int depth = 0;
+    return depth;
+}
+} // namespace detail
+
+// Marks work owned by a coarse-grained ACTION parallel loop.  The explicit
+// marker is needed because some OpenMP runtimes report a one-thread team as
+// inactive, which would otherwise allow a nested helper to start a new team.
+class OuterParallelRegionScope {
+public:
+    OuterParallelRegionScope() { ++detail::outer_parallel_depth_(); }
+    ~OuterParallelRegionScope() { --detail::outer_parallel_depth_(); }
+
+    OuterParallelRegionScope(const OuterParallelRegionScope&) = delete;
+    OuterParallelRegionScope& operator=(const OuterParallelRegionScope&) = delete;
+};
+
 inline unsigned get_num_threads(unsigned int max_threads = 0, const unsigned int thread_no = 0) {
     const unsigned int hw = get_max_threads();
     max_threads = (max_threads > 0) ? std::min(max_threads, hw) : hw;
@@ -81,15 +100,16 @@ inline unsigned get_num_threads(unsigned int max_threads = 0, const unsigned int
     return (threads_use);
 }
 
-// Nested-OMP guard: returns 1 when called from inside an OpenMP parallel
-// region (avoids thread oversubscription when a parallelisable function is
-// invoked from within an outer parallel loop), otherwise defers to
-// get_num_threads(). Use this at the top of any function that is legal to
-// call both from a serial context and from within an outer parallel region.
+// Nested-OMP guard: returns 1 at every nesting level below an OpenMP region,
+// including a serialized num_threads(1) region.  Intel OpenMP may report
+// omp_in_parallel() == false for that serialized case even though launching a
+// new inner team would violate the outer ACTION thread limit.
 inline unsigned get_num_threads_nested_safe(unsigned int max_threads = 0,
                                             const unsigned int thread_no = 0) {
 #if defined(_OPENMP)
-    if (omp_in_parallel()) return 1;
+    if (omp_get_level() > 0 || detail::outer_parallel_depth_() > 0) return 1;
+#else
+    if (detail::outer_parallel_depth_() > 0) return 1;
 #endif
     return get_num_threads(max_threads, thread_no);
 }

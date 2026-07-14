@@ -1,10 +1,12 @@
 #include "utils_internal/utils_active_set.hpp"
-#include "blas_deps.hpp"
+#include "utils_internal/utils_small_dense.hpp"
 #include <cassert>
 
 // min(|| AX - B ||) s.t. simplex constraint
 
 namespace actionet {
+
+namespace small_dense = utils_internal::small_dense;
 
 /* **************************
  * Active-Set Method with direct inversion, with update(matrix inversion lemma)
@@ -13,10 +15,11 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
     int m = M.n_rows;
     int p = M.n_cols;
     int L = std::min(m, p) + 1;
+    const bool inline_kernel = small_dense::use_inline_kernel(M.n_rows, M.n_cols);
 
     arma::vec c(M.n_cols);
-    cblas_dgemv(CblasColMajor, CblasTrans, M.n_rows, M.n_cols, -1, M.memptr(),
-                M.n_rows, b.memptr(), 1, 0, c.memptr(), 1);
+    small_dense::gemv(true, m, p, -1.0, M.memptr(), m, b.memptr(),
+                      0.0, c.memptr(), inline_kernel);
 
     double lam2sq = lambda2 * lambda2;
 
@@ -52,19 +55,20 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
     na = 1;
     xRed[0] = x[0];
     cRed[0] = c[0];
-    cblas_dcopy(m, pr_M, 1, pr_MRed, 1);
+    small_dense::copy(m, pr_M, 1, pr_MRed, 1, inline_kernel);
 
     // BLAS GRed = MRedT * MRed + lam2sq (na = 1 for now)
-    double coeff = cblas_ddot(m, pr_MRed, 1, pr_MRed, 1) + lam2sq;
+    double coeff = small_dense::dot(m, pr_MRed, 1, pr_MRed, 1, inline_kernel)
+                 + lam2sq;
     GRed(0, 0) = coeff;
     GRedinv(0, 0) = double(1.0) / GRed(0, 0);
 
     arma::vec Mx(M.n_rows);
     arma::vec Gplus(size(c));
-    cblas_dgemv(CblasColMajor, CblasNoTrans, M.n_rows, M.n_cols, 1, M.memptr(),
-                M.n_rows, x.memptr(), 1, 0, Mx.memptr(), 1);
-    cblas_dgemv(CblasColMajor, CblasTrans, M.n_rows, M.n_cols, 1, M.memptr(),
-                M.n_rows, Mx.memptr(), 1, 0, Gplus.memptr(), 1);
+    small_dense::gemv(false, m, p, 1.0, M.memptr(), m, x.memptr(),
+                      0.0, Mx.memptr(), inline_kernel);
+    small_dense::gemv(true, m, p, 1.0, M.memptr(), m, Mx.memptr(),
+                      0.0, Gplus.memptr(), inline_kernel);
     Gplus += (lam2sq * x + c);
 
     double *pr_Gplus = Gplus.memptr();
@@ -95,7 +99,8 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
         // MRed
         for (int i = 0; i < na; ++i) {
             // BLAS copy first columns of M to MRed
-            cblas_dcopy(m, pr_M + m * NASet[i], 1, pr_MRed + m * i, 1);
+            small_dense::copy(m, pr_M + m * NASet[i], 1,
+                              pr_MRed + m * i, 1, inline_kernel);
         }
         // gRed
         for (int i = 0; i < na; ++i) {
@@ -104,13 +109,13 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
 
         // GinvA
         // BLAS GinvA = GRedinv * A (ARed == A)
-        cblas_dsymv(CblasColMajor, CblasUpper, na, double(1.0), pr_GRedinv, L, pr_A,
-                    1, double(), pr_GinvA, 1);
+        small_dense::symv_upper(na, 1.0, pr_GRedinv, L, pr_A, 0.0,
+                                pr_GinvA, inline_kernel);
 
         // Ginvg
         // BLAS Ginvg = GRedinv * gRed
-        cblas_dsymv(CblasColMajor, CblasUpper, na, double(1.0), pr_GRedinv, L,
-                    pr_gRed, 1, double(), pr_Ginvg, 1);
+        small_dense::symv_upper(na, 1.0, pr_GRedinv, L, pr_gRed, 0.0,
+                                pr_Ginvg, inline_kernel);
         double sGinvg = double();
         double sGinvA = double();
         for (int i = 0; i < na; ++i) {
@@ -119,9 +124,9 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
         }
         double lambdaS = sGinvg / sGinvA;
         // BLAS PRed = GinvA * lambdaS - Ginvg
-        cblas_dcopy(na, pr_GinvA, 1, pr_PRed, 1);
-        cblas_dscal(na, lambdaS, pr_PRed, 1);
-        cblas_daxpy(na, double(-1.0), pr_Ginvg, 1, pr_PRed, 1);
+        small_dense::copy(na, pr_GinvA, 1, pr_PRed, 1, inline_kernel);
+        small_dense::scale(na, lambdaS, pr_PRed, 1, inline_kernel);
+        small_dense::axpy(na, -1.0, pr_Ginvg, 1, pr_PRed, 1, inline_kernel);
 
         double maxPRed = std::abs(PRed[0]);
         for (int i = 0; i < na; ++i) {
@@ -154,25 +159,32 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
 
                 // update GRedinv
                 // BLAS UB = MRed.double * M[:, indexMin]
-                cblas_dgemv(CblasColMajor, CblasTrans, m, na, double(1.0), pr_MRed, m,
-                            pr_M + indexMin * m, 1, double(), pr_UB, 1);
+                small_dense::gemv(true, m, na, 1.0, pr_MRed, m,
+                                  pr_M + indexMin * m, 0.0, pr_UB,
+                                  inline_kernel);
                 // BLAS UC = M[:,indexMin].double* M[:, indexMin]
-                double UC =
-                        cblas_ddot(m, pr_M + indexMin * m, 1, pr_M + indexMin * m, 1) +
-                        lam2sq;
+                double UC = small_dense::dot(m, pr_M + indexMin * m, 1,
+                                             pr_M + indexMin * m, 1,
+                                             inline_kernel) + lam2sq;
                 // BLAS UAiB = GRedinv * UB
-                cblas_dsymv(CblasColMajor, CblasUpper, na, double(1.0), pr_GRedinv, L,
-                            pr_UB, 1, double(), pr_UAiB, 1);
-                double USi = double(1.0) / (UC - cblas_ddot(na, pr_UB, 1, pr_UAiB, 1));
+                small_dense::symv_upper(na, 1.0, pr_GRedinv, L, pr_UB,
+                                        0.0, pr_UAiB, inline_kernel);
+                double USi = 1.0 / (UC - small_dense::dot(
+                    na, pr_UB, 1, pr_UAiB, 1, inline_kernel));
                 // GRedinv (restricted) += USi * UAiB*UAiB
                 // replace cblas_syr(CblasColMajor,CblasUpper,na,USi, pr_UAiB, 1,
                 // pr_GRedinv, L);
-                cblas_dger(CblasColMajor, na, na, USi, pr_UAiB, 1, pr_UAiB, 1, pr_GRedinv, L);
+                small_dense::rank_one_update(na, na, USi, pr_UAiB, pr_UAiB,
+                                             pr_GRedinv, L, inline_kernel);
                 // copy -UAiB*USi, -UAiB.double*USi, USi to GRedinv
-                cblas_dcopy(na, pr_UAiB, 1, pr_GRedinv + na * L, 1);
-                cblas_dscal(na, -USi, pr_GRedinv + na * L, 1);
-                cblas_dcopy(na, pr_UAiB, 1, pr_GRedinv + na, L);
-                cblas_dscal(na, -USi, pr_GRedinv + na, L);
+                small_dense::copy(na, pr_UAiB, 1, pr_GRedinv + na * L, 1,
+                                  inline_kernel);
+                small_dense::scale(na, -USi, pr_GRedinv + na * L, 1,
+                                   inline_kernel);
+                small_dense::copy(na, pr_UAiB, 1, pr_GRedinv + na, L,
+                                  inline_kernel);
+                small_dense::scale(na, -USi, pr_GRedinv + na, L,
+                                   inline_kernel);
                 GRedinv(na, na) = USi;
 
                 na += 1;
@@ -189,7 +201,8 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
                 }
             }
             // update x and Gplus
-            cblas_dscal(na, std::min(double(1.0), alphaMin), pr_PRed, 1);
+            small_dense::scale(na, std::min(1.0, alphaMin), pr_PRed, 1,
+                               inline_kernel);
             for (int i = 0; i < na; ++i) {
                 x[NASet[i]] += PRed[i];
                 xRed[i] = x[NASet[i]];
@@ -200,10 +213,10 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
                 Gplus[NASet[i]] += PRed[i] * lam2sq;
             }
             // Gplus += M.double * MRed * (scaled PRed)
-            cblas_dgemv(CblasColMajor, CblasNoTrans, m, na, double(1.0), pr_MRed, m,
-                        pr_PRed, 1, double(), pr_MRedPRed, 1);
-            cblas_dgemv(CblasColMajor, CblasTrans, m, p, double(1.0), pr_M, m,
-                        pr_MRedPRed, 1, double(1.0), pr_Gplus, 1);
+            small_dense::gemv(false, m, na, 1.0, pr_MRed, m, pr_PRed,
+                              0.0, pr_MRedPRed, inline_kernel);
+            small_dense::gemv(true, m, p, 1.0, pr_M, m, pr_MRedPRed,
+                              1.0, pr_Gplus, inline_kernel);
 
             // delete one constraint or not?
             if (indexMin != -1) {
@@ -227,22 +240,25 @@ arma::vec activeSet_arma(const arma::mat &M, const arma::vec &b, double lambda2,
                 // downdate GRedinv
                 double UCi = double(1.0) / GRedinv(indexMin, indexMin);
                 // BLAS UB = GRedinv[ALL\indexMin,indexMin]
-                cblas_dcopy(na + 1, pr_GRedinv + indexMin * L, 1, pr_UB, 1);
+                small_dense::copy(na + 1, pr_GRedinv + indexMin * L, 1,
+                                  pr_UB, 1, inline_kernel);
                 for (int i = indexMin; i < na; ++i)
                     UB[i] = UB[i + 1];
                 UB[na] = double();
                 // get (GRedinv translated)
                 // column first
                 for (int i = indexMin; i < na; ++i)
-                    cblas_dcopy(na + 1, pr_GRedinv + (i + 1) * L, 1, pr_GRedinv + i * L,
-                                1);
+                    small_dense::copy(na + 1, pr_GRedinv + (i + 1) * L, 1,
+                                      pr_GRedinv + i * L, 1, inline_kernel);
                 // row then
                 for (int i = indexMin; i < na; ++i)
-                    cblas_dcopy(na + 1, pr_GRedinv + i + 1, L, pr_GRedinv + i, L);
+                    small_dense::copy(na + 1, pr_GRedinv + i + 1, L,
+                                      pr_GRedinv + i, L, inline_kernel);
 
                 // BLAS GRedinv = (GRedinv translated) - UB*UB.double*UCi
                 // replace cblas_syr(CblasColMajor,CblasUpper,na,-UCi, pr_UB, 1, pr_GRedinv, L);
-                cblas_dger(CblasColMajor, na, na, -UCi, pr_UB, 1, pr_UB, 1, pr_GRedinv, L);
+                small_dense::rank_one_update(na, na, -UCi, pr_UB, pr_UB,
+                                             pr_GRedinv, L, inline_kernel);
             }
         }
     }
@@ -256,6 +272,7 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
     int p = M.n_cols;
     int L = std::min(m, p) + 1;
     double lam2sq = lambda2 * lambda2;
+    const bool inline_kernel = small_dense::use_inline_kernel(M.n_rows, M.n_cols);
     const double *pr_G = G.memptr();
 
     /*
@@ -263,8 +280,8 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
     arma::vec c0 = -Mt*b;
     */
     arma::vec c(M.n_cols);
-    cblas_dgemv(CblasColMajor, CblasTrans, M.n_rows, M.n_cols, -1, M.memptr(),
-                M.n_rows, b.memptr(), 1, 0, c.memptr(), 1);
+    small_dense::gemv(true, m, p, -1.0, M.memptr(), m, b.memptr(),
+                      0.0, c.memptr(), inline_kernel);
 
     arma::vec x(p);
     const double *pr_M = M.memptr();
@@ -298,18 +315,19 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
     na = 1;
     xRed[0] = x[0];
     cRed[0] = c[0];
-    cblas_dcopy(m, pr_M, 1, pr_MRed, 1);
+    small_dense::copy(m, pr_M, 1, pr_MRed, 1, inline_kernel);
 
     // BLAS GRed = MRedT * MRed + lam2sq (na = 1 for now)
-    double coeff = cblas_ddot(m, pr_MRed, 1, pr_MRed, 1) + lam2sq;
+    double coeff = small_dense::dot(m, pr_MRed, 1, pr_MRed, 1, inline_kernel)
+                 + lam2sq;
     GRed(0, 0) = coeff;
     GRedinv(0, 0) = double(1.0) / GRed(0, 0);
-    cblas_dcopy(p, pr_G, 1, pr_MTMRed, 1);
+    small_dense::copy(p, pr_G, 1, pr_MTMRed, 1, inline_kernel);
 
     // arma::vec Gplus = G*x + c;
     arma::vec Gplus = c;
-    cblas_dgemv(CblasColMajor, CblasNoTrans, G.n_rows, G.n_cols, 1, G.memptr(),
-                G.n_rows, x.memptr(), 1, 1, Gplus.memptr(), 1);
+    small_dense::gemv(false, p, p, 1.0, G.memptr(), p, x.memptr(),
+                      1.0, Gplus.memptr(), inline_kernel);
 
     double *pr_Gplus = Gplus.memptr();
 
@@ -342,12 +360,12 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
 
         // GinvA
         // BLAS GinvA = GRedinv * A (ARed == A)
-        cblas_dsymv(CblasColMajor, CblasUpper, na, double(1.0), pr_GRedinv, L, pr_A,
-                    1, double(), pr_GinvA, 1);
+        small_dense::symv_upper(na, 1.0, pr_GRedinv, L, pr_A, 0.0,
+                                pr_GinvA, inline_kernel);
         // Ginvg
         // BLAS Ginvg = GRedinv * gRed
-        cblas_dsymv(CblasColMajor, CblasUpper, na, double(1.0), pr_GRedinv, L,
-                    pr_gRed, 1, double(), pr_Ginvg, 1);
+        small_dense::symv_upper(na, 1.0, pr_GRedinv, L, pr_gRed, 0.0,
+                                pr_Ginvg, inline_kernel);
         double sGinvg = double();
         double sGinvA = double();
         for (int i = 0; i < na; ++i) {
@@ -356,9 +374,9 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
         }
         double lambdaS = sGinvg / sGinvA;
         // BLAS PRed = GinvA * lambdaS - Ginvg
-        cblas_dcopy(na, pr_GinvA, 1, pr_PRed, 1);
-        cblas_dscal(na, lambdaS, pr_PRed, 1);
-        cblas_daxpy(na, double(-1.0), pr_Ginvg, 1, pr_PRed, 1);
+        small_dense::copy(na, pr_GinvA, 1, pr_PRed, 1, inline_kernel);
+        small_dense::scale(na, lambdaS, pr_PRed, 1, inline_kernel);
+        small_dense::axpy(na, -1.0, pr_Ginvg, 1, pr_PRed, 1, inline_kernel);
 
         double maxPRed = std::abs(PRed[0]);
         for (int i = 0; i < na; ++i) {
@@ -389,7 +407,8 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
                 cRed[na] = c[indexMin];
                 // Gplus inchange
                 // update MTMRed
-                cblas_dcopy(p, pr_G + indexMin * p, 1, pr_MTMRed + na * p, 1);
+                small_dense::copy(p, pr_G + indexMin * p, 1,
+                                  pr_MTMRed + na * p, 1, inline_kernel);
 
                 // update GRedinv
                 // BLAS UB = MRed.double * M[:, indexMin]
@@ -400,19 +419,24 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
                 // BLAS UC = M[:,indexMin].double* M[:, indexMin]
                 double UC = G(indexMin, indexMin);
                 // BLAS UAiB = GRedinv * UB
-                cblas_dsymv(CblasColMajor, CblasUpper, na, double(1.0), pr_GRedinv, L,
-                            pr_UB, 1, double(), pr_UAiB, 1);
-                double USi = double(1.0) / (UC - cblas_ddot(na, pr_UB, 1, pr_UAiB, 1));
+                small_dense::symv_upper(na, 1.0, pr_GRedinv, L, pr_UB,
+                                        0.0, pr_UAiB, inline_kernel);
+                double USi = 1.0 / (UC - small_dense::dot(
+                    na, pr_UB, 1, pr_UAiB, 1, inline_kernel));
                 // GRedinv (restricted) += USi * UAiB*UAiB
                 // replace cblas_syr(CblasColMajor,CblasUpper,na,USi, pr_UAiB, 1,
                 // pr_GRedinv, L);
-                cblas_dger(CblasColMajor, na, na, USi, pr_UAiB, 1, pr_UAiB, 1,
-                           pr_GRedinv, L);
+                small_dense::rank_one_update(na, na, USi, pr_UAiB, pr_UAiB,
+                                             pr_GRedinv, L, inline_kernel);
                 // copy -UAiB*USi, -UAiB.double*USi, USi to GRedinv
-                cblas_dcopy(na, pr_UAiB, 1, pr_GRedinv + na * L, 1);
-                cblas_dscal(na, -USi, pr_GRedinv + na * L, 1);
-                cblas_dcopy(na, pr_UAiB, 1, pr_GRedinv + na, L);
-                cblas_dscal(na, -USi, pr_GRedinv + na, L);
+                small_dense::copy(na, pr_UAiB, 1, pr_GRedinv + na * L, 1,
+                                  inline_kernel);
+                small_dense::scale(na, -USi, pr_GRedinv + na * L, 1,
+                                   inline_kernel);
+                small_dense::copy(na, pr_UAiB, 1, pr_GRedinv + na, L,
+                                  inline_kernel);
+                small_dense::scale(na, -USi, pr_GRedinv + na, L,
+                                   inline_kernel);
                 GRedinv(na, na) = USi;
 
                 na += 1;
@@ -429,14 +453,15 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
                 }
             }
             // update x and Gplus
-            cblas_dscal(na, std::min(double(1.0), alphaMin), pr_PRed, 1);
+            small_dense::scale(na, std::min(1.0, alphaMin), pr_PRed, 1,
+                               inline_kernel);
             for (int i = 0; i < na; ++i) {
                 x[NASet[i]] += PRed[i];
                 xRed[i] = x[NASet[i]];
             }
             // Gplus += MTMRed * (scaled PRed)
-            cblas_dgemv(CblasColMajor, CblasNoTrans, p, na, double(1.0), pr_MTMRed, p,
-                        pr_PRed, 1, double(1.0), pr_Gplus, 1);
+            small_dense::gemv(false, p, na, 1.0, pr_MTMRed, p, pr_PRed,
+                              1.0, pr_Gplus, inline_kernel);
 
             // delete one constraint or not?
             if (indexMin != -1) {
@@ -459,29 +484,32 @@ arma::vec activeSetS_arma(const arma::mat &M, const arma::vec &b, const arma::ma
 
                 // downdate MTMRed
                 for (int i = indexMin; i < na; ++i)
-                    cblas_dcopy(p, pr_MTMRed + (i + 1) * p, 1, pr_MTMRed + i * p, 1);
+                    small_dense::copy(p, pr_MTMRed + (i + 1) * p, 1,
+                                      pr_MTMRed + i * p, 1, inline_kernel);
 
                 // downdate GRedinv
                 double UCi = double(1.0) / GRedinv(indexMin, indexMin);
                 // BLAS UB = GRedinv[ALL\indexMin,indexMin]
-                cblas_dcopy(na + 1, pr_GRedinv + indexMin * L, 1, pr_UB, 1);
+                small_dense::copy(na + 1, pr_GRedinv + indexMin * L, 1,
+                                  pr_UB, 1, inline_kernel);
                 for (int i = indexMin; i < na; ++i)
                     UB[i] = UB[i + 1];
                 UB[na] = double();
                 // get (GRedinv translated)
                 // column first
                 for (int i = indexMin; i < na; ++i)
-                    cblas_dcopy(na + 1, pr_GRedinv + (i + 1) * L, 1, pr_GRedinv + i * L,
-                                1);
+                    small_dense::copy(na + 1, pr_GRedinv + (i + 1) * L, 1,
+                                      pr_GRedinv + i * L, 1, inline_kernel);
                 // row then
                 for (int i = indexMin; i < na; ++i)
-                    cblas_dcopy(na + 1, pr_GRedinv + i + 1, L, pr_GRedinv + i, L);
+                    small_dense::copy(na + 1, pr_GRedinv + i + 1, L,
+                                      pr_GRedinv + i, L, inline_kernel);
 
                 // BLAS GRedinv = (GRedinv translated) - UB*UB.double*UCi
                 // replace cblas_syr(CblasColMajor,CblasUpper,na,-UCi, pr_UB, 1,
                 // pr_GRedinv, L);
-                cblas_dger(CblasColMajor, na, na, -UCi, pr_UB, 1, pr_UB, 1, pr_GRedinv,
-                           L);
+                small_dense::rank_one_update(na, na, -UCi, pr_UB, pr_UB,
+                                             pr_GRedinv, L, inline_kernel);
             }
         }
     }

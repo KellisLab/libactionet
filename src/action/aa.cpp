@@ -1,9 +1,11 @@
 // Solves the standard Archetypal Analysis (AA) problem
 #include "action/aa.hpp"
 #include "action/simplex_regression.hpp"
-#include "blas_deps.hpp"
+#include "utils_internal/utils_small_dense.hpp"
 
 namespace actionet {
+
+    namespace small_dense = utils_internal::small_dense;
 
     // Squared-norm threshold below which the current archetype h-column is
     // considered singular and re-seeded from the residual argmax.
@@ -23,18 +25,21 @@ namespace actionet {
         double old_RSS = 0;
 
         // A never changes inside the outer loop; compute the Frobenius norm once.
-        const double A_norm = arma::norm(A, "fro");
+        const double A_norm = small_dense::frobenius_norm(A);
+        const bool inline_kernel = small_dense::use_inline_kernel(A.n_rows, A.n_cols);
 
         for (int it = 0; it < max_it; it++) {
             H = actionet::runSimplexRegression(W, A, true);
 
-            arma::mat R = A - W * H;
+            arma::mat R = small_dense::residual_product(A, W, H);
             arma::mat Ht = arma::trans(H);
             for (int i = 0; i < k; i++) {
                 arma::vec w = W.col(i);
                 arma::vec h = Ht.col(i);
 
-                double norm_sq = arma::dot(h, h);
+                double norm_sq = small_dense::dot(
+                    static_cast<int>(h.n_elem), h.memptr(), 1,
+                    h.memptr(), 1, true);
                 if (norm_sq < AA_SINGULAR_THRESHOLD) {
                     // singular
                     int max_res_idx = arma::index_max(arma::rowvec(arma::sum(arma::square(R), 0)));
@@ -44,23 +49,30 @@ namespace actionet {
                     C.col(i) = c;
                 } else {
                     arma::vec b = w;
-                    cblas_dgemv(CblasColMajor, CblasNoTrans, R.n_rows, R.n_cols,
-                                (1.0 / norm_sq), R.memptr(), R.n_rows, h.memptr(), 1, 1,
-                                b.memptr(), 1);
+                    small_dense::gemv(
+                        false, static_cast<int>(R.n_rows), static_cast<int>(R.n_cols),
+                        1.0 / norm_sq, R.memptr(), static_cast<int>(R.n_rows),
+                        h.memptr(), 1.0, b.memptr(), inline_kernel);
 
                     C.col(i) = actionet::runSimplexRegression(A, b, false);
 
-                    arma::vec w_new = A * C.col(i);
+                    arma::vec w_new(A.n_rows);
+                    small_dense::gemv(
+                        false, static_cast<int>(A.n_rows), static_cast<int>(A.n_cols),
+                        1.0, A.memptr(), static_cast<int>(A.n_rows),
+                        C.colptr(i), 0.0, w_new.memptr(), inline_kernel);
                     arma::vec delta = (w - w_new);
 
                     // Rank-1 update: R += delta*h
-                    cblas_dger(CblasColMajor, R.n_rows, R.n_cols, 1.0, delta.memptr(), 1,
-                               h.memptr(), 1, R.memptr(), R.n_rows);
+                    small_dense::rank_one_update(
+                        static_cast<int>(R.n_rows), static_cast<int>(R.n_cols), 1.0,
+                        delta.memptr(), h.memptr(), R.memptr(),
+                        static_cast<int>(R.n_rows), inline_kernel);
 
                     W.col(i) = w_new;
                 }
             }
-            double RSS = arma::norm(R, "fro");
+            double RSS = small_dense::frobenius_norm(R);
             double delta_RSS = std::abs(RSS - old_RSS) / A_norm;
             old_RSS = RSS;
 
@@ -68,10 +80,8 @@ namespace actionet {
                 break;
         }
 
-        C = arma::clamp(C, 0, 1);
-        C = arma::normalise(C, 1);
-        H = arma::clamp(H, 0, 1);
-        H = arma::normalise(H, 1);
+        small_dense::clamp_and_normalize_columns(C);
+        small_dense::clamp_and_normalize_columns(H);
 
         arma::field<arma::mat> decomposition(2, 1);
         decomposition(0) = C;

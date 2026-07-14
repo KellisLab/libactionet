@@ -100,6 +100,52 @@ This document records **deliberate architectural and operational decisions** for
 
 ---
 
+## BLAS policy for ACTION
+
+### Internal kernels for small and skinny AA operations
+
+**Decision:**
+
+- Keep ACTION's existing OpenMP decomposition over archetype count `k` as the
+  owner of coarse-grained parallelism.
+- Route dense operations whose smaller matrix dimension is at most 128 through
+  the private column-major kernel layer in
+  `include/utils_internal/utils_small_dense.hpp`.
+- Retain CBLAS/Armadillo for larger general-purpose matrices.
+- Do not add BLAS-vendor detection, process-global or per-scope BLAS thread
+  mutation, environment requirements, or public diagnostics.
+- Preserve active-set structure, iteration limits, regularization,
+  convergence behavior, output orientation, and public C++ interfaces.
+
+**Rationale:**
+
+- On identical source and input, MKL completed `run_action` in 9.40 s while
+  OpenBLAS-OpenMP required 79.36 s. The regression begins in AA, not SPA, and
+  is concentrated in repeated tiny/skinny BLAS calls.
+- Runtime OpenBLAS setters changed the reported thread count without reliably
+  changing the already-initialized execution path, so the rejected thread
+  guards did not address the measured bottleneck.
+- The shape threshold covers default reduced ACTION workloads while preserving
+  optimized BLAS throughput for genuinely large dense products.
+
+**Correctness contract:**
+
+- Thread/backend comparisons require identical assignments and numerically
+  equivalent C/H matrices at `rtol=1e-8`, `atol=1e-10`.
+
+**Deferred:**
+
+- Batched active-set solves, blocked/fused AA updates, workspace reuse, and
+  convergence-policy evaluation are a separate redesign and are not part of
+  this semantics-preserving fix.
+
+**Related:**
+
+- `../../../plans/openblas_threading_and_odr_findings.md`
+- `../../../tests/benchmark_action_blas_backends.py`
+
+---
+
 ## GPU backend scope and platform
 
 ### NVIDIA CUDA backend: optional, Python-first, SVD-first

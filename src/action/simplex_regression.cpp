@@ -2,6 +2,7 @@
 #include "action/simplex_regression.hpp"
 #include "utils_internal/utils_active_set.hpp"
 #include "utils_internal/utils_parallel.hpp"
+#include "utils_internal/utils_small_dense.hpp"
 
 namespace actionet {
 
@@ -16,7 +17,7 @@ namespace actionet {
 
         if (computeXtX) {
             double lam2sq = lambda2 * lambda2;
-            arma::mat G = arma::trans(A) * A + lam2sq;
+            arma::mat G = utils_internal::small_dense::gram(A, lam2sq);
             #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (int i = 0; i < ncols; i++) {
                 arma::vec b = B.col(i);
@@ -30,8 +31,7 @@ namespace actionet {
             }
         }
 
-        X = arma::clamp(X, 0, 1);
-        X = arma::normalise(X, 1);
+        utils_internal::small_dense::clamp_and_normalize_columns(X);
 
         return (X);
     }
