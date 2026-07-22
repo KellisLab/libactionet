@@ -46,6 +46,7 @@ src/                 Core implementations (mirrors include/ structure)
 cmake/               CMake modules (Apple, BLAS, OpenMP, R configuration)
 docs/                Algorithm and API documentation
 context/             Agent context and project decision records
+tests/               Optional C++ regression tests (build with -DLIBACTIONET_BUILD_TESTS=ON)
 wrappers_r/          Reference copy of Rcpp wrapper code (primary R package lives separately)
 _EXCLUDE/            Deprecated/archived code (not compiled)
 ```
@@ -76,6 +77,15 @@ mkdir -p build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..    # add -DBLA_VENDOR=Intel10_64lp -DMKL_THREADING=GNU if desired
 cmake --build . -j$(nproc)
 ```
+
+## Regression Tests (optional)
+```bash
+mkdir -p build_tests && cd build_tests
+cmake -DLIBACTIONET_BUILD_TESTS=ON ..
+cmake --build . --target test_xicor_enrichment -j$(nproc)
+./tests/test_xicor_enrichment
+```
+Currently exercises `tools/xicor` and `tools/enrichment` (golden values against R's `XICOR::xicor` asymptotic path).
 
 ## R Package Build Notes
 - The R wrapper's `configure` script passes R's `SHLIB_OPENMP_*` into `LIBACTIONET_OPENMP_*`. If R reports no OpenMP flags, standard OpenMP detection is attempted; the build will fail if no OpenMP runtime is found.

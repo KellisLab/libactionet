@@ -153,3 +153,10 @@ target_compile_options(actionet PRIVATE -Wno-psabi -Wno-deprecated-declarations)
 
 ## Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+############ TESTS
+option(LIBACTIONET_BUILD_TESTS "Build libactionet regression tests" OFF)
+if (LIBACTIONET_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
