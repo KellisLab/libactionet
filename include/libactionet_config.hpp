@@ -51,16 +51,21 @@
 // Configurations for R and Python interface
 #if defined(LIBACTIONET_BUILD_R)
 
-    #include <Rinterface.h>
-    #define stdout_printf Rprintf
-    #define stderr_printf REprintf
-    #define FLUSH R_FlushConsole()
-
     // Use RcppArmadillo for StatsLib
     #define USE_RCPP_ARMADILLO
 
     // #define ARMA_32BIT_WORD // Automatically set by RcppArmadillo
     #include <RcppArmadillo.h>
+
+    // Console I/O: Rprintf / REprintf / R_FlushConsole are declared by
+    // <R_ext/Print.h>, which is pulled in transitively via <RcppArmadillo.h>.
+    // <Rinterface.h> is intended for programs that embed R and is not needed
+    // here.  Including it before any Rcpp header also trips the Rcpp
+    // header-order guard (see RcppCore/Rcpp#1410), so we deliberately do not
+    // include it and define the console macros below <RcppArmadillo.h>.
+    #define stdout_printf Rprintf
+    #define stderr_printf REprintf
+    #define FLUSH R_FlushConsole()
 
 #else
 
