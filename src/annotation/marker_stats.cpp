@@ -1,8 +1,10 @@
 #include "annotation/marker_stats.hpp"
 #include "action/aa.hpp"
 #include "network/network_diffusion.hpp"
+#ifndef LIBACTIONET_NO_HDF5
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
+#endif
 
 static constexpr double tol_approx = 1e-8;
 
@@ -121,6 +123,7 @@ namespace actionet {
     // Backed overloads of computeFeatureStatsVision
     // ------------------------------------------------------------------
 
+#ifndef LIBACTIONET_NO_HDF5
     namespace {
         // Shared body for backed VISION computation (sparse or dense operator).
         // Both operator types now provide matmat() for stats and rowStats()
@@ -184,6 +187,7 @@ namespace actionet {
         return computeFeatureStatsVision_backed_(op, G, X, norm_method, alpha,
                                                  max_it, approx, thread_no, "op");
     }
+#endif // LIBACTIONET_NO_HDF5
 
     // ------------------------------------------------------------------
     // Pre-computed stats entry point
