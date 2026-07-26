@@ -7,6 +7,7 @@
 #pragma once
 
 #include <hdf5.h>
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 
@@ -81,10 +82,16 @@ namespace actionet::detail::h5 {
     /// @returns              A valid HDF5 file id that the caller must close
     ///                       via ``H5Fclose``.
     inline hid_t open_h5_readonly_no_lock(const std::string& file_path,
-                                          const char* err_context) {
+                                          const char* err_context,
+                                          size_t sieve_buffer_bytes = 0) {
         hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
         check_h5(fapl >= 0, "Failed to create file access property list");
         H5Pset_file_locking(fapl, 0, 1);
+        if (sieve_buffer_bytes > 0) {
+            check_h5(
+                H5Pset_sieve_buf_size(fapl, sieve_buffer_bytes) >= 0,
+                "Failed to configure HDF5 data sieve buffer");
+        }
         hid_t file_id = H5Fopen(file_path.c_str(), H5F_ACC_RDONLY, fapl);
         H5Pclose(fapl);
         if (file_id < 0) {

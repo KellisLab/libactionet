@@ -206,6 +206,11 @@ namespace actionet {
         bool no_transform_;
         arma::uword chunk_size_;
         unsigned long long target_chunk_nnz_;
+        size_t data_item_size_;
+        size_t indices_item_size_;
+        bool indices_are_signed_;
+        H5D_layout_t data_layout_;
+        hsize_t data_io_block_elements_;
         arma::uword n_obs_;
         arma::uword n_var_;
         arma::vec row_scale_;

@@ -319,6 +319,19 @@ namespace actionet {
         const arma::uvec& col_indices,
         const arma::uvec& row_indices) const {
 
+        for (arma::uword i = 0; i < col_indices.n_elem; ++i) {
+            if (col_indices(i) >= n_var_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsDense column index out of range");
+            }
+        }
+        for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+            if (row_indices(i) >= n_obs_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsDense row index out of range");
+            }
+        }
+
         const arma::uword n_sel = col_indices.n_elem;
         const bool subset_rows = !row_indices.is_empty();
         const arma::uword n_out_rows = subset_rows ? row_indices.n_elem : n_obs_;
@@ -403,6 +416,19 @@ namespace actionet {
     arma::sp_mat BackedDenseMatrixOperator::takeColumnsSparse(
         const arma::uvec& col_indices,
         const arma::uvec& row_indices) const {
+
+        for (arma::uword i = 0; i < col_indices.n_elem; ++i) {
+            if (col_indices(i) >= n_var_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsSparse column index out of range");
+            }
+        }
+        for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+            if (row_indices(i) >= n_obs_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsSparse row index out of range");
+            }
+        }
 
         arma::mat dense = takeColumnsDense(col_indices, row_indices);
         return arma::sp_mat(dense);
