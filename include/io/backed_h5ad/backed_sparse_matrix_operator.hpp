@@ -133,9 +133,6 @@ namespace actionet {
         // buffered data/indices. Public specificity overloads use this
         // visitor and therefore no longer need friend access.
         friend struct BackedSparseSpecificityWalker;
-        static std::string read_string_attribute_(hid_t object_id, const char* name);
-        static std::vector<long long> read_shape_attribute_(hid_t object_id, const char* name);
-
         void read_data_indices_slice_(unsigned long long start, unsigned long long count,
                                       std::vector<double>& data, std::vector<unsigned long long>& indices) const;
         void load_chunk_cached_(unsigned long long nnz_start, unsigned long long nnz_count,

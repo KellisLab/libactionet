@@ -1,10 +1,12 @@
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
+#include "io/backed_h5ad/h5ad_matrix_io.hpp"
 
 #include "_h5_utils.hpp"
 
 #include "fastapprox/fastlog.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace {
@@ -12,21 +14,6 @@ namespace {
 } // namespace
 
 namespace actionet {
-
-    std::vector<long long> BackedDenseMatrixOperator::read_shape_(hid_t dataset_id) {
-        hid_t space_id = H5Dget_space(dataset_id);
-        check_h5(space_id >= 0, "Failed to get dense dataset dataspace");
-
-        int ndims = H5Sget_simple_extent_ndims(space_id);
-        check_h5(ndims == 2, "Dense backed dataset must be 2D");
-
-        hsize_t dims[2] = {0, 0};
-        check_h5(H5Sget_simple_extent_dims(space_id, dims, nullptr) == 2,
-                 "Failed to read dense dataset dimensions");
-        H5Sclose(space_id);
-
-        return {static_cast<long long>(dims[0]), static_cast<long long>(dims[1])};
-    }
 
     BackedDenseMatrixOperator::BackedDenseMatrixOperator(
         const std::string& file_path,
@@ -49,6 +36,17 @@ namespace actionet {
           file_id_(-1),
           dataset_id_(-1) {
 
+        const auto matrix_info = h5ad::inspect_matrix(file_path_, group_path_);
+        check_h5(
+            matrix_info.encoding == h5ad::MatrixEncoding::Dense,
+            "BackedDenseMatrixOperator requires a dense H5AD matrix");
+        check_h5(
+            matrix_info.rows <= std::numeric_limits<arma::uword>::max() &&
+                matrix_info.cols <= std::numeric_limits<arma::uword>::max(),
+            "Dense H5AD shape exceeds the compute operator index range");
+        n_obs_ = static_cast<arma::uword>(matrix_info.rows);
+        n_var_ = static_cast<arma::uword>(matrix_info.cols);
+
         file_id_ = actionet::detail::h5::open_h5_readonly_no_lock(
             file_path_, "BackedDenseMatrixOperator");
 
@@ -56,11 +54,6 @@ namespace actionet {
         check_h5(dataset_id_ >= 0,
                  "Failed to open dense dataset path (expected a 2D dataset, "
                  "not a sparse group)");
-
-        auto shape = read_shape_(dataset_id_);
-        check_h5(shape[0] >= 0 && shape[1] >= 0, "Dense shape must be non-negative");
-        n_obs_ = static_cast<arma::uword>(shape[0]);
-        n_var_ = static_cast<arma::uword>(shape[1]);
 
         // Clamp effective chunk size to the byte budget.
         // Each slab row is n_var_ doubles (8 bytes each).

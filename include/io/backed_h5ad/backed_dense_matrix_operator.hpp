@@ -129,8 +129,6 @@ namespace actionet {
                       arma::vec& nnz) const;
 
     private:
-        static std::vector<long long> read_shape_(hid_t dataset_id);
-
         void read_slab_(arma::uword obs_start, arma::uword obs_count,
                         arma::mat& slab) const;
         void apply_transforms_(arma::uword obs_start, arma::mat& slab) const;

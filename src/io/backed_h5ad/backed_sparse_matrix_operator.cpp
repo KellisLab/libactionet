@@ -1,98 +1,19 @@
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
+#include "io/backed_h5ad/h5ad_matrix_io.hpp"
 
 #include "_h5_utils.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
 
 namespace {
     using actionet::detail::h5::check_h5;
-
-    std::string normalize_encoding(const std::string& encoding) {
-        std::string out = encoding;
-        std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
-            return static_cast<char>(std::tolower(c));
-        });
-        return out;
-    }
 } // namespace
 
 namespace actionet {
-    std::string BackedSparseMatrixOperator::read_string_attribute_(hid_t object_id, const char* name) {
-        if (H5Aexists(object_id, name) <= 0) {
-            return "";
-        }
-
-        hid_t attr_id = H5Aopen(object_id, name, H5P_DEFAULT);
-        check_h5(attr_id >= 0, "Failed to open string attribute");
-
-        hid_t type_id = H5Aget_type(attr_id);
-        check_h5(type_id >= 0, "Failed to get attribute type");
-
-        std::string result;
-
-        if (H5Tis_variable_str(type_id) > 0) {
-            // Variable-length string (modern AnnData writes UTF-8 vlen strings).
-            // We must set both H5T_VARIABLE size AND H5T_CSET_UTF8 on the memory
-            // type, otherwise HDF5 >= 1.14 refuses to convert from a UTF-8 file
-            // type to an ASCII memory type.
-            hid_t mem_type = H5Tcopy(H5T_C_S1);
-            H5Tset_size(mem_type, H5T_VARIABLE);
-            H5Tset_cset(mem_type, H5T_CSET_UTF8);
-            char* vlen_buf = nullptr;
-            check_h5(H5Aread(attr_id, mem_type, &vlen_buf) >= 0,
-                      "Failed to read variable-length string attribute");
-            if (vlen_buf != nullptr) {
-                result = vlen_buf;
-                H5free_memory(vlen_buf);
-            }
-            H5Tclose(mem_type);
-        } else {
-            // Fixed-length string. H5Tget_native_type() cannot produce a
-            // conversion path for UTF-8 charset strings (cset=H5T_CSET_UTF8),
-            // so we read directly using the file's own type_id. Fixed-length
-            // HDF5 string data is already contiguous bytes — no conversion is
-            // needed; we just need the correct size.
-            size_t size = H5Tget_size(type_id);
-            if (size > 0) {
-                std::string buffer(size, '\0');
-                check_h5(H5Aread(attr_id, type_id, &buffer[0]) >= 0,
-                          "Failed to read fixed-length string attribute");
-                size_t null_pos = buffer.find('\0');
-                if (null_pos != std::string::npos) {
-                    buffer.resize(null_pos);
-                }
-                result = std::move(buffer);
-            }
-        }
-
-        H5Tclose(type_id);
-        H5Aclose(attr_id);
-        return result;
-    }
-
-    std::vector<long long> BackedSparseMatrixOperator::read_shape_attribute_(hid_t object_id, const char* name) {
-        hid_t attr_id = H5Aopen(object_id, name, H5P_DEFAULT);
-        check_h5(attr_id >= 0, "Missing shape attribute");
-
-        hid_t space_id = H5Aget_space(attr_id);
-        check_h5(space_id >= 0, "Failed to get shape attribute dataspace");
-        check_h5(H5Sget_simple_extent_ndims(space_id) == 1, "Invalid shape attribute rank");
-
-        hsize_t dims[1] = {0};
-        check_h5(H5Sget_simple_extent_dims(space_id, dims, nullptr) == 1, "Invalid shape attribute dimensions");
-
-        std::vector<long long> shape(static_cast<size_t>(dims[0]), 0);
-        check_h5(H5Aread(attr_id, H5T_NATIVE_LLONG, shape.data()) >= 0, "Failed to read shape attribute");
-
-        H5Sclose(space_id);
-        H5Aclose(attr_id);
-        return shape;
-    }
-
     BackedSparseMatrixOperator::BackedSparseMatrixOperator(
         const std::string& file_path,
         const std::string& group_path,
@@ -122,6 +43,19 @@ namespace actionet {
           indices_ds_(-1),
           indptr_ds_(-1) {
 
+        const auto matrix_info = h5ad::inspect_matrix(file_path_, group_path_);
+        check_h5(
+            matrix_info.encoding == h5ad::MatrixEncoding::CSR ||
+                matrix_info.encoding == h5ad::MatrixEncoding::CSC,
+            "BackedSparseMatrixOperator requires a sparse H5AD matrix");
+        check_h5(
+            matrix_info.rows <= std::numeric_limits<arma::uword>::max() &&
+                matrix_info.cols <= std::numeric_limits<arma::uword>::max(),
+            "Sparse H5AD shape exceeds the compute operator index range");
+        is_csr_ = matrix_info.encoding == h5ad::MatrixEncoding::CSR;
+        n_obs_ = static_cast<arma::uword>(matrix_info.rows);
+        n_var_ = static_cast<arma::uword>(matrix_info.cols);
+
         // Disable HDF5 advisory file locking so this reader can coexist with
         // h5py/AnnData backed-mode handles that already hold a lock on the
         // same inode (errno 11 / EAGAIN from H5FD__sec2_lock otherwise).
@@ -130,25 +64,6 @@ namespace actionet {
 
         group_id_ = H5Gopen2(file_id_, group_path_.c_str(), H5P_DEFAULT);
         check_h5(group_id_ >= 0, "Failed to open sparse matrix group path");
-
-        std::string encoding = read_string_attribute_(group_id_, "encoding-type");
-        if (encoding.empty()) {
-            encoding = read_string_attribute_(group_id_, "h5sparse_format");
-        }
-        encoding = normalize_encoding(encoding);
-        if (encoding.find("csr") != std::string::npos) {
-            is_csr_ = true;
-        } else if (encoding.find("csc") != std::string::npos) {
-            is_csr_ = false;
-        } else {
-            throw std::runtime_error("Unsupported sparse encoding for backed operator");
-        }
-
-        std::vector<long long> shape = read_shape_attribute_(group_id_, "shape");
-        check_h5(shape.size() == 2, "Sparse shape attribute must have length 2");
-        check_h5(shape[0] >= 0 && shape[1] >= 0, "Sparse shape must be non-negative");
-        n_obs_ = static_cast<arma::uword>(shape[0]);
-        n_var_ = static_cast<arma::uword>(shape[1]);
 
         data_ds_ = H5Dopen2(group_id_, "data", H5P_DEFAULT);
         indices_ds_ = H5Dopen2(group_id_, "indices", H5P_DEFAULT);

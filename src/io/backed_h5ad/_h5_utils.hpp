@@ -12,6 +12,50 @@
 
 namespace actionet::detail::h5 {
 
+    /// Move-only owner for one HDF5 identifier.
+    template <herr_t (*Closer)(hid_t)>
+    class Handle {
+    public:
+        Handle() = default;
+        explicit Handle(hid_t id) : id_(id) {}
+        ~Handle() { reset(); }
+
+        Handle(const Handle&) = delete;
+        Handle& operator=(const Handle&) = delete;
+        Handle(Handle&& other) noexcept : id_(other.release()) {}
+        Handle& operator=(Handle&& other) noexcept {
+            if (this != &other) {
+                reset(other.release());
+            }
+            return *this;
+        }
+
+        hid_t get() const { return id_; }
+        explicit operator bool() const { return id_ >= 0; }
+        hid_t release() {
+            const hid_t value = id_;
+            id_ = -1;
+            return value;
+        }
+        void reset(hid_t next = -1) {
+            if (id_ >= 0) {
+                Closer(id_);
+            }
+            id_ = next;
+        }
+
+    private:
+        hid_t id_ = -1;
+    };
+
+    using File = Handle<H5Fclose>;
+    using Group = Handle<H5Gclose>;
+    using Dataset = Handle<H5Dclose>;
+    using Space = Handle<H5Sclose>;
+    using Type = Handle<H5Tclose>;
+    using Attribute = Handle<H5Aclose>;
+    using Property = Handle<H5Pclose>;
+
     /// Throw ``std::runtime_error(msg)`` when ``ok`` is false.
     ///
     /// Centralises the tiny "assert-or-throw" pattern that the three
