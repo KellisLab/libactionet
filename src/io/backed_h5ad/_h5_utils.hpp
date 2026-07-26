@@ -13,6 +13,11 @@
 #include <string>
 #include <vector>
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+
 namespace actionet::detail::h5 {
 
     /// Move-only owner for one HDF5 identifier.
@@ -101,6 +106,64 @@ namespace actionet::detail::h5 {
                 std::string(err_context) + ": failed to open h5ad file: " + file_path);
         }
         return file_id;
+    }
+
+    /// Flush an HDF5 file's cache to the OS and durably persist it to disk.
+    ///
+    /// The default HDF5 flush (``H5Fflush``) only pushes the library's own
+    /// cache into the OS page cache; it does not force writeback to the
+    /// storage device. Large native transfers therefore leave the entire
+    /// multi-GB output dirty in the page cache, and a single trailing
+    /// ``fsync`` in the Python commit path must drain all of it at once
+    /// (observed as a minutes-long "post-write" tail on atlas-scale files).
+    ///
+    /// This helper pushes the HDF5 cache to the virtual file driver, obtains
+    /// the backing POSIX file descriptor via ``H5Fget_vfd_handle`` (valid for
+    /// the default sec2/stdio drivers), and issues ``fsync``. When
+    /// ``drop_cache`` is set it additionally advises the kernel to drop the
+    /// now-clean pages (``POSIX_FADV_DONTNEED``) so repeated periodic calls do
+    /// not keep the whole output resident. All steps are best-effort: an
+    /// unsupported driver or platform simply falls back to ``H5Fflush``
+    /// semantics without raising, because durability of the final published
+    /// file is still guaranteed by the caller's own ``fsync`` before
+    /// ``os.replace``.
+    ///
+    /// @param file_id     Open, writable HDF5 file identifier.
+    /// @param drop_cache  When true, hint the kernel to evict clean pages.
+    /// @returns           true if a POSIX ``fsync`` was issued; false when the
+    ///                    platform/driver did not expose a usable descriptor.
+    inline bool flush_and_fsync_file(hid_t file_id, bool drop_cache) {
+        // Push the HDF5 library cache to the VFD (OS) first so the descriptor
+        // sees every buffered byte. This is cheap and never itself durable.
+        if (H5Fflush(file_id, H5F_SCOPE_LOCAL) < 0) {
+            return false;
+        }
+#if defined(__unix__) || defined(__APPLE__)
+        void* vfd_handle = nullptr;
+        if (H5Fget_vfd_handle(file_id, H5P_DEFAULT, &vfd_handle) < 0 ||
+            vfd_handle == nullptr) {
+            return false;
+        }
+        const int fd = *static_cast<int*>(vfd_handle);
+        if (fd < 0) {
+            return false;
+        }
+        if (fsync(fd) != 0) {
+            return false;
+        }
+        if (drop_cache) {
+#if defined(POSIX_FADV_DONTNEED)
+            // Best-effort: after fsync the pages are clean, so dropping them
+            // keeps periodic writeback from pinning the entire output in RAM.
+            // Ignore the return value; failure only forfeits the memory hint.
+            (void)posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED);
+#endif
+        }
+        return true;
+#else
+        (void)drop_cache;
+        return false;
+#endif
     }
 
     /// Probe the HDF5 object type at ``group_path`` inside an open file.

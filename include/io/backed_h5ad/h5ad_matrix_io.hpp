@@ -121,6 +121,7 @@ struct TransferStats {
     double packing_seconds = 0.0;
     double destination_write_seconds = 0.0;
     double flush_seconds = 0.0;
+    double destination_fsync_seconds = 0.0;
     std::vector<SpanStats> spans;
 };
 

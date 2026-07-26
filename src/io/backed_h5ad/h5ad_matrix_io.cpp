@@ -16,11 +16,18 @@
 namespace {
 
 using actionet::detail::h5::check_h5;
+using actionet::detail::h5::flush_and_fsync_file;
 using Clock = std::chrono::steady_clock;
 
 double elapsed_seconds(Clock::time_point started) {
     return std::chrono::duration<double>(Clock::now() - started).count();
 }
+
+// Drain accumulated dirty output pages to disk roughly every this many bytes
+// written, instead of leaving the whole multi-GB output dirty for a single
+// trailing fsync. 512 MiB overlaps writeback with ongoing packing/reads while
+// keeping the periodic-flush count small on atlas-scale transfers.
+constexpr std::uint64_t kIncrementalFsyncBytes = 512ULL * 1024ULL * 1024ULL;
 
 using H5File = actionet::detail::h5::File;
 using H5Group = actionet::detail::h5::Group;
@@ -489,10 +496,61 @@ H5Property dataset_dcpl(hid_t source_dataset,
         std::vector<hsize_t> chunks(output_dims.size(), 1);
         if (source_layout.chunked && source_layout.chunks.size() == output_dims.size()) {
             chunks = source_layout.chunks;
+            // Cap an oversized inherited 1-D chunk. Some sources store huge
+            // chunks (e.g. 10M elements); reusing them for a smaller subset
+            // over-allocates a trailing chunk and concentrates dirty pages.
+            // Only shrink toward a byte-budget target; never grow, so filtered
+            // sources keep chunk boundaries their codecs expect.
+            if (output_dims.size() == 1) {
+                std::size_t element_size = 0;
+                {
+                    H5Type source_type(H5Dget_type(source_dataset));
+                    if (source_type) {
+                        element_size = H5Tget_size(source_type.get());
+                    }
+                }
+                if (element_size == 0) {
+                    element_size = 1;
+                }
+                constexpr hsize_t kMaxChunkBytes = 32ULL * 1024ULL * 1024ULL;
+                hsize_t max_elements = kMaxChunkBytes /
+                    static_cast<hsize_t>(element_size);
+                if (max_elements == 0) {
+                    max_elements = 1;
+                }
+                // Do not cap filtered chunks: their compressed layout is tied
+                // to the exact chunk shape and the encoder was validated for it.
+                if (!source_layout.filtered && chunks[0] > max_elements) {
+                    chunks[0] = max_elements;
+                }
+            }
         } else if (!output_dims.empty()) {
             if (output_dims.size() == 1) {
-                chunks[0] = std::max<hsize_t>(1, std::min<hsize_t>(
-                    output_dims[0] == 0 ? 65536 : output_dims[0], 65536));
+                // A contiguous source gives no chunk hint. A tiny fixed chunk
+                // (the former 65536-element default) builds an enormous chunk
+                // B-tree over billions of NNZ, while blindly inheriting a huge
+                // source chunk over-allocates a trailing chunk. Size the chunk
+                // to a fixed target byte budget derived from the element width
+                // so the B-tree stays small and writeback is contiguous.
+                std::size_t element_size = 0;
+                {
+                    H5Type source_type(H5Dget_type(source_dataset));
+                    if (source_type) {
+                        element_size = H5Tget_size(source_type.get());
+                    }
+                }
+                if (element_size == 0) {
+                    element_size = 1;
+                }
+                constexpr hsize_t kTargetChunkBytes = 16ULL * 1024ULL * 1024ULL;
+                hsize_t elements = kTargetChunkBytes /
+                    static_cast<hsize_t>(element_size);
+                if (elements == 0) {
+                    elements = 1;
+                }
+                const hsize_t bound = output_dims[0] == 0 ? elements
+                                                          : output_dims[0];
+                chunks[0] = std::max<hsize_t>(1, std::min<hsize_t>(elements, bound));
             } else {
                 chunks[0] = std::max<hsize_t>(1, std::min<hsize_t>(
                     output_dims[0] == 0 ? 1024 : output_dims[0], 1024));
@@ -1146,6 +1204,7 @@ actionet::h5ad::TransferStats transfer_compressed(
     }
     std::uint64_t written_nnz = 0;
     std::uint64_t buffered_nnz = 0;
+    std::uint64_t bytes_since_fsync = 0;
 
     auto flush_buffers = [&]() {
         if (buffered_nnz == 0) {
@@ -1164,11 +1223,20 @@ actionet::h5ad::TransferStats transfer_compressed(
         }
         stats.destination_write_seconds += elapsed_seconds(started);
         stats.hdf5_write_calls += 2;
+        bytes_since_fsync += checked_bytes(
+            buffered_nnz,
+            source.info.data_item_size + output_index_item_size);
         written_nnz += buffered_nnz;
         buffered_nnz = 0;
         output_data.clear();
         output_indices_raw.clear();
         output_indices_converted.clear();
+        if (bytes_since_fsync >= kIncrementalFsyncBytes) {
+            const auto fsync_started = Clock::now();
+            flush_and_fsync_file(destination_file, true);
+            stats.destination_fsync_seconds += elapsed_seconds(fsync_started);
+            bytes_since_fsync = 0;
+        }
     };
 
     const std::size_t data_item_size = source.info.data_item_size;
@@ -1459,6 +1527,13 @@ actionet::h5ad::TransferStats transfer_compressed(
     check_h5(H5Fflush(destination_file, H5F_SCOPE_LOCAL) >= 0,
              "Failed to flush destination HDF5 file");
     stats.flush_seconds = elapsed_seconds(flush_started);
+    // Drain any remaining dirty output pages to disk now, while the transfer
+    // still owns the file, instead of deferring the whole tail to the Python
+    // commit fsync. Best-effort; final durability is still enforced by the
+    // caller before atomic publication.
+    const auto final_fsync_started = Clock::now();
+    flush_and_fsync_file(destination_file, false);
+    stats.destination_fsync_seconds += elapsed_seconds(final_fsync_started);
     stats.destination_bytes_written =
         checked_bytes(written_nnz, source.info.data_item_size) +
         checked_bytes(written_nnz,
@@ -1676,6 +1751,17 @@ actionet::h5ad::TransferStats transfer_dense(
     stats.planning_seconds = elapsed_seconds(planning_started);
     stats.span_count = 0;
     std::uint64_t output_row = 0;
+    std::uint64_t dense_bytes_since_fsync = 0;
+    auto dense_periodic_fsync = [&](std::uint64_t just_written_rows) {
+        dense_bytes_since_fsync +=
+            checked_bytes(just_written_rows, output_row_bytes);
+        if (dense_bytes_since_fsync >= kIncrementalFsyncBytes) {
+            const auto fsync_started = Clock::now();
+            flush_and_fsync_file(destination_file, true);
+            stats.destination_fsync_seconds += elapsed_seconds(fsync_started);
+            dense_bytes_since_fsync = 0;
+        }
+    };
     auto pack_row = [&](unsigned char* output,
                         const unsigned char* input) {
         if (columns_identity) {
@@ -1745,6 +1831,7 @@ actionet::h5ad::TransferStats transfer_dense(
             stats.destination_write_seconds += elapsed_seconds(write_started);
             ++stats.hdf5_write_calls;
             output_row += selected_rows;
+            dense_periodic_fsync(selected_rows);
             if (options.collect_span_stats) {
                 stats.spans.push_back(actionet::h5ad::SpanStats{
                     span.row_start,
@@ -1874,6 +1961,7 @@ actionet::h5ad::TransferStats transfer_dense(
             stats.destination_write_seconds += elapsed_seconds(write_started);
             ++stats.hdf5_write_calls;
             output_row += batch_rows;
+            dense_periodic_fsync(batch_rows);
         }
     }
 
@@ -1881,6 +1969,9 @@ actionet::h5ad::TransferStats transfer_dense(
     check_h5(H5Fflush(destination_file, H5F_SCOPE_LOCAL) >= 0,
              "Failed to flush dense destination HDF5 matrix");
     stats.flush_seconds = elapsed_seconds(flush_started);
+    const auto dense_final_fsync_started = Clock::now();
+    flush_and_fsync_file(destination_file, false);
+    stats.destination_fsync_seconds += elapsed_seconds(dense_final_fsync_started);
     const std::uint64_t output_elements = checked_product(
         static_cast<hsize_t>(rows.size()),
         static_cast<hsize_t>(cols.size()),
@@ -1954,6 +2045,12 @@ actionet::h5ad::TransferStats transform_dense(
     const std::size_t row_batch = std::max<std::size_t>(
         1, std::min(rows_by_memory, options.transfer.max_rows_per_batch));
 
+    const std::size_t transform_dense_output_item_size =
+        options.output_dtype == actionet::h5ad::TransformDType::Float32 ? 4 : 8;
+    const std::size_t transform_dense_row_bytes = static_cast<std::size_t>(
+        checked_bytes(source.info.cols, transform_dense_output_item_size));
+    std::uint64_t transform_dense_bytes_since_fsync = 0;
+
     for (std::uint64_t row_start = 0;
          row_start < source.info.rows;
          row_start += row_batch) {
@@ -1997,12 +2094,23 @@ actionet::h5ad::TransferStats transform_dense(
         stats.destination_write_seconds += elapsed_seconds(write_started);
         ++stats.hdf5_write_calls;
         ++stats.span_count;
+        transform_dense_bytes_since_fsync +=
+            checked_bytes(row_count, transform_dense_row_bytes);
+        if (transform_dense_bytes_since_fsync >= kIncrementalFsyncBytes) {
+            const auto fsync_started = Clock::now();
+            flush_and_fsync_file(destination_file, true);
+            stats.destination_fsync_seconds += elapsed_seconds(fsync_started);
+            transform_dense_bytes_since_fsync = 0;
+        }
     }
 
     const auto flush_started = Clock::now();
     check_h5(H5Fflush(destination_file, H5F_SCOPE_LOCAL) >= 0,
              "Failed to flush transformed dense H5AD matrix");
     stats.flush_seconds = elapsed_seconds(flush_started);
+    const auto transform_dense_final_fsync = Clock::now();
+    flush_and_fsync_file(destination_file, false);
+    stats.destination_fsync_seconds += elapsed_seconds(transform_dense_final_fsync);
     const std::size_t output_item_size =
         options.output_dtype == actionet::h5ad::TransformDType::Float32 ? 4 : 8;
     stats.destination_bytes_written = checked_bytes(
@@ -2179,6 +2287,9 @@ actionet::h5ad::TransferStats transform_compressed(
         1, options.transfer.max_buffer_bytes /
                std::max<std::size_t>(1, working_bytes_per_element));
     std::uint64_t csr_row = 0;
+    const std::size_t transform_sparse_output_item_size =
+        options.output_dtype == actionet::h5ad::TransformDType::Float32 ? 4 : 8;
+    std::uint64_t transform_sparse_bytes_since_fsync = 0;
     for (std::uint64_t start = 0; start < source.info.nnz;
          start += batch_elements) {
         const std::uint64_t count = std::min<std::uint64_t>(
@@ -2238,12 +2349,23 @@ actionet::h5ad::TransferStats transform_compressed(
         stats.destination_write_seconds += elapsed_seconds(write_started);
         ++stats.hdf5_write_calls;
         ++stats.span_count;
+        transform_sparse_bytes_since_fsync +=
+            checked_bytes(count, transform_sparse_output_item_size);
+        if (transform_sparse_bytes_since_fsync >= kIncrementalFsyncBytes) {
+            const auto fsync_started = Clock::now();
+            flush_and_fsync_file(destination_file, true);
+            stats.destination_fsync_seconds += elapsed_seconds(fsync_started);
+            transform_sparse_bytes_since_fsync = 0;
+        }
     }
 
     const auto flush_started = Clock::now();
     check_h5(H5Fflush(destination_file, H5F_SCOPE_LOCAL) >= 0,
              "Failed to flush transformed sparse H5AD matrix");
     stats.flush_seconds = elapsed_seconds(flush_started);
+    const auto transform_sparse_final_fsync = Clock::now();
+    flush_and_fsync_file(destination_file, false);
+    stats.destination_fsync_seconds += elapsed_seconds(transform_sparse_final_fsync);
     const std::size_t output_item_size =
         options.output_dtype == actionet::h5ad::TransformDType::Float32 ? 4 : 8;
     stats.destination_bytes_written =
