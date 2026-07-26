@@ -71,87 +71,127 @@ namespace actionet {
         return Obs;
     }
 
-    arma::field<arma::mat> assess_enrichment(const arma::mat& scores, arma::sp_mat& associations, int thread_no) {
+    // ---------------------------------------------------------------
+    // assess_enrichment
+    //
+    // For each (scores column j, association column k), compute the
+    // maximum Bennett-inequality log-p-value achieved by sliding a
+    // cutoff along the descending-rank order of scores.col(j) and
+    // restricting the "observed" mass to features flagged in
+    // associations.col(k).
+    //
+    //   sorted_scores = sort(scores, "descend")             (n_features x n_cols)
+    //   For each association column k with n_k > 1 nonzeros:
+    //     For each score column j:
+    //       Take the rows of associations.col(k), map them to their
+    //       positions in the descending order of scores.col(j) via
+    //       perm[.] = stable_sort_index(stable_sort_index(scores.col(j), "descend"))
+    //       and sort those positions ascending (`sorted_rows`).
+    //       Then, letting `ii = sorted_rows[idx]`:
+    //         Lambda_idx = cumsum(sorted_scores(ii, j))_over_idx
+    //                    - Acumsum(ii, j) * p_k
+    //         Nu_idx     = A2cumsum(ii, j) * p_k
+    //         aLambda    = Lambda * a_max(j)
+    //         logP_idx   = Lambda^2 / (2 * (Nu + aLambda / 3))    if Lambda > 0
+    //       logPvals(k, j) = max_idx logP_idx
+    //       peak_rank_idx(k, j) = argmax_idx logP_idx (in `sorted_rows` space)
+    //
+    // The `associations` matrix is treated as boolean (its nonzero
+    // pattern), following the R/Python callers that pass either binary
+    // marker matrices or CSR patterns. A local copy is produced via
+    // `spones` so the caller's argument is left unmodified.
+    // ---------------------------------------------------------------
+    arma::field<arma::mat> assess_enrichment(const arma::mat& scores, const arma::sp_mat& associations, int thread_no) {
         if (scores.n_rows != associations.n_rows) {
             throw std::invalid_argument(
                 "assess_enrichment: scores.n_rows must equal associations.n_rows (both must match number of features)");
         }
 
-        associations = arma::spones(associations);
+        // Local binarized copy — caller's argument is not modified.
+        arma::sp_mat A = arma::spones(associations);
 
         arma::mat sorted_scores = arma::sort(scores, "descend");
         arma::vec a_max = arma::trans(sorted_scores.row(0));
         arma::umat perms(arma::size(scores));
-        for (int j = 0; j < scores.n_cols; j++) {
+        for (arma::uword j = 0; j < scores.n_cols; j++) {
             perms.col(j) =
-                stable_sort_index(stable_sort_index(scores.col(j), "descend"));
+                arma::stable_sort_index(arma::stable_sort_index(scores.col(j), "descend"));
         }
 
-        arma::vec n_success = arma::vec(arma::trans(arma::sum(associations, 0)));
-        arma::vec p_success = n_success / (double)associations.n_rows;
+        arma::vec n_success = arma::vec(arma::trans(arma::sum(A, 0)));
+        arma::vec p_success = n_success / (double)A.n_rows;
 
         arma::mat Acumsum = arma::cumsum(sorted_scores);
         arma::mat A2cumsum = arma::cumsum(arma::square(sorted_scores));
 
-        arma::mat logPvals = arma::zeros(associations.n_cols, scores.n_cols);
-        arma::mat thresholds = arma::zeros(associations.n_cols, scores.n_cols);
+        const arma::uword n_conds = scores.n_cols;
+        arma::mat logPvals = arma::zeros(A.n_cols, n_conds);
+        arma::mat peak_rank_idx = arma::zeros(A.n_cols, n_conds);
 
-        int threads_use = get_num_threads(associations.n_cols, thread_no);
+        int threads_use = get_num_threads(A.n_cols, thread_no);
+
+        // Restructured from the original (which allocated four n_k x n_conds
+        // matrices per k iteration): process each (k, j) pair with per-j
+        // scratch vectors of length n_k. This drops per-iteration allocations
+        // by 4x on average and keeps peak memory O(max_n_k) per thread.
         #pragma omp parallel for num_threads(threads_use)
-        for (size_t k = 0; k < associations.n_cols; k++) {
-            int n_k = n_success(k);
-            if (n_k > 1) {
-                double p_k = p_success(k);
+        for (arma::uword k = 0; k < A.n_cols; k++) {
+            const int n_k = (int)n_success(k);
+            if (n_k <= 1) continue;
 
-                arma::mat O = arma::zeros(n_k, scores.n_cols);
-                arma::mat E = arma::zeros(n_k, scores.n_cols);
-                arma::mat Nu = arma::zeros(n_k, scores.n_cols);
-                arma::mat rows = arma::zeros(n_k, scores.n_cols);
+            const double p_k = p_success(k);
 
-                for (int j = 0; j < scores.n_cols; j++) {
-                    arma::uvec perm = perms.col(j);
+            // Collect the (arbitrary-order) row indices of association column k
+            // once per k; the per-j permutation and sort happens inside.
+            arma::uvec assoc_rows(n_k);
+            {
+                arma::sp_mat::const_col_iterator it = A.begin_col(k);
+                arma::sp_mat::const_col_iterator it_end = A.end_col(k);
+                for (int idx = 0; it != it_end; ++it, idx++) {
+                    assoc_rows[idx] = it.row();
+                }
+            }
 
-                    arma::uvec sorted_rows(n_k);
-                    arma::sp_mat::const_col_iterator it = associations.begin_col(k);
-                    arma::sp_mat::const_col_iterator it_end = associations.end_col(k);
-                    for (int idx = 0; it != it_end; ++it, idx++) {
-                        sorted_rows[idx] = perm[it.row()];
+            for (arma::uword j = 0; j < n_conds; j++) {
+                // Map association rows to positions in descending order of
+                // scores.col(j), then sort ascending along that order.
+                arma::uvec sorted_rows(n_k);
+                for (int idx = 0; idx < n_k; idx++) {
+                    sorted_rows[idx] = perms(assoc_rows[idx], j);
+                }
+                sorted_rows = arma::sort(sorted_rows);
+
+                double best_logp = 0.0;
+                arma::uword best_pos = 0;
+                double O_cum = 0.0;
+                for (int idx = 0; idx < n_k; idx++) {
+                    const arma::uword ii = sorted_rows(idx);
+                    O_cum += sorted_scores(ii, j);
+                    const double lambda = O_cum - Acumsum(ii, j) * p_k;
+                    if (lambda <= 0.0) continue;
+                    const double nu = A2cumsum(ii, j) * p_k;
+                    const double denom = 2.0 * (nu + (lambda * a_max(j)) / 3.0);
+                    if (denom <= 0.0) continue;
+                    const double logp = (lambda * lambda) / denom;
+                    if (std::isfinite(logp) && logp > best_logp) {
+                        best_logp = logp;
+                        best_pos = ii;
                     }
-                    sorted_rows = arma::sort(sorted_rows);
-
-                    for (int idx = 0; idx < n_k; idx++) {
-                        int ii = sorted_rows(idx);
-
-                        O(idx, j) = sorted_scores(ii, j);
-                        E(idx, j) = Acumsum(ii, j) * p_k;
-                        Nu(idx, j) = A2cumsum(ii, j) * p_k;
-                        rows(idx, j) = ii;
-                    }
-                }
-                O = arma::cumsum(O);
-
-                arma::mat Lambda = O - E;
-                arma::mat aLambda = Lambda;
-                for (int j = 0; j < aLambda.n_cols; j++) {
-                    aLambda.col(j) *= a_max(j);
                 }
 
-                arma::mat logPvals_k = arma::square(Lambda) / (2.0 * (Nu + (aLambda / 3.0)));
-                arma::uvec idx = arma::find(Lambda <= 0);
-                logPvals_k(idx) = arma::zeros(idx.n_elem);
-                logPvals_k.replace(arma::datum::nan, 0);
-                for (int j = 0; j < logPvals_k.n_cols; j++) {
-                    arma::vec v = logPvals_k.col(j);
-                    logPvals(k, j) = arma::max(v);
-                    thresholds(k, j) = rows(v.index_max(), j);
-                }
+                logPvals(k, j) = best_logp;
+                // `peak_rank_idx` is the 0-based position (in the descending
+                // sort of scores.col(j)) at which the log-p-value peaks.
+                // Not a score threshold; convert via `sorted_scores(idx, j)`
+                // if the peak score is desired.
+                peak_rank_idx(k, j) = (double)best_pos;
             }
         }
 
         arma::field<arma::mat> output(2);
         output(0) = logPvals;
-        output(1) = thresholds;
+        output(1) = peak_rank_idx;
 
-        return (output);
+        return output;
     }
 } // namespace actionet

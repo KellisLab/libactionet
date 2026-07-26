@@ -8,19 +8,28 @@ include(ConfigureBLAS)
 include(ConfigureR)
 include(ConfigureOpenMP)
 
-find_package(HDF5 REQUIRED COMPONENTS C)
+## Backed h5ad IO support (currently Python-only). R front-end does not use
+## this code path, so downstream builds may disable it to drop the HDF5 build
+## and runtime dependency entirely.
+option(LIBACTIONET_ENABLE_HDF5 "Build backed-h5ad IO code (requires HDF5)" ON)
 
-# SKETCHY DEFENSIVE FIX. BUG MAY NOT EVEN EXIST.
-# Use the modern imported target if available (avoids linking both system
-# libhdf5_serial.so and a separately installed libhdf5.so simultaneously,
-# which causes an HDF5 version mismatch abort at runtime when h5py is also
-# loaded in the same process). The imported target resolves to a single lib.
-if(TARGET hdf5::hdf5-shared)
-    set(_HDF5_TARGET hdf5::hdf5-shared)
-elseif(TARGET HDF5::HDF5)
-    set(_HDF5_TARGET HDF5::HDF5)
+if (LIBACTIONET_ENABLE_HDF5)
+    find_package(HDF5 REQUIRED COMPONENTS C)
+
+    # SKETCHY DEFENSIVE FIX. BUG MAY NOT EVEN EXIST.
+    # Use the modern imported target if available (avoids linking both system
+    # libhdf5_serial.so and a separately installed libhdf5.so simultaneously,
+    # which causes an HDF5 version mismatch abort at runtime when h5py is also
+    # loaded in the same process). The imported target resolves to a single lib.
+    if(TARGET hdf5::hdf5-shared)
+        set(_HDF5_TARGET hdf5::hdf5-shared)
+    elseif(TARGET HDF5::HDF5)
+        set(_HDF5_TARGET HDF5::HDF5)
+    else()
+        set(_HDF5_TARGET "${HDF5_LIBRARIES}")
+    endif()
 else()
-    set(_HDF5_TARGET "${HDF5_LIBRARIES}")
+    message(STATUS "LIBACTIONET_ENABLE_HDF5=OFF: excluding backed h5ad IO code")
 endif()
 
 ############# COMPILER OPTIONS
@@ -44,7 +53,14 @@ file(GLOB_RECURSE SOURCES_ACTION CONFIGURE_DEPENDS src/action/*.cpp)
 file(GLOB_RECURSE SOURCES_ANNOTATION CONFIGURE_DEPENDS src/annotation/*.cpp)
 file(GLOB_RECURSE SOURCES_DECOMPOSITION CONFIGURE_DEPENDS src/decomposition/*.cpp)
 file(GLOB_RECURSE SOURCES_NETWORK CONFIGURE_DEPENDS src/network/*.cpp)
-file(GLOB_RECURSE SOURCES_IO CONFIGURE_DEPENDS src/io/*.cpp)
+if (LIBACTIONET_ENABLE_HDF5)
+    file(GLOB_RECURSE SOURCES_IO CONFIGURE_DEPENDS src/io/*.cpp)
+else()
+    # backed_h5ad/ is the only subdirectory under src/io/ today; keeping this
+    # branch explicit means new non-HDF5 IO sources will be picked up here.
+    file(GLOB_RECURSE SOURCES_IO CONFIGURE_DEPENDS src/io/*.cpp)
+    list(FILTER SOURCES_IO EXCLUDE REGEX "/backed_h5ad/")
+endif()
 file(GLOB_RECURSE SOURCES_TOOLS CONFIGURE_DEPENDS src/tools/*.cpp)
 file(GLOB_RECURSE SOURCES_UTILS_INT CONFIGURE_DEPENDS src/utils_internal/*.cpp)
 file(GLOB_RECURSE SOURCES_VISUALIZATION CONFIGURE_DEPENDS src/visualization/*.cpp)
@@ -119,8 +135,15 @@ else()
 endif()
 
 
-target_include_directories(actionet PUBLIC ${HDF5_INCLUDE_DIRS})
-target_link_libraries(actionet PUBLIC ${_HDF5_TARGET})
+if (LIBACTIONET_ENABLE_HDF5)
+    target_include_directories(actionet PUBLIC ${HDF5_INCLUDE_DIRS})
+    target_link_libraries(actionet PUBLIC ${_HDF5_TARGET})
+else()
+    # Advertise the disabled state so both libactionet source and any
+    # downstream consumer that includes public headers can compile-guard the
+    # backed-h5ad symbols.
+    target_compile_definitions(actionet PUBLIC LIBACTIONET_NO_HDF5)
+endif()
 
 ## Add included headers
 target_include_directories(
@@ -153,3 +176,10 @@ target_compile_options(actionet PRIVATE -Wno-psabi -Wno-deprecated-declarations)
 
 ## Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+############ TESTS
+option(LIBACTIONET_BUILD_TESTS "Build libactionet regression tests" OFF)
+if (LIBACTIONET_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()

@@ -1,6 +1,8 @@
 #include "annotation/specificity.hpp"
+#ifndef LIBACTIONET_NO_HDF5
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
+#endif
 #include "utils_internal/utils_matrix.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include <algorithm>
@@ -279,6 +281,7 @@ namespace actionet {
 
 } // namespace actionet
 
+#ifndef LIBACTIONET_NO_HDF5
 // ============================================================================
 // Backed sparse overloads
 // ============================================================================
@@ -791,3 +794,4 @@ namespace actionet {
     }
 
 } // namespace actionet
+#endif // LIBACTIONET_NO_HDF5

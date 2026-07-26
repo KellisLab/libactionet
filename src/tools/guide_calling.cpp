@@ -1,7 +1,9 @@
 #include "tools/guide_calling.hpp"
 
+#ifndef LIBACTIONET_NO_HDF5
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
+#endif
 #include "utils_internal/utils_parallel.hpp"
 
 #include <algorithm>
@@ -440,6 +442,7 @@ namespace {
         return arma::sp_mat(locations, values, n_rows, n_cols, false, true);
     }
 
+#ifndef LIBACTIONET_NO_HDF5
     /// Fit guides from a backed HDF5 operator by reading guide columns in
     /// chunks of size backed_chunk_guides, fitting each chunk via the in-memory
     /// sparse path, and merging results.
@@ -518,6 +521,7 @@ namespace {
         out(1) = triplets_to_sparse(fg_rows, fg_cols, n_rows, n_cols);
         return out;
     }
+#endif // LIBACTIONET_NO_HDF5
 
     /// Allocate a GuideThresholdResult with NaN-filled vectors.
     actionet::GuideThresholdResult init_threshold_result(const arma::uword n_guides) {
@@ -639,6 +643,7 @@ namespace actionet {
         return out;
     }
 
+#ifndef LIBACTIONET_NO_HDF5
     GuideGMMFitResult fitGuidesSharedVarianceGMM(
         BackedSparseMatrixOperator& op,
         const GuideGMMFitParams& params
@@ -652,6 +657,7 @@ namespace actionet {
     ) {
         return fit_guides_backed_impl(op, params);
     }
+#endif // LIBACTIONET_NO_HDF5
 
     GuideThresholdResult deriveGuideThresholdsQuantile(
         const GuideGMMFitResult& fits,
@@ -916,6 +922,7 @@ namespace actionet {
         return out;
     }
 
+#ifndef LIBACTIONET_NO_HDF5
     arma::field<arma::sp_mat> applyGuideThresholds(
         BackedSparseMatrixOperator& op,
         const arma::vec& background_thresholds,
@@ -933,4 +940,5 @@ namespace actionet {
     ) {
         return apply_thresholds_backed_impl(op, background_thresholds, foreground_thresholds, chunk_guides);
     }
+#endif // LIBACTIONET_NO_HDF5
 } // namespace actionet

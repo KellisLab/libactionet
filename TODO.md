@@ -9,8 +9,18 @@
 ## Secondary
 * Compile to Windows x86
 * Add formal test infrastructure (test/ directory)
+  * `tests/` scaffold added (2026-07-21) with golden regression tests for `xicor`, `XICOR`, and `assess_enrichment`; opt-in via `-DLIBACTIONET_BUILD_TESTS=ON`. Extend as needed.
 
 ## Done
+* Fix long-standing correctness bugs in `tools/xicor` and `tools/enrichment` (2026-07-21):
+  * `rank_vec(method=1)` tie handling — now returns 1-based max-tie rank matching `R::rank(., ties.method="max")`.
+  * `xicor` Z-score `ind` — switched to 1-based (`regspace(1, n)`) to match `XICOR::xicor` asymptotic. Prior 0-based version returned a systematically wrong Z on every input.
+  * `xicor` seed — now controls random tie-breaking on X via joint permutation + `stable_sort_index`. Prior joint shuffle before non-stable sort was effectively non-deterministic; documented in header.
+  * `XICOR` matrix path — removed the `swap(X, Y)` + transpose optimization, which was silently wrong for the asymmetric xi. Added per-column rank precomputation, yielding an O(min(nX, nY))× speedup.
+  * `assess_enrichment` — no longer mutates its `associations` argument (was silently binarized in-place); signature now `const arma::sp_mat&`.
+  * `assess_enrichment` output — renamed `thresholds` to `peak_rank_idx` (the return value is a rank position, not a score threshold); comment updated in header and R/Python bindings.
+  * `assess_enrichment` — hoisted inner-loop scratch matrices, dropping the 4× per-iteration allocations.
+  * Golden tests added under `tests/test_xicor_enrichment.cpp`.
 * Automate link SuiteSparse on unix/macos
 * Upgrade Armadillo
 * Remove obsolete and broken igraph.
