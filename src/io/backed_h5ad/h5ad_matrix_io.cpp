@@ -2009,10 +2009,16 @@ actionet::h5ad::TransferStats transform_dense(
         source.info.rows * source.info.cols, output_item_size);
     stats.destination = source.info;
     stats.destination.data_item_size = output_item_size;
-    // The recorded destination width must match the on-disk dtype we created
-    // (H5T_IEEE_F32LE / F64LE), independent of the double working buffer.
-    check_h5(stats.destination.data_item_size == output_item_size,
-             "Transformed dense destination dtype width is inconsistent");
+    // Verify the dtype we actually created on disk (H5T_IEEE_F32LE / F64LE)
+    // matches the recorded width, independent of the double working buffer
+    // that HDF5 narrows at write time.
+    {
+        H5Type destination_type(H5Dget_type(destination.get()));
+        check_h5(static_cast<bool>(destination_type),
+                 "Failed to inspect transformed dense destination dtype");
+        check_h5(H5Tget_size(destination_type.get()) == output_item_size,
+                 "Transformed dense destination dtype width is inconsistent");
+    }
     stats.destination.chunked = inspect_layout(destination.get()).chunked;
     stats.destination.filtered = inspect_layout(destination.get()).filtered;
     reset_dataset_inventory(stats.destination);
@@ -2244,10 +2250,16 @@ actionet::h5ad::TransferStats transform_compressed(
         checked_bytes(source.info.nnz, output_item_size);
     stats.destination = source.info;
     stats.destination.data_item_size = output_item_size;
-    // Recorded destination width must match the on-disk dtype we created
-    // (H5T_IEEE_F32LE / F64LE), independent of the double working buffer.
-    check_h5(stats.destination.data_item_size == output_item_size,
-             "Transformed sparse destination dtype width is inconsistent");
+    // Verify the dtype we actually created on disk (H5T_IEEE_F32LE / F64LE)
+    // matches the recorded width, independent of the double working buffer
+    // that HDF5 narrows at write time.
+    {
+        H5Type destination_type(H5Dget_type(destination_data.get()));
+        check_h5(static_cast<bool>(destination_type),
+                 "Failed to inspect transformed sparse destination dtype");
+        check_h5(H5Tget_size(destination_type.get()) == output_item_size,
+                 "Transformed sparse destination dtype width is inconsistent");
+    }
     stats.destination.indices_item_size =
         minor_size <= static_cast<std::uint64_t>(
                           std::numeric_limits<std::int32_t>::max()) ? 4 : 8;
