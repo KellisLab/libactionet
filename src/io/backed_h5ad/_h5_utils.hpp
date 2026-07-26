@@ -8,8 +8,10 @@
 
 #include <hdf5.h>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace actionet::detail::h5 {
 
@@ -124,6 +126,132 @@ namespace actionet::detail::h5 {
                 std::string(err_context) + ": path not found: " + group_path);
         }
         return info.type;
+    }
+
+    // ------------------------------------------------------------------
+    // Shared 1-D read helpers.
+    //
+    // These centralise the hyperslab/point read pattern that the compute
+    // operators previously duplicated in anonymous-namespace helpers and in
+    // ``read_data_indices_slice_``. All of them use RAII ``Space`` handles so
+    // they cannot leak an HDF5 identifier when a read throws.
+    // ------------------------------------------------------------------
+
+    /// Read ``count`` contiguous elements starting at ``start`` from a 1-D
+    /// dataset into ``destination`` using ``memory_type`` as the in-memory
+    /// datatype. ``destination`` must have room for ``count`` elements.
+    inline void read_1d_slice_raw(hid_t dataset,
+                                  hid_t memory_type,
+                                  unsigned long long start,
+                                  unsigned long long count,
+                                  void* destination,
+                                  const char* err_context) {
+        if (count == 0) {
+            return;
+        }
+        const hsize_t offset[1] = {static_cast<hsize_t>(start)};
+        const hsize_t extent[1] = {static_cast<hsize_t>(count)};
+        Space file_space(H5Dget_space(dataset));
+        check_h5(static_cast<bool>(file_space),
+                 "Failed to open 1-D source dataspace");
+        check_h5(H5Sselect_hyperslab(file_space.get(), H5S_SELECT_SET, offset,
+                                     nullptr, extent, nullptr) >= 0,
+                 "Failed to select 1-D source hyperslab");
+        Space mem_space(H5Screate_simple(1, extent, nullptr));
+        check_h5(static_cast<bool>(mem_space),
+                 "Failed to create 1-D memory dataspace");
+        check_h5(H5Dread(dataset, memory_type, mem_space.get(),
+                         file_space.get(), H5P_DEFAULT, destination) >= 0,
+                 err_context);
+    }
+
+    /// Read a contiguous slice of sparse indices into ``std::uint64_t`` values,
+    /// dispatching on the stored sign so int32/int64/uint32/uint64 sources are
+    /// all handled. Signed sources are checked for negativity; a negative value
+    /// throws. This mirrors ``read_1d_indices`` in ``h5ad_matrix_io.cpp``.
+    inline std::vector<std::uint64_t> read_indices_slice(
+        hid_t dataset,
+        unsigned long long start,
+        unsigned long long count) {
+        std::vector<std::uint64_t> out(static_cast<std::size_t>(count), 0);
+        if (count == 0) {
+            return out;
+        }
+        Type type(H5Dget_type(dataset));
+        check_h5(static_cast<bool>(type),
+                 "Failed to inspect sparse indices dtype");
+        if (H5Tget_sign(type.get()) == H5T_SGN_NONE) {
+            std::vector<unsigned long long> values(
+                static_cast<std::size_t>(count), 0);
+            read_1d_slice_raw(dataset, H5T_NATIVE_ULLONG, start, count,
+                              values.data(),
+                              "Failed to read unsigned sparse indices slice");
+            for (std::size_t i = 0; i < values.size(); ++i) {
+                out[i] = static_cast<std::uint64_t>(values[i]);
+            }
+        } else {
+            std::vector<long long> values(
+                static_cast<std::size_t>(count), 0);
+            read_1d_slice_raw(dataset, H5T_NATIVE_LLONG, start, count,
+                              values.data(),
+                              "Failed to read signed sparse indices slice");
+            for (std::size_t i = 0; i < values.size(); ++i) {
+                if (values[i] < 0) {
+                    throw std::runtime_error(
+                        "Sparse indices contain a negative value");
+                }
+                out[i] = static_cast<std::uint64_t>(values[i]);
+            }
+        }
+        return out;
+    }
+
+    /// Read a contiguous slice of sparse ``data`` as ``double``. ``values`` is
+    /// resized to ``count``.
+    inline void read_double_slice(hid_t dataset,
+                                  unsigned long long start,
+                                  unsigned long long count,
+                                  std::vector<double>& values) {
+        values.assign(static_cast<std::size_t>(count), 0.0);
+        read_1d_slice_raw(dataset, H5T_NATIVE_DOUBLE, start, count,
+                          values.data(), "Failed to read sparse data slice");
+    }
+
+    /// Read the individually selected element ``positions`` of a 1-D ``data``
+    /// dataset as ``double``. ``values`` is resized to ``positions.size()``.
+    inline void read_double_points(hid_t dataset,
+                                    const std::vector<hsize_t>& positions,
+                                    std::vector<double>& values) {
+        values.assign(positions.size(), 0.0);
+        if (positions.empty()) {
+            return;
+        }
+        Space file_space(H5Dget_space(dataset));
+        check_h5(static_cast<bool>(file_space),
+                 "Failed to open sparse data dataspace");
+        check_h5(H5Sselect_elements(file_space.get(), H5S_SELECT_SET,
+                                    positions.size(), positions.data()) >= 0,
+                 "Failed to select sparse data points");
+        const hsize_t extent[1] = {static_cast<hsize_t>(positions.size())};
+        Space mem_space(H5Screate_simple(1, extent, nullptr));
+        check_h5(static_cast<bool>(mem_space),
+                 "Failed to create sparse point memory space");
+        check_h5(H5Dread(dataset, H5T_NATIVE_DOUBLE, mem_space.get(),
+                         file_space.get(), H5P_DEFAULT, values.data()) >= 0,
+                 "Failed to read sparse data points");
+    }
+
+    /// Validate that a stored, already-nonnegative index fits within ``extent``
+    /// and return it as an ``std::uint64_t``. Throws ``std::runtime_error`` with
+    /// ``err_context`` when the index is out of bounds. Callers that read via
+    /// ``read_indices_slice`` have already rejected negative values.
+    inline std::uint64_t validate_and_cast_index(std::uint64_t raw,
+                                                 std::uint64_t extent,
+                                                 const char* err_context) {
+        if (raw >= extent) {
+            throw std::runtime_error(err_context);
+        }
+        return raw;
     }
 
 } // namespace actionet::detail::h5

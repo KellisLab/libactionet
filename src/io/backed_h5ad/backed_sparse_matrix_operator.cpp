@@ -19,6 +19,11 @@
 
 namespace {
     using actionet::detail::h5::check_h5;
+    using actionet::detail::h5::read_double_points;
+    using actionet::detail::h5::read_double_slice;
+    using actionet::detail::h5::read_indices_slice;
+    using actionet::detail::h5::read_1d_slice_raw;
+    using actionet::detail::h5::validate_and_cast_index;
 
     constexpr size_t kSelectiveSieveBytes = 4ULL * 1024;
     // HDF5 point selection over a contiguous dataset turns into one data-sieve
@@ -38,93 +43,9 @@ namespace {
         hid_t memory_type,
         const char* error_context) {
         std::vector<T> values(static_cast<size_t>(count));
-        if (count == 0) {
-            return values;
-        }
-
-        const hsize_t offset[1] = {static_cast<hsize_t>(start)};
-        const hsize_t extent[1] = {static_cast<hsize_t>(count)};
-        actionet::detail::h5::Space file_space(H5Dget_space(dataset));
-        check_h5(static_cast<bool>(file_space), "Failed to open sparse index dataspace");
-        check_h5(
-            H5Sselect_hyperslab(
-                file_space.get(), H5S_SELECT_SET, offset, nullptr, extent, nullptr) >= 0,
-            "Failed to select sparse index hyperslab");
-        actionet::detail::h5::Space memory_space(H5Screate_simple(1, extent, nullptr));
-        check_h5(static_cast<bool>(memory_space), "Failed to create sparse index memory space");
-        check_h5(
-            H5Dread(
-                dataset,
-                memory_type,
-                memory_space.get(),
-                file_space.get(),
-                H5P_DEFAULT,
-                values.data()) >= 0,
-            error_context);
+        read_1d_slice_raw(dataset, memory_type, start, count, values.data(),
+                          error_context);
         return values;
-    }
-
-    void read_double_slice(
-        hid_t dataset,
-        unsigned long long start,
-        unsigned long long count,
-        std::vector<double>& values) {
-        values.assign(static_cast<size_t>(count), 0.0);
-        if (count == 0) {
-            return;
-        }
-
-        const hsize_t offset[1] = {static_cast<hsize_t>(start)};
-        const hsize_t extent[1] = {static_cast<hsize_t>(count)};
-        actionet::detail::h5::Space file_space(H5Dget_space(dataset));
-        check_h5(static_cast<bool>(file_space), "Failed to open sparse data dataspace");
-        check_h5(
-            H5Sselect_hyperslab(
-                file_space.get(), H5S_SELECT_SET, offset, nullptr, extent, nullptr) >= 0,
-            "Failed to select sparse data hyperslab");
-        actionet::detail::h5::Space memory_space(H5Screate_simple(1, extent, nullptr));
-        check_h5(static_cast<bool>(memory_space), "Failed to create sparse data memory space");
-        check_h5(
-            H5Dread(
-                dataset,
-                H5T_NATIVE_DOUBLE,
-                memory_space.get(),
-                file_space.get(),
-                H5P_DEFAULT,
-                values.data()) >= 0,
-            "Failed to read sparse data slice");
-    }
-
-    void read_double_points(
-        hid_t dataset,
-        const std::vector<hsize_t>& positions,
-        std::vector<double>& values) {
-        values.assign(positions.size(), 0.0);
-        if (positions.empty()) {
-            return;
-        }
-
-        actionet::detail::h5::Space file_space(H5Dget_space(dataset));
-        check_h5(static_cast<bool>(file_space), "Failed to open sparse data dataspace");
-        check_h5(
-            H5Sselect_elements(
-                file_space.get(),
-                H5S_SELECT_SET,
-                positions.size(),
-                positions.data()) >= 0,
-            "Failed to select sparse data points");
-        const hsize_t extent[1] = {static_cast<hsize_t>(positions.size())};
-        actionet::detail::h5::Space memory_space(H5Screate_simple(1, extent, nullptr));
-        check_h5(static_cast<bool>(memory_space), "Failed to create sparse point memory space");
-        check_h5(
-            H5Dread(
-                dataset,
-                H5T_NATIVE_DOUBLE,
-                memory_space.get(),
-                file_space.get(),
-                H5P_DEFAULT,
-                values.data()) >= 0,
-            "Failed to read sparse data points");
     }
 } // namespace
 
@@ -176,6 +97,11 @@ namespace actionet {
         n_obs_ = static_cast<arma::uword>(matrix_info.rows);
         n_var_ = static_cast<arma::uword>(matrix_info.cols);
 
+        // From here on we open HDF5 identifiers into the raw hid_t members.
+        // A throw during construction does NOT run the destructor, so guard the
+        // whole open/validate sequence and release any partially-acquired
+        // handles before rethrowing to avoid leaking file/group/dataset ids.
+        try {
         // Disable HDF5 advisory file locking so this reader can coexist with
         // h5py/AnnData backed-mode handles that already hold a lock on the
         // same inode (errno 11 / EAGAIN from H5FD__sec2_lock otherwise).
@@ -224,11 +150,11 @@ namespace actionet {
             }
         }
 
-        hid_t indptr_space = H5Dget_space(indptr_ds_);
-        check_h5(indptr_space >= 0, "Failed to get indptr dataspace");
-        check_h5(H5Sget_simple_extent_ndims(indptr_space) == 1, "indptr must be 1D");
+        actionet::detail::h5::Space indptr_space(H5Dget_space(indptr_ds_));
+        check_h5(static_cast<bool>(indptr_space), "Failed to get indptr dataspace");
+        check_h5(H5Sget_simple_extent_ndims(indptr_space.get()) == 1, "indptr must be 1D");
         hsize_t indptr_dim[1] = {0};
-        check_h5(H5Sget_simple_extent_dims(indptr_space, indptr_dim, nullptr) == 1,
+        check_h5(H5Sget_simple_extent_dims(indptr_space.get(), indptr_dim, nullptr) == 1,
                  "Failed to get indptr dimensions");
         indptr_.assign(static_cast<size_t>(indptr_dim[0]), 0ULL);
         if (!indptr_.empty()) {
@@ -246,7 +172,6 @@ namespace actionet {
                 indptr_[i] = static_cast<unsigned long long>(indptr_signed[i]);
             }
         }
-        H5Sclose(indptr_space);
 
         const size_t expected = static_cast<size_t>((is_csr_ ? n_obs_ : n_var_) + 1);
         check_h5(indptr_.size() == expected, "indptr length does not match sparse shape");
@@ -279,6 +204,12 @@ namespace actionet {
         }
         check_h5(std::isfinite(log_scale_) && log_scale_ > 0.0,
                  "log_scale must be finite and > 0");
+        } catch (...) {
+            // Release any handles opened above before the exception propagates;
+            // the destructor will not run for a throwing constructor.
+            close_handles_();
+            throw;
+        }
     }
 
     void BackedSparseMatrixOperator::close_handles_() {
@@ -374,44 +305,38 @@ namespace actionet {
             return;
         }
 
-        hsize_t start_h[1] = {static_cast<hsize_t>(start)};
-        hsize_t count_h[1] = {static_cast<hsize_t>(count)};
-
-        hid_t file_space_data = H5Dget_space(data_ds_);
-        check_h5(file_space_data >= 0, "Failed to get data dataspace");
-        check_h5(H5Sselect_hyperslab(file_space_data, H5S_SELECT_SET, start_h, nullptr, count_h, nullptr) >= 0,
-                 "Failed to select data hyperslab");
-        hid_t mem_space_data = H5Screate_simple(1, count_h, nullptr);
-        check_h5(mem_space_data >= 0, "Failed to create data memory dataspace");
-        check_h5(H5Dread(data_ds_, H5T_NATIVE_DOUBLE, mem_space_data, file_space_data, H5P_DEFAULT, data.data()) >= 0,
-                 "Failed to read sparse data slice");
-        H5Sclose(mem_space_data);
-        H5Sclose(file_space_data);
-
-        hid_t file_space_indices = H5Dget_space(indices_ds_);
-        check_h5(file_space_indices >= 0, "Failed to get indices dataspace");
-        check_h5(H5Sselect_hyperslab(file_space_indices, H5S_SELECT_SET, start_h, nullptr, count_h, nullptr) >= 0,
-                 "Failed to select indices hyperslab");
-        hid_t mem_space_indices = H5Screate_simple(1, count_h, nullptr);
-        check_h5(mem_space_indices >= 0, "Failed to create indices memory dataspace");
-        // Read with H5T_NATIVE_LLONG to handle both int32 and int64 stored indices.
-        // HDF5 converts int32 -> int64 automatically; we re-cast to uint64 after.
-        std::vector<long long> indices_signed(static_cast<size_t>(count), 0LL);
-        check_h5(H5Dread(indices_ds_, H5T_NATIVE_LLONG, mem_space_indices, file_space_indices, H5P_DEFAULT,
-                         indices_signed.data()) >= 0,
-                 "Failed to read sparse indices slice");
-        for (size_t i = 0; i < indices_signed.size(); ++i) {
-            indices[i] = static_cast<unsigned long long>(indices_signed[i]);
+        // RAII helpers: dataspaces cannot leak if a read throws mid-way.
+        read_double_slice(data_ds_, start, count, data);
+        // Sign-dispatched read rejects negative stored indices instead of
+        // silently wrapping them to a huge unsigned value.
+        std::vector<std::uint64_t> raw =
+            read_indices_slice(indices_ds_, start, count);
+        // Every caller uses these as a minor-axis coordinate (column for CSR,
+        // row for CSC). Validate against the minor extent so a corrupt source
+        // cannot drive an out-of-bounds access in a downstream kernel.
+        const std::uint64_t minor_extent =
+            static_cast<std::uint64_t>(is_csr_ ? n_var_ : n_obs_);
+        for (size_t i = 0; i < raw.size(); ++i) {
+            indices[i] = static_cast<unsigned long long>(
+                validate_and_cast_index(
+                    raw[i], minor_extent,
+                    "Sparse index exceeds minor-axis bounds"));
         }
-        H5Sclose(mem_space_indices);
-        H5Sclose(file_space_indices);
     }
 
     void BackedSparseMatrixOperator::load_chunk_cached_(
         unsigned long long start, unsigned long long count,
         const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const {
         if (!(chunk_cache_.count == count && chunk_cache_.start == start && count > 0)) {
-            read_data_indices_slice_(start, count, chunk_cache_.data, chunk_cache_.indices);
+            // Read into scratch first so a mid-read throw cannot leave the
+            // cache holding partially-updated buffers while start/count still
+            // advertise the previous (now-inconsistent) chunk. Only after both
+            // reads succeed do we commit the buffers and metadata.
+            std::vector<double> scratch_data;
+            std::vector<unsigned long long> scratch_indices;
+            read_data_indices_slice_(start, count, scratch_data, scratch_indices);
+            chunk_cache_.data.swap(scratch_data);
+            chunk_cache_.indices.swap(scratch_indices);
             chunk_cache_.start = start;
             chunk_cache_.count = count;
             chunk_cache_.transformed = false;
@@ -1313,24 +1238,29 @@ namespace actionet {
             col_to_slots[static_cast<size_t>(col_indices(j))].push_back(j);
         }
 
+        // Mirror the inverse map on the row axis so a source row selected more
+        // than once scatters to every requested output slot (matching the
+        // dense path and the ordered/duplicate-preservation contract). When
+        // all rows are taken, the identity map is implied and row_to_slots is
+        // left empty.
+        std::vector<std::vector<arma::uword>> row_to_slots;
+        if (!all_rows) {
+            row_to_slots.assign(static_cast<size_t>(n_obs_), {});
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                row_to_slots[static_cast<size_t>(row_indices(i))].push_back(i);
+            }
+        }
+
         // Collect triplets then batch-construct.
         std::vector<arma::uword> trip_rows;
         std::vector<arma::uword> trip_cols;
         std::vector<double> trip_vals;
 
         if (is_csr_) {
-            std::vector<arma::uword> row_map;
-            if (!all_rows) {
-                row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
-                for (arma::uword i = 0; i < n_sel_rows; ++i) {
-                    if (row_map[row_indices(i)] == n_sel_rows) {
-                        row_map[row_indices(i)] = i;
-                    }
-                }
-            }
-
             for (arma::uword row_start = 0; row_start < n_obs_;) {
-                const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+                // Cap the chunk by the NNZ-byte budget (next_block_end_), not
+                // raw chunk_size_, so a dense band cannot blow the buffer.
+                const arma::uword row_end = next_block_end_(row_start, n_obs_);
                 const unsigned long long nnz_start_chunk = indptr_[row_start];
                 const unsigned long long nnz_end_chunk = indptr_[row_end];
                 const unsigned long long nnz_count = nnz_end_chunk - nnz_start_chunk;
@@ -1345,8 +1275,10 @@ namespace actionet {
                 ensure_chunk_transformed_csr_(row_start, row_end, nnz_start_chunk);
 
                 for (arma::uword r = row_start; r < row_end; ++r) {
-                    const arma::uword out_row = all_rows ? r : row_map[r];
-                    if (out_row == n_sel_rows) continue;
+                    // Every output slot that maps back to source row r.
+                    const std::vector<arma::uword>* out_rows =
+                        all_rows ? nullptr : &row_to_slots[static_cast<size_t>(r)];
+                    if (!all_rows && out_rows->empty()) continue;
 
                     const unsigned long long ls = indptr_[r] - nnz_start_chunk;
                     const unsigned long long le = indptr_[r + 1] - nnz_start_chunk;
@@ -1356,10 +1288,20 @@ namespace actionet {
                         if (slots.empty()) continue;
                         const double v = (*data)[static_cast<size_t>(p)];
                         if (v == 0.0) continue;
-                        for (arma::uword out_col : slots) {
-                            trip_rows.push_back(out_row);
-                            trip_cols.push_back(out_col);
-                            trip_vals.push_back(v);
+                        if (all_rows) {
+                            for (arma::uword out_col : slots) {
+                                trip_rows.push_back(r);
+                                trip_cols.push_back(out_col);
+                                trip_vals.push_back(v);
+                            }
+                        } else {
+                            for (arma::uword out_row : *out_rows) {
+                                for (arma::uword out_col : slots) {
+                                    trip_rows.push_back(out_row);
+                                    trip_cols.push_back(out_col);
+                                    trip_vals.push_back(v);
+                                }
+                            }
                         }
                     }
                 }
@@ -1368,16 +1310,6 @@ namespace actionet {
         } else {
             // CSC path — dedupe requested columns before the disk sweep so
             // repeated references to the same column read from HDF5 only once.
-            std::vector<arma::uword> row_map;
-            if (!all_rows) {
-                row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
-                for (arma::uword i = 0; i < n_sel_rows; ++i) {
-                    if (row_map[row_indices(i)] == n_sel_rows) {
-                        row_map[row_indices(i)] = i;
-                    }
-                }
-            }
-
             std::vector<arma::uword> unique_cols;
             unique_cols.reserve(n_sel_cols);
             for (arma::uword c = 0; c < n_var_; ++c) {
@@ -1399,14 +1331,24 @@ namespace actionet {
                 const auto& slots = col_to_slots[static_cast<size_t>(c)];
                 for (unsigned long long p = 0; p < nnz_count; ++p) {
                     const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const arma::uword out_row = all_rows ? row : row_map[row];
-                    if (out_row == n_sel_rows) continue;
                     const double v = transform_value_(row, data[static_cast<size_t>(p)]);
                     if (v == 0.0) continue;
-                    for (arma::uword out_col : slots) {
-                        trip_rows.push_back(out_row);
-                        trip_cols.push_back(out_col);
-                        trip_vals.push_back(v);
+                    if (all_rows) {
+                        for (arma::uword out_col : slots) {
+                            trip_rows.push_back(row);
+                            trip_cols.push_back(out_col);
+                            trip_vals.push_back(v);
+                        }
+                    } else {
+                        // Scatter to every output slot for this source row.
+                        for (arma::uword out_row :
+                             row_to_slots[static_cast<size_t>(row)]) {
+                            for (arma::uword out_col : slots) {
+                                trip_rows.push_back(out_row);
+                                trip_cols.push_back(out_col);
+                                trip_vals.push_back(v);
+                            }
+                        }
                     }
                 }
             }

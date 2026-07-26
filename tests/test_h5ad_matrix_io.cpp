@@ -365,9 +365,10 @@ int main() {
     require(unknown_encoding_rejected, "unknown encoding version was accepted");
 
     const std::vector<std::vector<std::uint64_t>> row_cases = {
-        {0, 1, 2, 3, 4}, {}, {2}, {1, 2, 3}, {0, 2, 4}, {4, 0, 4, 1}};
+        {0, 1, 2, 3, 4}, {}, {2}, {1, 2, 3}, {0, 2, 4}, {4, 0, 4, 1},
+        {4, 3, 2, 1, 0}};
     const std::vector<std::vector<std::uint64_t>> col_cases = {
-        {0, 1, 2, 3}, {}, {3}, {1, 2}, {3, 1, 3, 0}};
+        {0, 1, 2, 3}, {}, {3}, {1, 2}, {3, 1, 3, 0}, {3, 2, 1, 0}};
     actionet::h5ad::TransferOptions options;
     options.max_buffer_bytes = 1024;
     options.max_rows_per_batch = 2;

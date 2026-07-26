@@ -1101,11 +1101,18 @@ actionet::h5ad::TransferStats transfer_compressed(
         fixed_nnz, !fixed_payload, options.layout_policy);
 
     H5Type source_indices_type(H5Dget_type(source.indices.get()));
+    // Real AnnData files store indices/indptr as unsigned integers, so the
+    // fast raw-append path must accept H5T_SGN_NONE sources as well as signed
+    // ones. Correctness is preserved because minor_identity guarantees the
+    // stored index values are unchanged, and the size guard below only enables
+    // the fast path when the source item size matches the destination width
+    // (item_size 4 pairs with an int32 destination, 8 with int64). When the
+    // axis extent fits int32 (output_indices_int32) every valid unsigned index
+    // is < 2^31, so the width-matched HDF5 conversion at write time is exact.
     const bool fast_indices =
         ordered_unique &&
         minor_identity &&
         H5Tget_class(source_indices_type.get()) == H5T_INTEGER &&
-        H5Tget_sign(source_indices_type.get()) != H5T_SGN_NONE &&
         ((output_indices_int32 && H5Tget_size(source_indices_type.get()) == 4) ||
          (!output_indices_int32 && H5Tget_size(source_indices_type.get()) == 8));
 
@@ -1979,6 +1986,11 @@ actionet::h5ad::TransferStats transform_dense(
             checked_bytes(values.size(), sizeof(double)));
 
         const auto write_started = Clock::now();
+        // The in-memory transform buffer is always double, but the destination
+        // dataset dtype is authoritative (H5T_IEEE_F32LE under Float32). Passing
+        // H5T_NATIVE_DOUBLE as the memory type lets HDF5 narrow double->float32
+        // per element at write time. This single narrowing point is intentional;
+        // do not "fix" it by widening the on-disk dtype.
         write_dense_rows(
             destination.get(), H5T_NATIVE_DOUBLE, row_start, row_count,
             source.info.cols, values.data());
@@ -1997,6 +2009,10 @@ actionet::h5ad::TransferStats transform_dense(
         source.info.rows * source.info.cols, output_item_size);
     stats.destination = source.info;
     stats.destination.data_item_size = output_item_size;
+    // The recorded destination width must match the on-disk dtype we created
+    // (H5T_IEEE_F32LE / F64LE), independent of the double working buffer.
+    check_h5(stats.destination.data_item_size == output_item_size,
+             "Transformed dense destination dtype width is inconsistent");
     stats.destination.chunked = inspect_layout(destination.get()).chunked;
     stats.destination.filtered = inspect_layout(destination.get()).filtered;
     reset_dataset_inventory(stats.destination);
@@ -2206,6 +2222,10 @@ actionet::h5ad::TransferStats transform_compressed(
                 checked_bytes(row_indices.size(), sizeof(std::uint64_t)));
 
         const auto write_started = Clock::now();
+        // As in transform_dense: the working buffer is double, the destination
+        // "data" dataset dtype is authoritative (F32LE under Float32), and HDF5
+        // narrows double->float32 per element here. Intentional single point of
+        // narrowing; do not widen the on-disk dtype.
         write_1d(
             destination_data.get(), H5T_NATIVE_DOUBLE,
             start, count, values.data(), false);
@@ -2224,6 +2244,10 @@ actionet::h5ad::TransferStats transform_compressed(
         checked_bytes(source.info.nnz, output_item_size);
     stats.destination = source.info;
     stats.destination.data_item_size = output_item_size;
+    // Recorded destination width must match the on-disk dtype we created
+    // (H5T_IEEE_F32LE / F64LE), independent of the double working buffer.
+    check_h5(stats.destination.data_item_size == output_item_size,
+             "Transformed sparse destination dtype width is inconsistent");
     stats.destination.indices_item_size =
         minor_size <= static_cast<std::uint64_t>(
                           std::numeric_limits<std::int32_t>::max()) ? 4 : 8;

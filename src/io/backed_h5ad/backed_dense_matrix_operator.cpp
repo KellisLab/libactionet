@@ -47,6 +47,10 @@ namespace actionet {
         n_obs_ = static_cast<arma::uword>(matrix_info.rows);
         n_var_ = static_cast<arma::uword>(matrix_info.cols);
 
+        // A throw during construction does NOT run the destructor, so guard the
+        // open/validate sequence and release partially-acquired handles before
+        // rethrowing to avoid leaking the file/dataset ids.
+        try {
         file_id_ = actionet::detail::h5::open_h5_readonly_no_lock(
             file_path_, "BackedDenseMatrixOperator");
 
@@ -72,6 +76,10 @@ namespace actionet {
         }
         check_h5(std::isfinite(log_scale_) && log_scale_ > 0.0,
                  "log_scale must be finite and > 0");
+        } catch (...) {
+            close_handles_();
+            throw;
+        }
     }
 
     void BackedDenseMatrixOperator::close_handles_() {
@@ -127,16 +135,16 @@ namespace actionet {
         slab.set_size(obs_count, n_var_);
         if (obs_count == 0) return;
 
-        hid_t file_space = H5Dget_space(dataset_id_);
-        check_h5(file_space >= 0, "Failed to get dense dataset dataspace");
+        actionet::detail::h5::Space file_space(H5Dget_space(dataset_id_));
+        check_h5(static_cast<bool>(file_space), "Failed to get dense dataset dataspace");
 
         hsize_t offset[2] = {static_cast<hsize_t>(obs_start), 0};
         hsize_t count[2] = {static_cast<hsize_t>(obs_count), static_cast<hsize_t>(n_var_)};
-        check_h5(H5Sselect_hyperslab(file_space, H5S_SELECT_SET, offset, nullptr, count, nullptr) >= 0,
+        check_h5(H5Sselect_hyperslab(file_space.get(), H5S_SELECT_SET, offset, nullptr, count, nullptr) >= 0,
                  "Failed to select dense hyperslab");
 
-        hid_t mem_space = H5Screate_simple(2, count, nullptr);
-        check_h5(mem_space >= 0, "Failed to create dense memory dataspace");
+        actionet::detail::h5::Space mem_space(H5Screate_simple(2, count, nullptr));
+        check_h5(static_cast<bool>(mem_space), "Failed to create dense memory dataspace");
 
         // HDF5 writes the (obs_count × n_var) hyperslab in row-major order.
         // Read it into an arma::mat that is dimensioned as (n_var × obs_count):
@@ -145,13 +153,10 @@ namespace actionet {
         // row as one column.  A single ``strans`` then yields the desired
         // (obs_count × n_var) slab without an explicit per-element copy.
         arma::mat tmp(n_var_, obs_count);
-        check_h5(H5Dread(dataset_id_, H5T_NATIVE_DOUBLE, mem_space, file_space,
+        check_h5(H5Dread(dataset_id_, H5T_NATIVE_DOUBLE, mem_space.get(), file_space.get(),
                          H5P_DEFAULT, tmp.memptr()) >= 0,
                  "Failed to read dense slab");
         slab = tmp.t();
-
-        H5Sclose(mem_space);
-        H5Sclose(file_space);
     }
 
     void BackedDenseMatrixOperator::apply_transforms_(
