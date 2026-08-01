@@ -136,4 +136,4 @@ All public symbols are exposed under the `actionet` namespace via `include/libac
 Guide-calling API details: `docs/guide_calling_api.md`
 
 ## License
-GNU Affero General Public License v3 (AGPL-3.0). See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).

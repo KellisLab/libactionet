@@ -1,4 +1,10 @@
 ## Primary
+* Remove dead GPL-licensed vendored files under `include/extern/` — nothing in the compiled libactionet build includes them, and their upstream licenses (GPL-3 / GPL-2+) are incompatible with the current MIT license of libactionet:
+  * `include/extern/uwot/rng.h` (GPL-3, upstream uwot)
+  * `include/extern/uwot/rparallel.h` (GPL-3, upstream uwot)
+  * `include/extern/uwot/smooth_knn.h` (BSD-2, but `#include`s the GPL-2+ `RcppPerpendicular.h`)
+  * `include/extern/RcppPerpendicular.h` (GPL-2+)
+  * Also consider deleting `_EXCLUDE/extern/asa241.cc` (LGPL, already quarantined) for the same reason.
 * Legacy arma::field vs typed structs
   * dual return system across frontends
   * inconsistent return types

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Internal HDF5 helpers shared across the backed_h5ad translation units.
 // This header is intentionally private (kept under src/, not include/) so it
