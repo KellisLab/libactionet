@@ -1,98 +1,55 @@
 #include "io/backed_h5ad/backed_sparse_matrix_operator.hpp"
+#include "io/backed_h5ad/h5ad_matrix_io.hpp"
 
 #include "_h5_utils.hpp"
 
 #include <algorithm>
-#include <cctype>
+#include <atomic>
+#include <cstdint>
 #include <cmath>
 #include <cstring>
+#include <iterator>
+#include <limits>
+#include <numeric>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
+
+#include <omp.h>
 
 namespace {
     using actionet::detail::h5::check_h5;
+    using actionet::detail::h5::read_double_points;
+    using actionet::detail::h5::read_double_slice;
+    using actionet::detail::h5::read_indices_slice;
+    using actionet::detail::h5::read_1d_slice_raw;
+    using actionet::detail::h5::validate_and_cast_index;
 
-    std::string normalize_encoding(const std::string& encoding) {
-        std::string out = encoding;
-        std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
-            return static_cast<char>(std::tolower(c));
-        });
-        return out;
+    constexpr size_t kSelectiveSieveBytes = 4ULL * 1024;
+    // HDF5 point selection over a contiguous dataset turns into one data-sieve
+    // read per touched block. At atlas scale, millions of otherwise efficient
+    // 4 KiB reads lose badly to one sequential pass on cold or network-backed
+    // storage. Reserve point reads for genuinely sparse hits; broader feature
+    // sets use the compact index scan plus one sequential value read.
+    constexpr double kPointReadMaxBlockFraction = 0.05;
+    constexpr arma::uword kDirectSelectedRowLimit = 4096;
+    constexpr unsigned int kMaxSelectiveScanThreads = 8;
+
+    template <typename T>
+    std::vector<T> read_integer_slice(
+        hid_t dataset,
+        unsigned long long start,
+        unsigned long long count,
+        hid_t memory_type,
+        const char* error_context) {
+        std::vector<T> values(static_cast<size_t>(count));
+        read_1d_slice_raw(dataset, memory_type, start, count, values.data(),
+                          error_context);
+        return values;
     }
 } // namespace
 
 namespace actionet {
-    std::string BackedSparseMatrixOperator::read_string_attribute_(hid_t object_id, const char* name) {
-        if (H5Aexists(object_id, name) <= 0) {
-            return "";
-        }
-
-        hid_t attr_id = H5Aopen(object_id, name, H5P_DEFAULT);
-        check_h5(attr_id >= 0, "Failed to open string attribute");
-
-        hid_t type_id = H5Aget_type(attr_id);
-        check_h5(type_id >= 0, "Failed to get attribute type");
-
-        std::string result;
-
-        if (H5Tis_variable_str(type_id) > 0) {
-            // Variable-length string (modern AnnData writes UTF-8 vlen strings).
-            // We must set both H5T_VARIABLE size AND H5T_CSET_UTF8 on the memory
-            // type, otherwise HDF5 >= 1.14 refuses to convert from a UTF-8 file
-            // type to an ASCII memory type.
-            hid_t mem_type = H5Tcopy(H5T_C_S1);
-            H5Tset_size(mem_type, H5T_VARIABLE);
-            H5Tset_cset(mem_type, H5T_CSET_UTF8);
-            char* vlen_buf = nullptr;
-            check_h5(H5Aread(attr_id, mem_type, &vlen_buf) >= 0,
-                      "Failed to read variable-length string attribute");
-            if (vlen_buf != nullptr) {
-                result = vlen_buf;
-                H5free_memory(vlen_buf);
-            }
-            H5Tclose(mem_type);
-        } else {
-            // Fixed-length string. H5Tget_native_type() cannot produce a
-            // conversion path for UTF-8 charset strings (cset=H5T_CSET_UTF8),
-            // so we read directly using the file's own type_id. Fixed-length
-            // HDF5 string data is already contiguous bytes — no conversion is
-            // needed; we just need the correct size.
-            size_t size = H5Tget_size(type_id);
-            if (size > 0) {
-                std::string buffer(size, '\0');
-                check_h5(H5Aread(attr_id, type_id, &buffer[0]) >= 0,
-                          "Failed to read fixed-length string attribute");
-                size_t null_pos = buffer.find('\0');
-                if (null_pos != std::string::npos) {
-                    buffer.resize(null_pos);
-                }
-                result = std::move(buffer);
-            }
-        }
-
-        H5Tclose(type_id);
-        H5Aclose(attr_id);
-        return result;
-    }
-
-    std::vector<long long> BackedSparseMatrixOperator::read_shape_attribute_(hid_t object_id, const char* name) {
-        hid_t attr_id = H5Aopen(object_id, name, H5P_DEFAULT);
-        check_h5(attr_id >= 0, "Missing shape attribute");
-
-        hid_t space_id = H5Aget_space(attr_id);
-        check_h5(space_id >= 0, "Failed to get shape attribute dataspace");
-        check_h5(H5Sget_simple_extent_ndims(space_id) == 1, "Invalid shape attribute rank");
-
-        hsize_t dims[1] = {0};
-        check_h5(H5Sget_simple_extent_dims(space_id, dims, nullptr) == 1, "Invalid shape attribute dimensions");
-
-        std::vector<long long> shape(static_cast<size_t>(dims[0]), 0);
-        check_h5(H5Aread(attr_id, H5T_NATIVE_LLONG, shape.data()) >= 0, "Failed to read shape attribute");
-
-        H5Sclose(space_id);
-        H5Aclose(attr_id);
-        return shape;
-    }
-
     BackedSparseMatrixOperator::BackedSparseMatrixOperator(
         const std::string& file_path,
         const std::string& group_path,
@@ -113,6 +70,11 @@ namespace actionet {
           no_transform_(row_scale_factors.empty() && !apply_log1p),
           chunk_size_(std::max<arma::uword>(1, chunk_size)),
           target_chunk_nnz_(0),
+          data_item_size_(0),
+          indices_item_size_(0),
+          indices_are_signed_(true),
+          data_layout_(H5D_LAYOUT_ERROR),
+          data_io_block_elements_(1),
           n_obs_(0),
           n_var_(0),
           n_threads_(static_cast<unsigned int>(std::max(0, n_threads))),
@@ -122,33 +84,32 @@ namespace actionet {
           indices_ds_(-1),
           indptr_ds_(-1) {
 
+        const auto matrix_info = h5ad::inspect_matrix(file_path_, group_path_);
+        check_h5(
+            matrix_info.encoding == h5ad::MatrixEncoding::CSR ||
+                matrix_info.encoding == h5ad::MatrixEncoding::CSC,
+            "BackedSparseMatrixOperator requires a sparse H5AD matrix");
+        check_h5(
+            matrix_info.rows <= std::numeric_limits<arma::uword>::max() &&
+                matrix_info.cols <= std::numeric_limits<arma::uword>::max(),
+            "Sparse H5AD shape exceeds the compute operator index range");
+        is_csr_ = matrix_info.encoding == h5ad::MatrixEncoding::CSR;
+        n_obs_ = static_cast<arma::uword>(matrix_info.rows);
+        n_var_ = static_cast<arma::uword>(matrix_info.cols);
+
+        // From here on we open HDF5 identifiers into the raw hid_t members.
+        // A throw during construction does NOT run the destructor, so guard the
+        // whole open/validate sequence and release any partially-acquired
+        // handles before rethrowing to avoid leaking file/group/dataset ids.
+        try {
         // Disable HDF5 advisory file locking so this reader can coexist with
         // h5py/AnnData backed-mode handles that already hold a lock on the
         // same inode (errno 11 / EAGAIN from H5FD__sec2_lock otherwise).
         file_id_ = actionet::detail::h5::open_h5_readonly_no_lock(
-            file_path_, "BackedSparseMatrixOperator");
+            file_path_, "BackedSparseMatrixOperator", kSelectiveSieveBytes);
 
         group_id_ = H5Gopen2(file_id_, group_path_.c_str(), H5P_DEFAULT);
         check_h5(group_id_ >= 0, "Failed to open sparse matrix group path");
-
-        std::string encoding = read_string_attribute_(group_id_, "encoding-type");
-        if (encoding.empty()) {
-            encoding = read_string_attribute_(group_id_, "h5sparse_format");
-        }
-        encoding = normalize_encoding(encoding);
-        if (encoding.find("csr") != std::string::npos) {
-            is_csr_ = true;
-        } else if (encoding.find("csc") != std::string::npos) {
-            is_csr_ = false;
-        } else {
-            throw std::runtime_error("Unsupported sparse encoding for backed operator");
-        }
-
-        std::vector<long long> shape = read_shape_attribute_(group_id_, "shape");
-        check_h5(shape.size() == 2, "Sparse shape attribute must have length 2");
-        check_h5(shape[0] >= 0 && shape[1] >= 0, "Sparse shape must be non-negative");
-        n_obs_ = static_cast<arma::uword>(shape[0]);
-        n_var_ = static_cast<arma::uword>(shape[1]);
 
         data_ds_ = H5Dopen2(group_id_, "data", H5P_DEFAULT);
         indices_ds_ = H5Dopen2(group_id_, "indices", H5P_DEFAULT);
@@ -156,11 +117,44 @@ namespace actionet {
         check_h5(data_ds_ >= 0 && indices_ds_ >= 0 && indptr_ds_ >= 0,
                  "Missing sparse datasets data/indices/indptr");
 
-        hid_t indptr_space = H5Dget_space(indptr_ds_);
-        check_h5(indptr_space >= 0, "Failed to get indptr dataspace");
-        check_h5(H5Sget_simple_extent_ndims(indptr_space) == 1, "indptr must be 1D");
+        {
+            actionet::detail::h5::Type data_type(H5Dget_type(data_ds_));
+            actionet::detail::h5::Type indices_type(H5Dget_type(indices_ds_));
+            check_h5(
+                static_cast<bool>(data_type) && static_cast<bool>(indices_type),
+                "Failed to inspect sparse dataset types");
+            data_item_size_ = H5Tget_size(data_type.get());
+            indices_item_size_ = H5Tget_size(indices_type.get());
+            check_h5(data_item_size_ > 0, "Sparse data dtype has zero width");
+            check_h5(
+                H5Tget_class(indices_type.get()) == H5T_INTEGER &&
+                    indices_item_size_ > 0 && indices_item_size_ <= 8,
+                "Sparse indices must use an integer dtype no wider than 64 bits");
+            indices_are_signed_ = H5Tget_sign(indices_type.get()) != H5T_SGN_NONE;
+
+            actionet::detail::h5::Property dcpl(H5Dget_create_plist(data_ds_));
+            check_h5(static_cast<bool>(dcpl), "Failed to inspect sparse data layout");
+            data_layout_ = H5Pget_layout(dcpl.get());
+            if (data_layout_ == H5D_CHUNKED) {
+                hsize_t chunk_extent[1] = {0};
+                check_h5(
+                    H5Pget_chunk(dcpl.get(), 1, chunk_extent) == 1 &&
+                        chunk_extent[0] > 0,
+                    "Sparse data must use one-dimensional HDF5 chunks");
+                data_io_block_elements_ = chunk_extent[0];
+            } else if (data_layout_ == H5D_CONTIGUOUS) {
+                data_io_block_elements_ = static_cast<hsize_t>(
+                    std::max<size_t>(1, kSelectiveSieveBytes / data_item_size_));
+            } else {
+                data_io_block_elements_ = std::numeric_limits<hsize_t>::max();
+            }
+        }
+
+        actionet::detail::h5::Space indptr_space(H5Dget_space(indptr_ds_));
+        check_h5(static_cast<bool>(indptr_space), "Failed to get indptr dataspace");
+        check_h5(H5Sget_simple_extent_ndims(indptr_space.get()) == 1, "indptr must be 1D");
         hsize_t indptr_dim[1] = {0};
-        check_h5(H5Sget_simple_extent_dims(indptr_space, indptr_dim, nullptr) == 1,
+        check_h5(H5Sget_simple_extent_dims(indptr_space.get(), indptr_dim, nullptr) == 1,
                  "Failed to get indptr dimensions");
         indptr_.assign(static_cast<size_t>(indptr_dim[0]), 0ULL);
         if (!indptr_.empty()) {
@@ -178,7 +172,6 @@ namespace actionet {
                 indptr_[i] = static_cast<unsigned long long>(indptr_signed[i]);
             }
         }
-        H5Sclose(indptr_space);
 
         const size_t expected = static_cast<size_t>((is_csr_ ? n_obs_ : n_var_) + 1);
         check_h5(indptr_.size() == expected, "indptr length does not match sparse shape");
@@ -211,6 +204,12 @@ namespace actionet {
         }
         check_h5(std::isfinite(log_scale_) && log_scale_ > 0.0,
                  "log_scale must be finite and > 0");
+        } catch (...) {
+            // Release any handles opened above before the exception propagates;
+            // the destructor will not run for a throwing constructor.
+            close_handles_();
+            throw;
+        }
     }
 
     void BackedSparseMatrixOperator::close_handles_() {
@@ -236,6 +235,11 @@ namespace actionet {
           no_transform_(other.no_transform_),
           chunk_size_(other.chunk_size_),
           target_chunk_nnz_(other.target_chunk_nnz_),
+          data_item_size_(other.data_item_size_),
+          indices_item_size_(other.indices_item_size_),
+          indices_are_signed_(other.indices_are_signed_),
+          data_layout_(other.data_layout_),
+          data_io_block_elements_(other.data_io_block_elements_),
           n_obs_(other.n_obs_),
           n_var_(other.n_var_),
           row_scale_(std::move(other.row_scale_)),
@@ -267,6 +271,11 @@ namespace actionet {
             no_transform_ = other.no_transform_;
             chunk_size_ = other.chunk_size_;
             target_chunk_nnz_ = other.target_chunk_nnz_;
+            data_item_size_ = other.data_item_size_;
+            indices_item_size_ = other.indices_item_size_;
+            indices_are_signed_ = other.indices_are_signed_;
+            data_layout_ = other.data_layout_;
+            data_io_block_elements_ = other.data_io_block_elements_;
             n_obs_ = other.n_obs_;
             n_var_ = other.n_var_;
             row_scale_ = std::move(other.row_scale_);
@@ -296,44 +305,38 @@ namespace actionet {
             return;
         }
 
-        hsize_t start_h[1] = {static_cast<hsize_t>(start)};
-        hsize_t count_h[1] = {static_cast<hsize_t>(count)};
-
-        hid_t file_space_data = H5Dget_space(data_ds_);
-        check_h5(file_space_data >= 0, "Failed to get data dataspace");
-        check_h5(H5Sselect_hyperslab(file_space_data, H5S_SELECT_SET, start_h, nullptr, count_h, nullptr) >= 0,
-                 "Failed to select data hyperslab");
-        hid_t mem_space_data = H5Screate_simple(1, count_h, nullptr);
-        check_h5(mem_space_data >= 0, "Failed to create data memory dataspace");
-        check_h5(H5Dread(data_ds_, H5T_NATIVE_DOUBLE, mem_space_data, file_space_data, H5P_DEFAULT, data.data()) >= 0,
-                 "Failed to read sparse data slice");
-        H5Sclose(mem_space_data);
-        H5Sclose(file_space_data);
-
-        hid_t file_space_indices = H5Dget_space(indices_ds_);
-        check_h5(file_space_indices >= 0, "Failed to get indices dataspace");
-        check_h5(H5Sselect_hyperslab(file_space_indices, H5S_SELECT_SET, start_h, nullptr, count_h, nullptr) >= 0,
-                 "Failed to select indices hyperslab");
-        hid_t mem_space_indices = H5Screate_simple(1, count_h, nullptr);
-        check_h5(mem_space_indices >= 0, "Failed to create indices memory dataspace");
-        // Read with H5T_NATIVE_LLONG to handle both int32 and int64 stored indices.
-        // HDF5 converts int32 -> int64 automatically; we re-cast to uint64 after.
-        std::vector<long long> indices_signed(static_cast<size_t>(count), 0LL);
-        check_h5(H5Dread(indices_ds_, H5T_NATIVE_LLONG, mem_space_indices, file_space_indices, H5P_DEFAULT,
-                         indices_signed.data()) >= 0,
-                 "Failed to read sparse indices slice");
-        for (size_t i = 0; i < indices_signed.size(); ++i) {
-            indices[i] = static_cast<unsigned long long>(indices_signed[i]);
+        // RAII helpers: dataspaces cannot leak if a read throws mid-way.
+        read_double_slice(data_ds_, start, count, data);
+        // Sign-dispatched read rejects negative stored indices instead of
+        // silently wrapping them to a huge unsigned value.
+        std::vector<std::uint64_t> raw =
+            read_indices_slice(indices_ds_, start, count);
+        // Every caller uses these as a minor-axis coordinate (column for CSR,
+        // row for CSC). Validate against the minor extent so a corrupt source
+        // cannot drive an out-of-bounds access in a downstream kernel.
+        const std::uint64_t minor_extent =
+            static_cast<std::uint64_t>(is_csr_ ? n_var_ : n_obs_);
+        for (size_t i = 0; i < raw.size(); ++i) {
+            indices[i] = static_cast<unsigned long long>(
+                validate_and_cast_index(
+                    raw[i], minor_extent,
+                    "Sparse index exceeds minor-axis bounds"));
         }
-        H5Sclose(mem_space_indices);
-        H5Sclose(file_space_indices);
     }
 
     void BackedSparseMatrixOperator::load_chunk_cached_(
         unsigned long long start, unsigned long long count,
         const std::vector<double>*& data, const std::vector<unsigned long long>*& indices) const {
         if (!(chunk_cache_.count == count && chunk_cache_.start == start && count > 0)) {
-            read_data_indices_slice_(start, count, chunk_cache_.data, chunk_cache_.indices);
+            // Read into scratch first so a mid-read throw cannot leave the
+            // cache holding partially-updated buffers while start/count still
+            // advertise the previous (now-inconsistent) chunk. Only after both
+            // reads succeed do we commit the buffers and metadata.
+            std::vector<double> scratch_data;
+            std::vector<unsigned long long> scratch_indices;
+            read_data_indices_slice_(start, count, scratch_data, scratch_indices);
+            chunk_cache_.data.swap(scratch_data);
+            chunk_cache_.indices.swap(scratch_indices);
             chunk_cache_.start = start;
             chunk_cache_.count = count;
             chunk_cache_.transformed = false;
@@ -817,6 +820,9 @@ namespace actionet {
         const arma::uword n_sel_rows = all_rows ? n_obs_ : row_indices.n_elem;
 
         out.zeros(n_sel_rows, n_sel_cols);
+        if (n_sel_cols == 0 || n_sel_rows == 0) {
+            return;
+        }
 
         // Build col -> output-position lookup (sentinel = n_sel_cols means "skip").
         std::vector<arma::uword> col_map(static_cast<size_t>(n_var_), n_sel_cols);
@@ -827,54 +833,289 @@ namespace actionet {
             }
         }
 
-        // Build row -> output-position lookup when row_indices is given.
-        std::vector<arma::uword> row_map;
-        if (!all_rows) {
-            row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
-            for (arma::uword i = 0; i < n_sel_rows; ++i) {
-                const arma::uword r = row_indices(i);
-                if (row_map[r] == n_sel_rows) {
-                    row_map[r] = i;
-                }
-            }
-        }
+        struct Match {
+            hsize_t position;
+            arma::uword source_row;
+            arma::uword output_row;
+            arma::uword output_col;
+        };
 
-        for (arma::uword row_start = 0; row_start < n_obs_;) {
-            const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+        auto read_matches = [&](arma::uword row_start,
+                                arma::uword row_end,
+                                const std::vector<arma::uword>* row_map,
+                                arma::uword missing_row,
+                                std::vector<Match>& matches) {
             const unsigned long long nnz_start = indptr_[row_start];
             const unsigned long long nnz_end = indptr_[row_end];
             const unsigned long long nnz_count = nnz_end - nnz_start;
+            matches.clear();
             if (nnz_count == 0) {
-                row_start = row_end;
-                continue;
+                return;
             }
 
-            const std::vector<double>* data;
-            const std::vector<unsigned long long>* indices;
-            load_chunk_cached_(nnz_start, nnz_count, data, indices);
-            ensure_chunk_transformed_csr_(row_start, row_end, nnz_start);
+            auto collect = [&](const auto& raw_indices) {
+                using RawIndex = typename std::decay_t<decltype(raw_indices)>::value_type;
+                const arma::uword chunk_rows = row_end - row_start;
+                const unsigned int available_threads =
+                    actionet::get_num_threads_nested_safe(
+                        static_cast<unsigned int>(chunk_rows), n_threads_);
+                const unsigned int threads_use = std::max(
+                    1U,
+                    std::min(kMaxSelectiveScanThreads, available_threads));
+                std::vector<std::vector<Match>> thread_matches(threads_use);
+                std::atomic<bool> invalid_index{false};
 
-            const arma::uword chunk_rows = row_end - row_start;
-            const unsigned int threads_use = actionet::get_num_threads_nested_safe(
-                static_cast<unsigned int>(chunk_rows), n_threads_);
+                #pragma omp parallel num_threads(threads_use) if(threads_use > 1)
+                {
+                    const unsigned int thread_id =
+                        static_cast<unsigned int>(omp_get_thread_num());
+                    auto& local_matches = thread_matches[thread_id];
 
-            #pragma omp parallel for schedule(static) num_threads(threads_use) if(threads_use > 1 && chunk_rows > 1)
-            for (arma::sword rs = static_cast<arma::sword>(row_start);
-                 rs < static_cast<arma::sword>(row_end); ++rs) {
-                const arma::uword r = static_cast<arma::uword>(rs);
-                const arma::uword out_row = all_rows ? r : row_map[r];
-                if (out_row == n_sel_rows) continue;
+                    #pragma omp for schedule(static)
+                    for (arma::sword rs = static_cast<arma::sword>(row_start);
+                         rs < static_cast<arma::sword>(row_end);
+                         ++rs) {
+                        const arma::uword r = static_cast<arma::uword>(rs);
+                        const arma::uword output_row =
+                            row_map == nullptr
+                                ? r
+                                : (*row_map)[static_cast<size_t>(r)];
+                        if (output_row == missing_row) {
+                            continue;
+                        }
+                        const unsigned long long local_start =
+                            indptr_[r] - nnz_start;
+                        const unsigned long long local_end =
+                            indptr_[r + 1] - nnz_start;
+                        for (unsigned long long p = local_start;
+                             p < local_end;
+                             ++p) {
+                            const RawIndex raw =
+                                raw_indices[static_cast<size_t>(p)];
+                            if constexpr (std::is_signed_v<RawIndex>) {
+                                if (raw < 0) {
+                                    invalid_index.store(
+                                        true, std::memory_order_relaxed);
+                                    continue;
+                                }
+                            }
+                            const auto as_unsigned =
+                                static_cast<unsigned long long>(raw);
+                            if (as_unsigned >=
+                                static_cast<unsigned long long>(n_var_)) {
+                                invalid_index.store(
+                                    true, std::memory_order_relaxed);
+                                continue;
+                            }
+                            const arma::uword output_col =
+                                col_map[static_cast<size_t>(as_unsigned)];
+                            if (output_col != n_sel_cols) {
+                                local_matches.push_back(Match{
+                                    static_cast<hsize_t>(nnz_start + p),
+                                    r,
+                                    output_row,
+                                    output_col});
+                            }
+                        }
+                    }
+                }
 
-                const unsigned long long local_start = indptr_[r] - nnz_start;
-                const unsigned long long local_end = indptr_[r + 1] - nnz_start;
-                for (unsigned long long p = local_start; p < local_end; ++p) {
-                    const arma::uword col = static_cast<arma::uword>((*indices)[static_cast<size_t>(p)]);
-                    const arma::uword out_col = col_map[col];
-                    if (out_col == n_sel_cols) continue;
-                    out(out_row, out_col) = (*data)[static_cast<size_t>(p)];
+                check_h5(
+                    !invalid_index.load(std::memory_order_relaxed),
+                    "Sparse column index is negative or exceeds matrix shape");
+                size_t total_matches = 0;
+                for (const auto& local_matches : thread_matches) {
+                    total_matches += local_matches.size();
+                }
+                matches.reserve(total_matches);
+                for (auto& local_matches : thread_matches) {
+                    matches.insert(
+                        matches.end(),
+                        std::make_move_iterator(local_matches.begin()),
+                        std::make_move_iterator(local_matches.end()));
+                }
+            };
+
+            if (indices_item_size_ <= 4) {
+                if (indices_are_signed_) {
+                    collect(read_integer_slice<std::int32_t>(
+                        indices_ds_,
+                        nnz_start,
+                        nnz_count,
+                        H5T_NATIVE_INT32,
+                        "Failed to read compact signed sparse indices"));
+                } else {
+                    collect(read_integer_slice<std::uint32_t>(
+                        indices_ds_,
+                        nnz_start,
+                        nnz_count,
+                        H5T_NATIVE_UINT32,
+                        "Failed to read compact unsigned sparse indices"));
+                }
+            } else if (indices_are_signed_) {
+                collect(read_integer_slice<std::int64_t>(
+                    indices_ds_,
+                    nnz_start,
+                    nnz_count,
+                    H5T_NATIVE_INT64,
+                    "Failed to read signed sparse indices"));
+            } else {
+                collect(read_integer_slice<std::uint64_t>(
+                    indices_ds_,
+                    nnz_start,
+                    nnz_count,
+                    H5T_NATIVE_UINT64,
+                    "Failed to read unsigned sparse indices"));
+            }
+        };
+
+        auto materialize_matches = [&](const std::vector<Match>& matches,
+                                       unsigned long long nnz_start,
+                                       unsigned long long nnz_end) {
+            if (matches.empty()) {
+                return;
+            }
+
+            const hsize_t first_block =
+                matches.front().position / data_io_block_elements_;
+            hsize_t previous_block = first_block;
+            unsigned long long touched_blocks = 1;
+            for (size_t i = 1; i < matches.size(); ++i) {
+                const hsize_t block =
+                    matches[i].position / data_io_block_elements_;
+                if (block != previous_block) {
+                    ++touched_blocks;
+                    previous_block = block;
                 }
             }
-            row_start = row_end;
+
+            const hsize_t source_first_block =
+                static_cast<hsize_t>(nnz_start) / data_io_block_elements_;
+            const hsize_t source_last_block =
+                static_cast<hsize_t>(nnz_end - 1) / data_io_block_elements_;
+            const unsigned long long source_blocks =
+                static_cast<unsigned long long>(
+                    source_last_block - source_first_block + 1);
+            const bool use_points =
+                data_layout_ != H5D_COMPACT &&
+                static_cast<double>(touched_blocks) <=
+                    kPointReadMaxBlockFraction *
+                        static_cast<double>(source_blocks);
+
+            std::vector<double> values;
+            if (use_points) {
+                std::vector<hsize_t> positions;
+                positions.reserve(matches.size());
+                for (const Match& match : matches) {
+                    positions.push_back(match.position);
+                }
+                read_double_points(data_ds_, positions, values);
+                for (size_t i = 0; i < matches.size(); ++i) {
+                    const Match& match = matches[i];
+                    out(match.output_row, match.output_col) =
+                        transform_value_(match.source_row, values[i]);
+                }
+            } else {
+                read_double_slice(data_ds_, nnz_start, nnz_end - nnz_start, values);
+                for (const Match& match : matches) {
+                    out(match.output_row, match.output_col) =
+                        transform_value_(
+                            match.source_row,
+                            values[static_cast<size_t>(
+                                match.position - static_cast<hsize_t>(nnz_start))]);
+                }
+            }
+        };
+
+        if (all_rows) {
+            std::vector<Match> matches;
+            for (arma::uword row_start = 0; row_start < n_obs_;) {
+                const arma::uword row_end = next_block_end_(row_start, n_obs_);
+                const unsigned long long nnz_start = indptr_[row_start];
+                const unsigned long long nnz_end = indptr_[row_end];
+                read_matches(
+                    row_start,
+                    row_end,
+                    nullptr,
+                    n_obs_,
+                    matches);
+                materialize_matches(matches, nnz_start, nnz_end);
+                row_start = row_end;
+            }
+        } else if (n_sel_rows <= kDirectSelectedRowLimit) {
+            // Sparse row requests should not pay for a complete CSR scan.
+            // Sort request slots by source row, read each unique row once,
+            // and copy it into duplicate output slots in request order.
+            std::vector<arma::uword> order(static_cast<size_t>(n_sel_rows));
+            std::iota(order.begin(), order.end(), arma::uword{0});
+            std::stable_sort(
+                order.begin(),
+                order.end(),
+                [&](arma::uword lhs, arma::uword rhs) {
+                    return row_indices(lhs) < row_indices(rhs);
+                });
+
+            std::vector<Match> matches;
+            size_t cursor = 0;
+            while (cursor < order.size()) {
+                const arma::uword source_row = row_indices(order[cursor]);
+                const arma::uword first_output_row = order[cursor];
+                read_matches(
+                    source_row,
+                    source_row + 1,
+                    nullptr,
+                    n_obs_,
+                    matches);
+                for (Match& match : matches) {
+                    match.output_row = first_output_row;
+                }
+                materialize_matches(
+                    matches,
+                    indptr_[source_row],
+                    indptr_[source_row + 1]);
+
+                size_t next = cursor + 1;
+                while (next < order.size() &&
+                       row_indices(order[next]) == source_row) {
+                    out.row(order[next]) = out.row(first_output_row);
+                    ++next;
+                }
+                cursor = next;
+            }
+        } else {
+            // Large arbitrary row requests amortize better through one full
+            // index scan. Keep only the first output slot in the lookup and
+            // restore duplicate rows after the scan.
+            std::vector<arma::uword> row_map(
+                static_cast<size_t>(n_obs_), n_sel_rows);
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                if (row_map[static_cast<size_t>(row_indices(i))] == n_sel_rows) {
+                    row_map[static_cast<size_t>(row_indices(i))] = i;
+                }
+            }
+
+            std::vector<Match> matches;
+            for (arma::uword row_start = 0; row_start < n_obs_;) {
+                const arma::uword row_end = next_block_end_(row_start, n_obs_);
+                const unsigned long long nnz_start = indptr_[row_start];
+                const unsigned long long nnz_end = indptr_[row_end];
+                read_matches(
+                    row_start,
+                    row_end,
+                    &row_map,
+                    n_sel_rows,
+                    matches);
+                materialize_matches(matches, nnz_start, nnz_end);
+                row_start = row_end;
+            }
+
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                const arma::uword first =
+                    row_map[static_cast<size_t>(row_indices(i))];
+                if (first != i) {
+                    out.row(i) = out.row(first);
+                }
+            }
         }
 
         // Handle duplicate columns: copy first-match values.
@@ -928,11 +1169,33 @@ namespace actionet {
                 out(out_row, j) = transform_value_(row, data[static_cast<size_t>(p)]);
             }
         }
+
+        if (!all_rows) {
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                const arma::uword first = row_map[row_indices(i)];
+                if (first != i) {
+                    out.row(i) = out.row(first);
+                }
+            }
+        }
     }
 
     arma::mat BackedSparseMatrixOperator::takeColumnsDense(
         const arma::uvec& col_indices,
         const arma::uvec& row_indices) const {
+
+        for (arma::uword i = 0; i < col_indices.n_elem; ++i) {
+            if (col_indices(i) >= n_var_) {
+                throw std::out_of_range(
+                    "BackedSparseMatrixOperator::takeColumnsDense column index out of range");
+            }
+        }
+        for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+            if (row_indices(i) >= n_obs_) {
+                throw std::out_of_range(
+                    "BackedSparseMatrixOperator::takeColumnsDense row index out of range");
+            }
+        }
 
         arma::mat out;
         if (is_csr_) {
@@ -946,6 +1209,19 @@ namespace actionet {
     arma::sp_mat BackedSparseMatrixOperator::takeColumnsSparse(
         const arma::uvec& col_indices,
         const arma::uvec& row_indices) const {
+
+        for (arma::uword i = 0; i < col_indices.n_elem; ++i) {
+            if (col_indices(i) >= n_var_) {
+                throw std::out_of_range(
+                    "BackedSparseMatrixOperator::takeColumnsSparse column index out of range");
+            }
+        }
+        for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+            if (row_indices(i) >= n_obs_) {
+                throw std::out_of_range(
+                    "BackedSparseMatrixOperator::takeColumnsSparse row index out of range");
+            }
+        }
 
         const arma::uword n_sel_cols = col_indices.n_elem;
         const bool all_rows = row_indices.is_empty();
@@ -962,24 +1238,29 @@ namespace actionet {
             col_to_slots[static_cast<size_t>(col_indices(j))].push_back(j);
         }
 
+        // Mirror the inverse map on the row axis so a source row selected more
+        // than once scatters to every requested output slot (matching the
+        // dense path and the ordered/duplicate-preservation contract). When
+        // all rows are taken, the identity map is implied and row_to_slots is
+        // left empty.
+        std::vector<std::vector<arma::uword>> row_to_slots;
+        if (!all_rows) {
+            row_to_slots.assign(static_cast<size_t>(n_obs_), {});
+            for (arma::uword i = 0; i < n_sel_rows; ++i) {
+                row_to_slots[static_cast<size_t>(row_indices(i))].push_back(i);
+            }
+        }
+
         // Collect triplets then batch-construct.
         std::vector<arma::uword> trip_rows;
         std::vector<arma::uword> trip_cols;
         std::vector<double> trip_vals;
 
         if (is_csr_) {
-            std::vector<arma::uword> row_map;
-            if (!all_rows) {
-                row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
-                for (arma::uword i = 0; i < n_sel_rows; ++i) {
-                    if (row_map[row_indices(i)] == n_sel_rows) {
-                        row_map[row_indices(i)] = i;
-                    }
-                }
-            }
-
             for (arma::uword row_start = 0; row_start < n_obs_;) {
-                const arma::uword row_end = std::min<arma::uword>(n_obs_, row_start + chunk_size_);
+                // Cap the chunk by the NNZ-byte budget (next_block_end_), not
+                // raw chunk_size_, so a dense band cannot blow the buffer.
+                const arma::uword row_end = next_block_end_(row_start, n_obs_);
                 const unsigned long long nnz_start_chunk = indptr_[row_start];
                 const unsigned long long nnz_end_chunk = indptr_[row_end];
                 const unsigned long long nnz_count = nnz_end_chunk - nnz_start_chunk;
@@ -994,8 +1275,10 @@ namespace actionet {
                 ensure_chunk_transformed_csr_(row_start, row_end, nnz_start_chunk);
 
                 for (arma::uword r = row_start; r < row_end; ++r) {
-                    const arma::uword out_row = all_rows ? r : row_map[r];
-                    if (out_row == n_sel_rows) continue;
+                    // Every output slot that maps back to source row r.
+                    const std::vector<arma::uword>* out_rows =
+                        all_rows ? nullptr : &row_to_slots[static_cast<size_t>(r)];
+                    if (!all_rows && out_rows->empty()) continue;
 
                     const unsigned long long ls = indptr_[r] - nnz_start_chunk;
                     const unsigned long long le = indptr_[r + 1] - nnz_start_chunk;
@@ -1005,10 +1288,20 @@ namespace actionet {
                         if (slots.empty()) continue;
                         const double v = (*data)[static_cast<size_t>(p)];
                         if (v == 0.0) continue;
-                        for (arma::uword out_col : slots) {
-                            trip_rows.push_back(out_row);
-                            trip_cols.push_back(out_col);
-                            trip_vals.push_back(v);
+                        if (all_rows) {
+                            for (arma::uword out_col : slots) {
+                                trip_rows.push_back(r);
+                                trip_cols.push_back(out_col);
+                                trip_vals.push_back(v);
+                            }
+                        } else {
+                            for (arma::uword out_row : *out_rows) {
+                                for (arma::uword out_col : slots) {
+                                    trip_rows.push_back(out_row);
+                                    trip_cols.push_back(out_col);
+                                    trip_vals.push_back(v);
+                                }
+                            }
                         }
                     }
                 }
@@ -1017,16 +1310,6 @@ namespace actionet {
         } else {
             // CSC path — dedupe requested columns before the disk sweep so
             // repeated references to the same column read from HDF5 only once.
-            std::vector<arma::uword> row_map;
-            if (!all_rows) {
-                row_map.assign(static_cast<size_t>(n_obs_), n_sel_rows);
-                for (arma::uword i = 0; i < n_sel_rows; ++i) {
-                    if (row_map[row_indices(i)] == n_sel_rows) {
-                        row_map[row_indices(i)] = i;
-                    }
-                }
-            }
-
             std::vector<arma::uword> unique_cols;
             unique_cols.reserve(n_sel_cols);
             for (arma::uword c = 0; c < n_var_; ++c) {
@@ -1048,14 +1331,24 @@ namespace actionet {
                 const auto& slots = col_to_slots[static_cast<size_t>(c)];
                 for (unsigned long long p = 0; p < nnz_count; ++p) {
                     const arma::uword row = static_cast<arma::uword>(indices[static_cast<size_t>(p)]);
-                    const arma::uword out_row = all_rows ? row : row_map[row];
-                    if (out_row == n_sel_rows) continue;
                     const double v = transform_value_(row, data[static_cast<size_t>(p)]);
                     if (v == 0.0) continue;
-                    for (arma::uword out_col : slots) {
-                        trip_rows.push_back(out_row);
-                        trip_cols.push_back(out_col);
-                        trip_vals.push_back(v);
+                    if (all_rows) {
+                        for (arma::uword out_col : slots) {
+                            trip_rows.push_back(row);
+                            trip_cols.push_back(out_col);
+                            trip_vals.push_back(v);
+                        }
+                    } else {
+                        // Scatter to every output slot for this source row.
+                        for (arma::uword out_row :
+                             row_to_slots[static_cast<size_t>(row)]) {
+                            for (arma::uword out_col : slots) {
+                                trip_rows.push_back(out_row);
+                                trip_cols.push_back(out_col);
+                                trip_vals.push_back(v);
+                            }
+                        }
                     }
                 }
             }

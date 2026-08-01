@@ -1,10 +1,12 @@
 #include "io/backed_h5ad/backed_dense_matrix_operator.hpp"
+#include "io/backed_h5ad/h5ad_matrix_io.hpp"
 
 #include "_h5_utils.hpp"
 
 #include "fastapprox/fastlog.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace {
@@ -12,21 +14,6 @@ namespace {
 } // namespace
 
 namespace actionet {
-
-    std::vector<long long> BackedDenseMatrixOperator::read_shape_(hid_t dataset_id) {
-        hid_t space_id = H5Dget_space(dataset_id);
-        check_h5(space_id >= 0, "Failed to get dense dataset dataspace");
-
-        int ndims = H5Sget_simple_extent_ndims(space_id);
-        check_h5(ndims == 2, "Dense backed dataset must be 2D");
-
-        hsize_t dims[2] = {0, 0};
-        check_h5(H5Sget_simple_extent_dims(space_id, dims, nullptr) == 2,
-                 "Failed to read dense dataset dimensions");
-        H5Sclose(space_id);
-
-        return {static_cast<long long>(dims[0]), static_cast<long long>(dims[1])};
-    }
 
     BackedDenseMatrixOperator::BackedDenseMatrixOperator(
         const std::string& file_path,
@@ -49,6 +36,21 @@ namespace actionet {
           file_id_(-1),
           dataset_id_(-1) {
 
+        const auto matrix_info = h5ad::inspect_matrix(file_path_, group_path_);
+        check_h5(
+            matrix_info.encoding == h5ad::MatrixEncoding::Dense,
+            "BackedDenseMatrixOperator requires a dense H5AD matrix");
+        check_h5(
+            matrix_info.rows <= std::numeric_limits<arma::uword>::max() &&
+                matrix_info.cols <= std::numeric_limits<arma::uword>::max(),
+            "Dense H5AD shape exceeds the compute operator index range");
+        n_obs_ = static_cast<arma::uword>(matrix_info.rows);
+        n_var_ = static_cast<arma::uword>(matrix_info.cols);
+
+        // A throw during construction does NOT run the destructor, so guard the
+        // open/validate sequence and release partially-acquired handles before
+        // rethrowing to avoid leaking the file/dataset ids.
+        try {
         file_id_ = actionet::detail::h5::open_h5_readonly_no_lock(
             file_path_, "BackedDenseMatrixOperator");
 
@@ -56,11 +58,6 @@ namespace actionet {
         check_h5(dataset_id_ >= 0,
                  "Failed to open dense dataset path (expected a 2D dataset, "
                  "not a sparse group)");
-
-        auto shape = read_shape_(dataset_id_);
-        check_h5(shape[0] >= 0 && shape[1] >= 0, "Dense shape must be non-negative");
-        n_obs_ = static_cast<arma::uword>(shape[0]);
-        n_var_ = static_cast<arma::uword>(shape[1]);
 
         // Clamp effective chunk size to the byte budget.
         // Each slab row is n_var_ doubles (8 bytes each).
@@ -79,6 +76,10 @@ namespace actionet {
         }
         check_h5(std::isfinite(log_scale_) && log_scale_ > 0.0,
                  "log_scale must be finite and > 0");
+        } catch (...) {
+            close_handles_();
+            throw;
+        }
     }
 
     void BackedDenseMatrixOperator::close_handles_() {
@@ -134,16 +135,16 @@ namespace actionet {
         slab.set_size(obs_count, n_var_);
         if (obs_count == 0) return;
 
-        hid_t file_space = H5Dget_space(dataset_id_);
-        check_h5(file_space >= 0, "Failed to get dense dataset dataspace");
+        actionet::detail::h5::Space file_space(H5Dget_space(dataset_id_));
+        check_h5(static_cast<bool>(file_space), "Failed to get dense dataset dataspace");
 
         hsize_t offset[2] = {static_cast<hsize_t>(obs_start), 0};
         hsize_t count[2] = {static_cast<hsize_t>(obs_count), static_cast<hsize_t>(n_var_)};
-        check_h5(H5Sselect_hyperslab(file_space, H5S_SELECT_SET, offset, nullptr, count, nullptr) >= 0,
+        check_h5(H5Sselect_hyperslab(file_space.get(), H5S_SELECT_SET, offset, nullptr, count, nullptr) >= 0,
                  "Failed to select dense hyperslab");
 
-        hid_t mem_space = H5Screate_simple(2, count, nullptr);
-        check_h5(mem_space >= 0, "Failed to create dense memory dataspace");
+        actionet::detail::h5::Space mem_space(H5Screate_simple(2, count, nullptr));
+        check_h5(static_cast<bool>(mem_space), "Failed to create dense memory dataspace");
 
         // HDF5 writes the (obs_count × n_var) hyperslab in row-major order.
         // Read it into an arma::mat that is dimensioned as (n_var × obs_count):
@@ -152,13 +153,10 @@ namespace actionet {
         // row as one column.  A single ``strans`` then yields the desired
         // (obs_count × n_var) slab without an explicit per-element copy.
         arma::mat tmp(n_var_, obs_count);
-        check_h5(H5Dread(dataset_id_, H5T_NATIVE_DOUBLE, mem_space, file_space,
+        check_h5(H5Dread(dataset_id_, H5T_NATIVE_DOUBLE, mem_space.get(), file_space.get(),
                          H5P_DEFAULT, tmp.memptr()) >= 0,
                  "Failed to read dense slab");
         slab = tmp.t();
-
-        H5Sclose(mem_space);
-        H5Sclose(file_space);
     }
 
     void BackedDenseMatrixOperator::apply_transforms_(
@@ -326,6 +324,19 @@ namespace actionet {
         const arma::uvec& col_indices,
         const arma::uvec& row_indices) const {
 
+        for (arma::uword i = 0; i < col_indices.n_elem; ++i) {
+            if (col_indices(i) >= n_var_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsDense column index out of range");
+            }
+        }
+        for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+            if (row_indices(i) >= n_obs_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsDense row index out of range");
+            }
+        }
+
         const arma::uword n_sel = col_indices.n_elem;
         const bool subset_rows = !row_indices.is_empty();
         const arma::uword n_out_rows = subset_rows ? row_indices.n_elem : n_obs_;
@@ -410,6 +421,19 @@ namespace actionet {
     arma::sp_mat BackedDenseMatrixOperator::takeColumnsSparse(
         const arma::uvec& col_indices,
         const arma::uvec& row_indices) const {
+
+        for (arma::uword i = 0; i < col_indices.n_elem; ++i) {
+            if (col_indices(i) >= n_var_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsSparse column index out of range");
+            }
+        }
+        for (arma::uword i = 0; i < row_indices.n_elem; ++i) {
+            if (row_indices(i) >= n_obs_) {
+                throw std::out_of_range(
+                    "BackedDenseMatrixOperator::takeColumnsSparse row index out of range");
+            }
+        }
 
         arma::mat dense = takeColumnsDense(col_indices, row_indices);
         return arma::sp_mat(dense);
