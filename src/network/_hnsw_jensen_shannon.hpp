@@ -13,11 +13,22 @@
 //   bit reinterpret.  fasterlog2 is a handful of cheap FLOPs (a reinterpret, a
 //   multiply, a subtract), so dropping the table removes ~4 MB of per-space
 //   cache pressure, removes the gather dependency chains, and lets the compiler
-//   auto-vectorize the loop on every supported target (NEON on arm64, SSE/AVX
-//   on x86) under -O3.  Computing the log directly is also slightly *more*
-//   accurate than the quantized table, so results are not bitwise identical to
-//   the old kernel; parity is asserted within a documented tolerance by tests
-//   rather than bit-for-bit.
+//   auto-vectorize the loop (NEON on arm64, SSE/AVX on x86).
+//
+//   Vectorization portability (2026-08 GCC audit): the loop is annotated with
+//   `#pragma omp simd` (OpenMP is a hard build requirement) rather than a
+//   clang-only loop hint.  Under GCC -- the default manylinux/HPC compiler --
+//   the loop would NOT auto-vectorize at -O3 or even -march=native without
+//   this: GCC bailed with "control flow in loop" on the (x > 0) ? v : 0
+//   select that wrapped the bit-reinterpret log.  The zero-guard is therefore
+//   written as a 1.0f/0.0f mask multiply (see jsd_xlog2x), which GCC and Clang
+//   both lower to a packed blend, yielding SSE (16-byte) vectors on the default
+//   x86 build and AVX2/AVX-512 (32/64-byte) vectors under install_optimized.sh.
+//
+//   Computing the log directly is also slightly *more* accurate than the
+//   quantized table, so results are not bitwise identical to the old kernel;
+//   parity is asserted within a documented tolerance by tests rather than
+//   bit-for-bit.
 #ifndef ACTIONET_HNSW_JENSEN_SHANNON_HPP
 #define ACTIONET_HNSW_JENSEN_SHANNON_HPP
 #include <cmath>
@@ -37,13 +48,20 @@ namespace hnswlib {
         return static_cast<float>(bits) * 1.1920928955078125e-7f - 126.94269504f;
     }
 
-    // x * log2(x), defined as 0 for x <= 0.  The (x > 0) predicate lowers to a
-    // vector select/mask, so the product is exactly 0 for x <= 0 without a
-    // data-dependent branch, preserving the original kernel's "p == 0 ? 0"
-    // semantics while remaining vectorizable.
+    // x * log2(x), defined as 0 for x <= 0.  The zero-guard is expressed as a
+    // multiply by a 1.0f/0.0f mask rather than a select around the whole
+    // expression.  This matters for portability: GCC (the default
+    // manylinux/HPC toolchain) refuses to vectorize the loop when a select is
+    // wrapped around the bit-reinterpret log (it reports "control flow in
+    // loop" and falls back to scalar), whereas the mask multiply lowers to a
+    // packed compare + blend that GCC and Clang both vectorize.  The result is
+    // bit-identical to the (x > 0) ? v : 0 form under scalar evaluation and
+    // preserves the original kernel's "p == 0 ? 0" semantics (for x == 0 the
+    // reinterpret log is finite, so 0 * log * 0 == 0; no inf/nan can leak
+    // through the mask).
     static inline float jsd_xlog2x(float x) {
-        const float v = x * jsd_fasterlog2(x);
-        return (x > 0.0f) ? v : 0.0f;
+        const float mask = (x > 0.0f) ? 1.0f : 0.0f;
+        return (x * jsd_fasterlog2(x)) * mask;
     }
 
     static float computeJSDMetric(const void* pVect1_p, const void* pVect2_p,
@@ -55,7 +73,13 @@ namespace hnswlib {
 
         float sum1 = 0.0f, sum2 = 0.0f;
         float sum_p = 0.0f, sum_q = 0.0f;
-        #if defined(__clang__)
+        // OpenMP is a hard build requirement, so `omp simd` is the portable way
+        // to force vectorization of this reduction across GCC and Clang.  The
+        // older clang-only `#pragma clang loop vectorize(enable)` hint is kept
+        // as a fallback for the (unsupported) no-OpenMP clang build.
+        #if defined(_OPENMP)
+        #pragma omp simd reduction(+ : sum1, sum2, sum_p, sum_q)
+        #elif defined(__clang__)
         #pragma clang loop vectorize(enable)
         #endif
         for (std::size_t i = 0; i < N; i++) {
