@@ -19,8 +19,14 @@
 #include "uwot/optimize.h"
 #include "uwot/sampler.h"
 
-#include "uwot/rng.h"
-#include "uwot/rparallel.h"
+// MIT-licensed replacements for the historical uwot/rng.h (GPLv3-or-later) and
+// uwot/rparallel.h (GPLv3-or-later, transitively RcppPerpendicular GPLv2+).
+// Provide the same public symbols expected below:
+//   pcg_prng, batch_pcg_factory, pcg_factory,
+//   batch_tau_factory, tau_factory, deterministic_factory,
+//   RParallel, RSerial.
+#include "_uwot_rng.hpp"
+#include "_uwot_parallel.hpp"
 #include "visualization/OptimizerArgs.hpp"
 
 // Template class specialization to handle different rng/batch combinations
