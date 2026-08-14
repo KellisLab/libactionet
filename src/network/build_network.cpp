@@ -3,7 +3,12 @@
 #include "_hnsw_imp.hpp"
 #include "utils_internal/utils_parallel.hpp"
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <limits>
 #include <numeric>
 #include <set>
@@ -23,6 +28,30 @@ namespace {
 
 using VertexIndex = actionet::CSRVertexIndex;
 using CSROffset = actionet::CSROffset;
+
+// Optional phase timing, gated on ACTIONET_NETWORK_TIMING=1.  Zero overhead
+// (a single getenv-cached bool check) when disabled.  Used to attribute
+// build_network wall time to the query, merge, sort, and assembly phases.
+inline bool network_timing_enabled() {
+    static const bool on = [] {
+        const char* v = std::getenv("ACTIONET_NETWORK_TIMING");
+        return v && v[0] == '1';
+    }();
+    return on;
+}
+
+struct PhaseTimer {
+    const char* name;
+    std::chrono::steady_clock::time_point t0;
+    explicit PhaseTimer(const char* n) : name(n), t0(std::chrono::steady_clock::now()) {}
+    ~PhaseTimer() {
+        if (!network_timing_enabled()) return;
+        const auto dt = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - t0).count();
+        std::fprintf(stderr, "[network-timing] %-24s %8.3f s\n", name, dt);
+        std::fflush(stderr);
+    }
+};
 
 // Directed edge before symmetrization (reused in intermediate sort).
 struct DirectedEdge {
@@ -111,6 +140,68 @@ inline actionet::CSRGraph make_empty_graph(std::size_t n) {
     g.n = static_cast<CSROffset>(n);
     g.indptr.assign(n + 1, CSROffset{0});
     return g;
+}
+
+// ---------------------------------------------------------------------------
+// parallel_sort: OpenMP merge sort with a std::sort base case.
+//
+// The single global std::sort over all directed edges was the dominant serial
+// cost of graph finalization (O(nk log nk) on one thread), a hard Amdahl
+// ceiling for fixed-knn at multi-million cells.  This splits the range into one
+// contiguous block per thread, sorts each block in parallel, then merges the
+// sorted blocks pairwise.  It relies only on OpenMP (a hard build requirement),
+// not on a parallel STL backend, so it is portable across the supported
+// toolchains.
+//
+// Comp must be a strict weak ordering.  Falls back to std::sort for small
+// inputs or single-thread execution.
+// ---------------------------------------------------------------------------
+template <typename It, typename Comp>
+void parallel_sort(It first, It last, Comp comp, int max_threads) {
+    const std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+    // Small inputs and single-threaded runs: plain std::sort wins outright.
+    constexpr std::size_t kSerialCutoff = 1u << 16;  // 65,536 elements
+    int threads = max_threads > 1 ? max_threads : 1;
+    if (count < kSerialCutoff || threads <= 1) {
+        std::sort(first, last, comp);
+        return;
+    }
+
+    // Cap the block count at a power of two <= threads so the pairwise merge
+    // tree is balanced and every level halves the number of runs.
+    std::size_t blocks = 1;
+    while ((blocks * 2) <= static_cast<std::size_t>(threads) && (blocks * 2) <= count) {
+        blocks *= 2;
+    }
+
+    std::vector<std::size_t> bounds(blocks + 1);
+    for (std::size_t b = 0; b <= blocks; ++b) {
+        bounds[b] = (count * b) / blocks;
+    }
+
+    // Sort each block independently.
+    #pragma omp parallel for num_threads(threads) schedule(static)
+    for (long long b = 0; b < static_cast<long long>(blocks); ++b) {
+        const std::size_t lo = bounds[static_cast<std::size_t>(b)];
+        const std::size_t hi = bounds[static_cast<std::size_t>(b) + 1];
+        std::sort(first + lo, first + hi, comp);
+    }
+
+    // Merge sorted blocks pairwise, halving the run count each level.  Merges at
+    // a given level are independent and run in parallel.
+    for (std::size_t width = 1; width < blocks; width *= 2) {
+        const std::size_t pair_count = blocks / (width * 2);
+        #pragma omp parallel for num_threads(threads) schedule(dynamic)
+        for (long long p = 0; p < static_cast<long long>(pair_count); ++p) {
+            const std::size_t left  = static_cast<std::size_t>(p) * (width * 2);
+            const std::size_t mid   = left + width;
+            const std::size_t right = left + (width * 2);
+            std::inplace_merge(first + bounds[left],
+                               first + bounds[mid],
+                               first + bounds[right],
+                               comp);
+        }
+    }
 }
 
 inline std::size_t compute_kstar_knn(std::size_t n) {
@@ -213,7 +304,8 @@ static actionet::CSRGraph
 symmetrize_to_csr(std::vector<DirectedEdge> edges,
                   std::size_t               n,
                   const std::string&        distance_metric,
-                  bool                      mutual_edges_only)
+                  bool                      mutual_edges_only,
+                  int                       threads_use)
 {
     const float epsilon = 1e-7f;
     const std::size_t nnz_dir = edges.size();
@@ -249,23 +341,34 @@ symmetrize_to_csr(std::vector<DirectedEdge> edges,
     }
 
     // -----------------------------------------------------------------------
-    // Pass 1b: sort directed edges by unordered pair key (lo, hi, src, dst).
+    // Pass 1b: sort directed edges by unordered pair key (lo, hi, src).
     //
     // Sorting by (min,max) ensures forward (lo→hi) and reverse (hi→lo) are
-    // adjacent so the accumulation loop sees both directions together.
-    // The directed tie-break makes deduplication of exact duplicate edges
-    // stable.
+    // adjacent so the accumulation loop sees both directions together.  We pack
+    // (lo, hi) into a single 64-bit key so each comparison is one integer
+    // compare instead of four min/max operations, then tie-break on src so that
+    // the src==lo direction sorts before src==hi (matching the original
+    // ordering).  The old comparator's final a.dst < b.dst tie-break only
+    // ordered exact-duplicate directed edges, whose sum is commutative, so
+    // dropping it does not change the aggregated result.  The sort itself runs
+    // in parallel via an OpenMP merge sort (see parallel_sort).
     // -----------------------------------------------------------------------
-    std::sort(edges.begin(), edges.end(), [&](const DirectedEdge& a, const DirectedEdge& b) {
-        const VertexIndex lo_a = std::min(a.src, a.dst);
-        const VertexIndex hi_a = std::max(a.src, a.dst);
-        const VertexIndex lo_b = std::min(b.src, b.dst);
-        const VertexIndex hi_b = std::max(b.src, b.dst);
-        if (lo_a != lo_b) return lo_a < lo_b;
-        if (hi_a != hi_b) return hi_a < hi_b;
-        if (a.src != b.src) return a.src < b.src;
-        return a.dst < b.dst;
-    });
+    const auto packed_key = [](const DirectedEdge& e) -> std::uint64_t {
+        const VertexIndex lo = std::min(e.src, e.dst);
+        const VertexIndex hi = std::max(e.src, e.dst);
+        return (static_cast<std::uint64_t>(lo) << 32) | static_cast<std::uint64_t>(hi);
+    };
+    {
+        PhaseTimer _t("symmetrize:sort");
+        parallel_sort(edges.begin(), edges.end(),
+                      [&](const DirectedEdge& a, const DirectedEdge& b) {
+                          const std::uint64_t ka = packed_key(a);
+                          const std::uint64_t kb = packed_key(b);
+                          if (ka != kb) return ka < kb;
+                          return a.src < b.src;
+                      },
+                      threads_use);
+    }
 
     // -----------------------------------------------------------------------
     // Pass 1c: aggregate consecutive duplicate directed edges in place.
@@ -559,12 +662,16 @@ buildNetworkCore_KstarNN(const float*                        X,
         sc.local_edges.shrink_to_fit();
     }
 
-    auto g = symmetrize_to_csr(
-        std::move(all_edges),
-        n,
-        p.distance_metric,
-        p.mutual_edges_only
-    );
+    auto g = [&] {
+        PhaseTimer _t("kstar:finalize");
+        return symmetrize_to_csr(
+            std::move(all_edges),
+            n,
+            p.distance_metric,
+            p.mutual_edges_only,
+            threads_use
+        );
+    }();
     stdout_printf("done\n");
     FLUSH;
     return g;
@@ -609,6 +716,8 @@ buildNetworkCore_KNN(const float*                        X,
                                   p.M, p.ef_construction);
     idx_knn.hnsw->setEf(p.ef);
 
+    {
+    PhaseTimer _t("knn:index_build");
     #pragma omp parallel num_threads(threads_use)
     {
         std::vector<float> row_buf;
@@ -618,25 +727,26 @@ buildNetworkCore_KNN(const float*                        X,
             idx_knn.hnsw->addPoint(reader.load_row(idx, row_buf), idx);
         }
     }
+    }
 
     stdout_printf("done\n");
     FLUSH;
     stdout_printf("\tConstructing kNN edges ... ");
     FLUSH;
 
-    std::vector<DirectedEdge> all_edges;
+    // Per-thread edge accumulators, merged after the parallel region (matches
+    // the k*nn builder).  This replaces the previous `#pragma omp critical`
+    // concatenation, which serialized every thread's merge and copied edges
+    // under the lock — a growing cost as k and n scale.
+    std::vector<AdaptiveScratch> per_thread(static_cast<std::size_t>(threads_use));
+    std::atomic<int> tid_counter{0};
 
-    constexpr std::size_t MAX_RESERVE = 500000000ULL;
-    const auto estimated = checked_product(n, static_cast<std::size_t>(p.k), "knn edge estimate");
-    if (estimated < MAX_RESERVE) {
-        try {
-            all_edges.reserve(estimated);
-        } catch (...) {}
-    }
-
+    {
+    PhaseTimer _t("knn:query");
     #pragma omp parallel num_threads(threads_use)
     {
-        AdaptiveScratch sc;
+        const int tid = tid_counter.fetch_add(1, std::memory_order_relaxed);
+        AdaptiveScratch& sc = per_thread[static_cast<std::size_t>(tid)];
 
         #pragma omp for nowait schedule(static)
         for (long long i = 0; i < n_ll; ++i) {
@@ -666,27 +776,47 @@ buildNetworkCore_KNN(const float*                        X,
                 ++added;
             }
         }
-
-        #pragma omp critical
-        {
-            all_edges.insert(all_edges.end(),
-                             std::make_move_iterator(sc.local_edges.begin()),
-                             std::make_move_iterator(sc.local_edges.end()));
-        }
     }
-    // idx_knn goes out of scope here — HierarchicalNSW and SpaceInterface deleted.
+    }  // end knn:query PhaseTimer
+    // idx_knn goes out of scope below — HierarchicalNSW and SpaceInterface
+    // deleted after the accumulators are merged.
+
+    std::size_t total_edges = 0;
+    std::vector<DirectedEdge> all_edges;
+    {
+    PhaseTimer _t("knn:merge");
+    for (const auto& sc : per_thread) {
+        if (sc.local_edges.size() > (std::numeric_limits<std::size_t>::max() - total_edges)) {
+            throw std::runtime_error("knn edge count exceeds addressable memory on this platform");
+        }
+        total_edges += sc.local_edges.size();
+    }
+
+    all_edges.reserve(total_edges);
+    for (auto& sc : per_thread) {
+        all_edges.insert(all_edges.end(),
+                         std::make_move_iterator(sc.local_edges.begin()),
+                         std::make_move_iterator(sc.local_edges.end()));
+        sc.local_edges.clear();
+        sc.local_edges.shrink_to_fit();
+    }
+    }  // end knn:merge PhaseTimer
 
     stdout_printf("done\n");
     FLUSH;
     stdout_printf("\tFinalizing network ... ");
     FLUSH;
 
-    auto g = symmetrize_to_csr(
-        std::move(all_edges),
-        n,
-        p.distance_metric,
-        p.mutual_edges_only
-    );
+    auto g = [&] {
+        PhaseTimer _t("knn:finalize");
+        return symmetrize_to_csr(
+            std::move(all_edges),
+            n,
+            p.distance_metric,
+            p.mutual_edges_only,
+            threads_use
+        );
+    }();
     stdout_printf("done\n");
     FLUSH;
     return g;
